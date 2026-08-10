@@ -10,7 +10,11 @@ postgres "main" {
   }
 }
 
-secret "tmdb_access_token" {}
+secret "tmdb_access_token" {
+  # Generates a harmless placeholder for the first deploy so its public URL can
+  # be used when requesting the real TMDB token. Override it in the dashboard.
+  generated = true
+}
 
 secret "better_auth_secret" {
   generated = true
@@ -24,7 +28,7 @@ config "bootstrap_username" {
 
 service "web" {
   build   = build.web
-  command = "pnpm start"
+  command = "pnpm auth:bootstrap && pnpm start"
 
   endpoint {
     public = true

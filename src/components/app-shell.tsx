@@ -36,6 +36,7 @@ export function AppShell({ children, username }: { children: ReactNode; username
             </Link>
           ))}
         </nav>
+        <p className="data-credit">Metadata by TMDB</p>
         <div className="sidebar-account">
           <span className="avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span>
           <span className="account-name">{username}</span>
