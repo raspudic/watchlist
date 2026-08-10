@@ -1,6 +1,5 @@
 build "web" {
-  base    = "node"
-  command = "pnpm build"
+  dockerfile = "Dockerfile"
 }
 
 postgres "main" {

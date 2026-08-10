@@ -1,0 +1,8 @@
+.git
+.next
+.pnpm-store
+.specific
+node_modules
+specific.local
+npm-debug.log*
+pnpm-debug.log*
