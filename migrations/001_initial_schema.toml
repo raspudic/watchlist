@@ -1,0 +1,407 @@
+[[actions]]
+type = "create_table"
+name = "user"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "name"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "email"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "email_verified"
+  type = "BOOLEAN"
+  nullable = false
+  default = "FALSE"
+
+  [[actions.columns]]
+  name = "image"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "username"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "display_username"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+[[actions]]
+type = "add_index"
+table = "user"
+
+  [actions.index]
+  name = "user_email_unique"
+  columns = ["email"]
+  unique = true
+
+[[actions]]
+type = "add_index"
+table = "user"
+
+  [actions.index]
+  name = "user_username_unique"
+  columns = ["username"]
+  unique = true
+
+[[actions]]
+type = "create_table"
+name = "session"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+  [[actions.columns]]
+  name = "token"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "ip_address"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "user_agent"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+
+[[actions]]
+type = "add_index"
+table = "session"
+
+  [actions.index]
+  name = "session_token_unique"
+  columns = ["token"]
+  unique = true
+
+[[actions]]
+type = "add_index"
+table = "session"
+
+  [actions.index]
+  name = "session_user_id_idx"
+  columns = ["user_id"]
+
+[[actions]]
+type = "create_table"
+name = "account"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "account_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "provider_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "access_token"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "refresh_token"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "id_token"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "access_token_expires_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "refresh_token_expires_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "scope"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "password"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+
+[[actions]]
+type = "add_index"
+table = "account"
+
+  [actions.index]
+  name = "account_user_id_idx"
+  columns = ["user_id"]
+
+[[actions]]
+type = "add_index"
+table = "account"
+
+  [actions.index]
+  name = "account_provider_account_unique"
+  columns = ["provider_id", "account_id"]
+  unique = true
+
+[[actions]]
+type = "create_table"
+name = "verification"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "identifier"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "value"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+[[actions]]
+type = "add_index"
+table = "verification"
+
+  [actions.index]
+  name = "verification_identifier_idx"
+  columns = ["identifier"]
+
+[[actions]]
+type = "create_table"
+name = "rate_limit"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "key"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "count"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "last_request"
+  type = "BIGINT"
+  nullable = false
+
+[[actions]]
+type = "add_index"
+table = "rate_limit"
+
+  [actions.index]
+  name = "rate_limit_key_unique"
+  columns = ["key"]
+  unique = true
+
+[[actions]]
+type = "create_table"
+name = "media_items"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "provider"
+  type = "TEXT"
+  nullable = false
+  default = "'tmdb'"
+
+  [[actions.columns]]
+  name = "external_id"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "media_type"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "title"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "original_title"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "release_year"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "poster_path"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "overview"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "status"
+  type = "TEXT"
+  nullable = false
+  default = "'watchlist'"
+
+  [[actions.columns]]
+  name = "watchlist_note"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "review_note"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "rating"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "added_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "watched_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+
+[[actions]]
+type = "add_index"
+table = "media_items"
+
+  [actions.index]
+  name = "media_items_user_status_idx"
+  columns = ["user_id", "status"]
+
+[[actions]]
+type = "add_index"
+table = "media_items"
+
+  [actions.index]
+  name = "media_items_provider_identity_unique"
+  columns = ["user_id", "provider", "media_type", "external_id"]
+  unique = true
