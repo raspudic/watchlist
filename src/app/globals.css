@@ -142,6 +142,9 @@ a {
 .login-copy h1 { font-size: 28px; letter-spacing: -0.035em; line-height: 1.15; }
 .login-copy p { color: var(--text-soft); margin-top: 8px; }
 .login-form { display: flex; flex-direction: column; }
+.signup-page { padding-block: 38px; }
+.signup-panel { width: min(100%, 430px); }
+.signup-panel .login-copy { margin: 30px 0 20px; }
 .field-label { font-size: 13px; color: var(--text-soft); font-weight: 560; margin: 17px 0 7px; }
 .field-label:first-child { margin-top: 0; }
 .text-input,
@@ -157,6 +160,11 @@ a {
 .text-input:focus,
 .note-block textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
 .form-error { color: var(--danger); font-size: 13px; line-height: 1.45; margin-top: 12px; }
+.form-success { margin-top: 13px; display: flex; align-items: center; gap: 7px; color: var(--accent-text); font-size: 12.5px; line-height: 1.45; }
+.field-help { margin-top: 6px; color: var(--text-faint); font-size: 11.5px; line-height: 1.4; }
+.auth-switch { margin-top: 18px; color: var(--text-faint); text-align: center; font-size: 12.5px; }
+.auth-switch a { color: var(--accent-text); font-weight: 650; }
+.auth-switch a:hover { text-decoration: underline; }
 
 .primary-button,
 .secondary-button,
@@ -243,6 +251,21 @@ a {
   gap: 9px;
   border-top: 1px solid var(--line);
 }
+.account-trigger {
+  min-width: 0;
+  flex: 1;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.account-trigger:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.account-trigger > svg { flex: 0 0 auto; color: var(--text-faint); }
 .data-credit { margin-top: auto; padding: 0 10px; color: var(--text-faint); font-size: 10px; }
 .avatar,
 .mobile-avatar {
@@ -275,6 +298,42 @@ a {
 .mobile-header,
 .bottom-nav { display: none; }
 .app-main { min-height: 100vh; margin-left: var(--sidebar-width); }
+
+/* Account */
+.account-layer {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 10, 12, 0.34);
+  backdrop-filter: blur(4px);
+  animation: fade-in 160ms ease-out;
+}
+.account-dialog {
+  width: min(100%, 470px);
+  max-height: min(820px, 92vh);
+  padding: 28px;
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-panel);
+  animation: modal-in 180ms cubic-bezier(.22,.9,.4,1);
+}
+.account-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.account-dialog-header h2 { margin-top: 5px; font-size: 24px; letter-spacing: -0.035em; }
+.account-dialog-header > div > p:last-child { margin-top: 4px; color: var(--text-faint); font-size: 12px; }
+.account-form { margin-top: 25px; padding-top: 23px; border-top: 1px solid var(--line); }
+.account-section-heading { display: flex; align-items: flex-start; gap: 10px; }
+.account-section-heading > svg { margin-top: 1px; color: var(--accent-text); }
+.account-section-heading h3 { font-size: 14px; }
+.account-section-heading p { margin-top: 4px; color: var(--text-faint); font-size: 11.5px; }
+.account-save { width: 100%; margin-top: 20px; }
+.account-signout { margin-top: 22px; padding: 8px 2px; display: inline-flex; align-items: center; gap: 7px; background: transparent; color: var(--text-soft); cursor: pointer; font-size: 12px; font-weight: 600; }
+.account-signout:hover { color: var(--text); }
 
 /* Library */
 .library-page {
@@ -497,7 +556,7 @@ a {
 .media-grid .row-note { max-width: 100%; }
 .media-grid .row-chevron { display: none; }
 .media-grid .rate-prompt { position: absolute; top: 9px; right: 9px; padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface-raised) 90%, transparent); box-shadow: 0 2px 10px rgba(0,0,0,.16); }
-.media-grid .swipe-delete { width: 78px; }
+.media-grid .swipe-delete { width: 100%; }
 .swipe-row {
   position: relative;
   overflow: hidden;
@@ -510,10 +569,11 @@ a {
   position: absolute;
   z-index: 0;
   inset: 0 0 0 auto;
-  width: 92px;
+  width: 100%;
+  padding-right: 20px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   gap: 4px;
   background: var(--danger);
@@ -745,6 +805,8 @@ a {
   .panel-actions { flex-direction: column; }
   .panel-actions .primary-button,
   .panel-actions .secondary-button { width: 100%; }
+  .account-layer { padding: 0; align-items: flex-end; background: rgba(4, 5, 6, 0.48); }
+  .account-dialog { width: 100%; max-height: min(90vh, 760px); padding: 25px 20px calc(27px + env(safe-area-inset-bottom)); border: 0; border-radius: 22px 22px 0 0; animation-name: sheet-in; }
   .toast { left: 50%; bottom: calc(76px + var(--mobile-hosting-clearance) + env(safe-area-inset-bottom)); }
   @keyframes sheet-in { from { transform: translateY(45px); opacity: 0.65; } }
 }

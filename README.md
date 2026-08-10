@@ -12,7 +12,8 @@ A deliberately simple personal library for movies, series, and anime. Add a titl
 - Swipe left on a mobile row to reveal Remove; removals have Undo
 - System-aware light and dark themes
 - Installable PWA without an app store; authenticated responses are never cached
-- Persistent database-backed sessions and private, disabled-by-default signup
+- Persistent database-backed sessions, public account creation, and in-app password changes
+- Fifteen-character minimum passwords, compromised-password checks, and database-backed auth rate limits
 
 ## Local development
 
@@ -45,7 +46,9 @@ Infrastructure and the development environment are defined in [`specific.hcl`](.
    specific exec web pnpm auth:bootstrap
    ```
 
-The username defaults to `mateo`. Public signup remains disabled after bootstrap. For anything beyond local development, replace the temporary password with a unique strong password before deploying.
+The bootstrap username defaults to `mateo`. The bootstrap command only creates a missing account; it never overwrites an existing user’s password, so an in-app password change remains in place across restarts and deployments. Use a unique password of at least 15 characters.
+
+New users can create an account from the sign-in screen with a display name, username, email, and password. Email delivery is not configured yet, so the address is stored as part of the account but is not currently verified and cannot be used for password recovery.
 
 ## First deployment and TMDB setup
 

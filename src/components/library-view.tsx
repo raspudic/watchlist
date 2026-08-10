@@ -26,6 +26,7 @@ import {
   type AddableTitle,
   type BulkAddOutcome,
 } from "@/components/add-title";
+import { getSwipeRelease } from "@/lib/swipe";
 
 type ViewMode = "watchlist" | "watched";
 type MediaFilter = "all" | "movie" | "tv";
@@ -364,12 +365,17 @@ function MediaRow({
   promptRating?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
+  const offsetRef = useRef(0);
   const startX = useRef<number | null>(null);
+  const startOffset = useRef(0);
+  const rowWidth = useRef(0);
   const didSwipe = useRef(false);
   const poster = posterUrl(item.posterPath);
 
   function pointerDown(event: ReactPointerEvent) {
     startX.current = event.clientX;
+    startOffset.current = offsetRef.current;
+    rowWidth.current = event.currentTarget.clientWidth;
     didSwipe.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -378,12 +384,31 @@ function MediaRow({
     if (startX.current === null) return;
     const delta = event.clientX - startX.current;
     if (Math.abs(delta) > 7) didSwipe.current = true;
-    setOffset(Math.max(-92, Math.min(0, delta + (offset < 0 ? -92 : 0))));
+    const nextOffset = Math.max(-rowWidth.current, Math.min(0, delta + startOffset.current));
+    offsetRef.current = nextOffset;
+    setOffset(nextOffset);
   }
 
   function pointerUp() {
     startX.current = null;
-    setOffset((current) => current < -44 ? -92 : 0);
+    const release = getSwipeRelease(offsetRef.current, rowWidth.current);
+    if (release === "remove") {
+      offsetRef.current = -rowWidth.current;
+      setOffset(-rowWidth.current);
+      window.setTimeout(() => onRemove(item), 120);
+      return;
+    }
+
+    const nextOffset = release === "reveal" ? -92 : 0;
+    offsetRef.current = nextOffset;
+    setOffset(nextOffset);
+  }
+
+  function pointerCancel() {
+    startX.current = null;
+    const nextOffset = offsetRef.current < -44 ? -92 : 0;
+    offsetRef.current = nextOffset;
+    setOffset(nextOffset);
   }
 
   return (
@@ -399,6 +424,7 @@ function MediaRow({
             return;
           }
           if (offset < 0) {
+            offsetRef.current = 0;
             setOffset(0);
             return;
           }
@@ -406,6 +432,7 @@ function MediaRow({
         }}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
+        onPointerCancel={pointerCancel}
         onPointerUp={pointerUp}
         style={{ transform: `translateX(${offset}px)` }}
         type="button"
@@ -456,7 +483,7 @@ function DetailPanel({
     };
   }, [onClose]);
 
-  async function save(patch: Record<string, unknown>) {
+  async function save(patch: Record<string, unknown>, closeAfterSave = false) {
     setSaving(true);
     setError("");
     try {
@@ -468,6 +495,7 @@ function DetailPanel({
         }),
       );
       onUpdate(data.item);
+      if (closeAfterSave) onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save your changes.");
     } finally {
@@ -538,9 +566,9 @@ function DetailPanel({
 
         <div className="panel-actions">
           {item.status === "watchlist" ? (
-            <button className="primary-button" disabled={saving} onClick={() => save({ status: "watched", watchlistNote: watchlistNote || null })} type="button">
+            <button className="primary-button" disabled={saving} onClick={() => save({ watchlistNote: watchlistNote || null }, true)} type="button">
               {saving ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}
-              I watched this
+              Save notes
             </button>
           ) : (
             <button className="primary-button" disabled={saving} onClick={() => save({ rating, reviewNote: reviewNote || null })} type="button">
@@ -549,7 +577,9 @@ function DetailPanel({
             </button>
           )}
           {item.status === "watchlist" ? (
-            <button className="secondary-button" disabled={saving} onClick={() => save({ watchlistNote: watchlistNote || null })} type="button">Save notes</button>
+            <button className="secondary-button watched-button" disabled={saving} onClick={() => save({ status: "watched", watchlistNote: watchlistNote || null })} type="button">
+              <Check size={17} /> Move to watched
+            </button>
           ) : null}
         </div>
 

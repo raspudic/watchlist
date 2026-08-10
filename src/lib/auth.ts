@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { username } from "better-auth/plugins";
+import { haveIBeenPwned, username } from "better-auth/plugins";
 
 import { db } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
@@ -33,7 +33,8 @@ export function createWatchlistAuth(disableSignUp = true) {
     emailAndPassword: {
       enabled: true,
       disableSignUp,
-      minPasswordLength: 8,
+      minPasswordLength: 15,
+      maxPasswordLength: 128,
     },
     session: {
       expiresIn: SIX_MONTHS,
@@ -50,16 +51,31 @@ export function createWatchlistAuth(disableSignUp = true) {
           window: 60,
           max: 5,
         },
+        "/sign-up/email": {
+          window: 60 * 60,
+          max: 5,
+        },
+        "/change-password": {
+          window: 60 * 10,
+          max: 5,
+        },
       },
     },
     disabledPaths: ["/is-username-available"],
     plugins: [
+      haveIBeenPwned({
+        customPasswordCompromisedMessage: "Choose a password that has not appeared in a known data breach.",
+      }),
       username({
         minUsernameLength: 3,
         maxUsernameLength: 30,
+        displayUsernameValidator: (displayUsername) => {
+          const length = displayUsername.trim().length;
+          return length >= 1 && length <= 50;
+        },
       }),
     ],
   });
 }
 
-export const auth = createWatchlistAuth(true);
+export const auth = createWatchlistAuth(false);

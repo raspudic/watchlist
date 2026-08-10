@@ -1,6 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +9,7 @@ import { authClient } from "@/lib/auth-client";
 
 export function LoginForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("mateo");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -67,6 +68,7 @@ export function LoginForm() {
         {pending ? <LoaderCircle aria-hidden="true" className="spin" size={17} /> : null}
         {pending ? "Signing in…" : "Sign in"}
       </button>
+      <p className="auth-switch">New here? <Link href="/signup">Create an account</Link></p>
     </form>
   );
 }

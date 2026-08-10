@@ -1,10 +1,11 @@
 "use client";
 
-import { Bookmark, CheckCircle2, LogOut } from "lucide-react";
+import { Bookmark, CheckCircle2, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
+import { AccountDialog } from "@/components/account-dialog";
 import { GlobalSearch } from "@/components/global-search";
 import { authClient } from "@/lib/auth-client";
 
@@ -13,9 +14,10 @@ const links = [
   { href: "/watched", label: "Watched", icon: CheckCircle2 },
 ];
 
-export function AppShell({ children, username }: { children: ReactNode; username: string }) {
+export function AppShell({ children, displayName, username }: { children: ReactNode; displayName: string; username: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [accountOpen, setAccountOpen] = useState(false);
 
   async function signOut() {
     await authClient.signOut();
@@ -39,8 +41,11 @@ export function AppShell({ children, username }: { children: ReactNode; username
         </nav>
         <p className="data-credit">Metadata by TMDB</p>
         <div className="sidebar-account">
-          <span className="avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span>
-          <span className="account-name">{username}</span>
+          <button className="account-trigger" onClick={() => setAccountOpen(true)} type="button">
+            <span className="avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</span>
+            <span className="account-name">{displayName}</span>
+            <Settings aria-hidden="true" size={15} />
+          </button>
           <button className="icon-button" onClick={signOut} title="Sign out" type="button">
             <LogOut aria-hidden="true" size={17} />
             <span className="sr-only">Sign out</span>
@@ -52,8 +57,8 @@ export function AppShell({ children, username }: { children: ReactNode; username
 
       <header className="mobile-header">
         <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>
-        <button className="mobile-avatar" onClick={signOut} title="Sign out" type="button">
-          {username.slice(0, 1).toUpperCase()}
+        <button className="mobile-avatar" onClick={() => setAccountOpen(true)} title="Account" type="button">
+          {displayName.slice(0, 1).toUpperCase()}
         </button>
       </header>
 
@@ -67,6 +72,15 @@ export function AppShell({ children, username }: { children: ReactNode; username
           </Link>
         ))}
       </nav>
+
+      {accountOpen ? (
+        <AccountDialog
+          displayName={displayName}
+          onClose={() => setAccountOpen(false)}
+          onSignOut={signOut}
+          username={username}
+        />
+      ) : null}
     </div>
   );
 }
