@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { GlobalSearch } from "@/components/global-search";
 import { authClient } from "@/lib/auth-client";
 
 const links = [
@@ -46,6 +47,8 @@ export function AppShell({ children, username }: { children: ReactNode; username
           </button>
         </div>
       </aside>
+
+      <GlobalSearch />
 
       <header className="mobile-header">
         <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>

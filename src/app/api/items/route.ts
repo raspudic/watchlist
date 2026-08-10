@@ -88,6 +88,8 @@ export async function POST(request: Request) {
       .set({
         status: "watchlist",
         watchedAt: null,
+        rating: null,
+        reviewNote: null,
         watchlistNote: input.watchlistNote ?? existing[0].watchlistNote,
         title: input.title,
         originalTitle: input.originalTitle ?? null,

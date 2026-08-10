@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   AddTitleActions,
@@ -63,6 +64,8 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function LibraryView({ mode }: { mode: ViewMode }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,6 +101,11 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  function closeDetail() {
+    setSelected(null);
+    if (searchParams.has("item")) window.history.replaceState(null, "", pathname);
+  }
+
   function postItem(result: AddableTitle) {
     return fetch("/api/items", {
       method: "POST",
@@ -109,7 +117,6 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   async function addItem(result: AddableTitle) {
     const data = await readJson<{ item: MediaItem }>(await postItem(result));
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
-    setSelected(data.item);
   }
 
   async function addItems(results: AddableTitle[]): Promise<BulkAddOutcome> {
@@ -149,14 +156,15 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   function replaceItem(item: MediaItem) {
     if (item.status !== mode) {
       setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+      closeDetail();
     } else {
       setItems((current) => current.map((currentItem) => currentItem.id === item.id ? item : currentItem));
+      setSelected(item);
     }
-    setSelected(item.status === mode ? item : null);
   }
 
   async function removeItem(item: MediaItem) {
-    setSelected(null);
+    closeDetail();
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
 
     try {
@@ -191,6 +199,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
   const needsRating = mode === "watched" ? items.filter((item) => item.rating === null) : [];
   const rated = mode === "watched" ? items.filter((item) => item.rating !== null) : [];
+  const linkedItemId = searchParams.get("item");
+  const linkedItem = linkedItemId ? items.find((item) => item.id === linkedItemId) ?? null : null;
+  const detailItem = linkedItem ?? selected;
 
   return (
     <div className="library-page">
@@ -257,10 +268,10 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         </section>
       ) : null}
 
-      {selected ? (
+      {detailItem ? (
         <DetailPanel
-          item={selected}
-          onClose={() => setSelected(null)}
+          item={detailItem}
+          onClose={closeDetail}
           onRemove={removeItem}
           onUpdate={replaceItem}
         />
@@ -421,6 +432,13 @@ function DetailPanel({
 
         {item.overview ? <p className="overview">{item.overview}</p> : null}
 
+        {item.status === "watched" && item.watchlistNote ? (
+          <details className="watchlist-note-history">
+            <summary>Watchlist note</summary>
+            <p>{item.watchlistNote}</p>
+          </details>
+        ) : null}
+
         {item.status === "watched" ? (
           <div className="rating-block">
             <div className="detail-section-title">
@@ -442,11 +460,11 @@ function DetailPanel({
         ) : null}
 
         <div className="note-block">
-          <label htmlFor="item-note">{item.status === "watchlist" ? "Why this one?" : "A note for later"}</label>
+          <label htmlFor="item-note">Notes</label>
           <textarea
             id="item-note"
             onChange={(event) => item.status === "watchlist" ? setWatchlistNote(event.target.value) : setReviewNote(event.target.value)}
-            placeholder={item.status === "watchlist" ? "A friend recommended it because…" : "What stayed with you?"}
+            placeholder="Add anything you want to remember."
             rows={4}
             value={note}
           />
@@ -467,7 +485,7 @@ function DetailPanel({
             </button>
           )}
           {item.status === "watchlist" ? (
-            <button className="secondary-button" disabled={saving} onClick={() => save({ watchlistNote: watchlistNote || null })} type="button">Save note</button>
+            <button className="secondary-button" disabled={saving} onClick={() => save({ watchlistNote: watchlistNote || null })} type="button">Save notes</button>
           ) : null}
         </div>
 

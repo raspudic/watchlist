@@ -111,7 +111,7 @@ export function AddTitleActions({
           <ListPlus aria-hidden="true" size={17} /> Import list
         </button>
       </div>
-      {searchOpen ? <SearchDialog onAdd={onAdd} onClose={() => setSearchOpen(false)} /> : null}
+      {searchOpen ? <SearchDialog onAdd={onAdd} onClose={() => setSearchOpen(false)} onNotice={onNotice} /> : null}
       {importOpen ? (
         <BulkImportDialog
           onClose={() => setImportOpen(false)}
@@ -138,12 +138,22 @@ function useModalLifecycle(onClose: () => void) {
   }, [onClose]);
 }
 
-function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promise<void>; onClose: () => void }) {
+function SearchDialog({
+  onAdd,
+  onClose,
+  onNotice,
+}: {
+  onAdd: (item: AddableTitle) => Promise<void>;
+  onClose: () => void;
+  onNotice: (message: string) => void;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [lastAdded, setLastAdded] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useModalLifecycle(onClose);
@@ -164,6 +174,7 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
       try {
         const data = await searchTitles(trimmed, controller.signal);
         setResults(data.results);
+        setHighlightedIndex(0);
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") {
           setError(caught instanceof Error ? caught.message : "Search is unavailable.");
@@ -184,7 +195,12 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
     setError("");
     try {
       await onAdd(item);
-      onClose();
+      setLastAdded(item.title);
+      onNotice(`Added ${item.title}`);
+      setQuery("");
+      setResults([]);
+      setHighlightedIndex(0);
+      inputRef.current?.focus();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add that title.");
     } finally {
@@ -193,6 +209,29 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
   }
 
   const customTitle = query.trim();
+
+  function handleSearchKeys(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" && results.length > 0) {
+      event.preventDefault();
+      setHighlightedIndex((current) => Math.min(current + 1, results.length - 1));
+      return;
+    }
+    if (event.key === "ArrowUp" && results.length > 0) {
+      event.preventDefault();
+      setHighlightedIndex((current) => Math.max(current - 1, 0));
+      return;
+    }
+    if (event.key !== "Enter" || adding !== null || searching || customTitle.length < 2) return;
+
+    event.preventDefault();
+    const highlighted = results[highlightedIndex];
+    if (highlighted) {
+      void choose(highlighted, `${highlighted.mediaType}-${highlighted.externalId}`);
+    } else {
+      void choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom");
+    }
+  }
+
   return (
     <div className="modal-layer search-modal-layer" onMouseDown={(event) => event.target === event.currentTarget && onClose()} role="presentation">
       <section aria-labelledby="search-dialog-title" aria-modal="true" className="search-dialog" role="dialog">
@@ -205,12 +244,15 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
             onChange={(event) => {
               const value = event.target.value;
               setQuery(value);
+              setLastAdded("");
+              if (value.trim().length >= 2) setSearching(true);
               if (value.trim().length < 2) {
                 setResults([]);
                 setSearching(false);
                 setError("");
               }
             }}
+            onKeyDown={handleSearchKeys}
             placeholder="Search movies, shows, anime..."
             ref={inputRef}
             value={query}
@@ -231,6 +273,7 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
                 key={key}
                 onClick={() => choose(result, key)}
                 result={result}
+                selected={highlightedIndex === results.indexOf(result)}
               />
             );
           })}
@@ -245,12 +288,15 @@ function SearchDialog({ onAdd, onClose }: { onAdd: (item: AddableTitle) => Promi
           >
             <span className="mini-poster"><Plus size={17} /></span>
             <span className="result-copy">
-              <strong>{customTitle.length >= 2 ? `Use "${customTitle}"` : "Use your own title"}</strong>
-              <span>Skip search and add exactly what you typed</span>
+              <strong>{customTitle.length >= 2 ? `Add "${customTitle}"` : "Add a custom title"}</strong>
+              <span>Custom title</span>
             </span>
             {adding === "custom" ? <LoaderCircle className="spin" size={17} /> : null}
           </button>
-          <p className="search-credit">Search data by TMDB</p>
+          <div className="search-footer-line">
+            <p aria-live="polite" className="quick-add-status">{lastAdded ? `Added ${lastAdded}. Ready for another.` : "Enter adds the selected result"}</p>
+            <p className="search-credit">Search data by TMDB</p>
+          </div>
         </div>
       </section>
     </div>
@@ -262,15 +308,17 @@ function SearchResultButton({
   disabled,
   onClick,
   result,
+  selected,
 }: {
   adding: boolean;
   disabled: boolean;
   onClick: () => void;
   result: SearchResult;
+  selected: boolean;
 }) {
   const poster = posterUrl(result.posterPath);
   return (
-    <button className="search-result" disabled={disabled} onClick={onClick} type="button">
+    <button aria-current={selected ? "true" : undefined} className={selected ? "search-result selected" : "search-result"} disabled={disabled} onClick={onClick} type="button">
       {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
       <span className="result-copy">
         <strong>{result.title}</strong>
@@ -531,7 +579,7 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
                   }}
                   type="button"
                 >
-                  <Plus size={15} /> {`Use "${draft.sourceTitle}" exactly`}
+                  <Plus size={15} /> {`Use "${draft.sourceTitle}"`}
                 </button>
               </div>
             </div>
