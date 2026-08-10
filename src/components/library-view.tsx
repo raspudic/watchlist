@@ -9,6 +9,8 @@ import {
   Check,
   ChevronRight,
   Clapperboard,
+  LayoutGrid,
+  List,
   LoaderCircle,
   RotateCcw,
   Star,
@@ -26,6 +28,8 @@ import {
 } from "@/components/add-title";
 
 type ViewMode = "watchlist" | "watched";
+type MediaFilter = "all" | "movie" | "tv";
+type ViewStyle = "list" | "grid";
 
 export type MediaItem = {
   id: string;
@@ -72,6 +76,8 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [notice, setNotice] = useState("");
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [viewStyle, setViewStyle] = useState<ViewStyle>("list");
 
   useEffect(() => {
     let active = true;
@@ -197,8 +203,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
   }
 
-  const needsRating = mode === "watched" ? items.filter((item) => item.rating === null) : [];
-  const rated = mode === "watched" ? items.filter((item) => item.rating !== null) : [];
+  const visibleItems = mediaFilter === "all" ? items : items.filter((item) => item.mediaType === mediaFilter);
+  const needsRating = mode === "watched" ? visibleItems.filter((item) => item.rating === null) : [];
+  const rated = mode === "watched" ? visibleItems.filter((item) => item.rating !== null) : [];
   const linkedItemId = searchParams.get("item");
   const linkedItem = linkedItemId ? items.find((item) => item.id === linkedItemId) ?? null : null;
   const detailItem = linkedItem ?? selected;
@@ -229,11 +236,24 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
       {!loading && items.length === 0 ? <EmptyState mode={mode} /> : null}
 
-      {!loading && mode === "watchlist" && items.length > 0 ? (
+      {!loading && items.length > 0 ? (
+        <LibraryTools
+          filter={mediaFilter}
+          onFilter={setMediaFilter}
+          onView={setViewStyle}
+          view={viewStyle}
+        />
+      ) : null}
+
+      {!loading && items.length > 0 && visibleItems.length === 0 ? (
+        <div className="filter-empty">No {mediaFilter === "movie" ? "movies" : "shows"} here yet.</div>
+      ) : null}
+
+      {!loading && mode === "watchlist" && visibleItems.length > 0 ? (
         <section className="media-section" aria-label="Watchlist titles">
-          <div className="section-label"><span>{items.length} {items.length === 1 ? "title" : "titles"}</span></div>
-          <div className="media-list">
-            {items.map((item) => (
+          <div className="section-label"><span>{visibleItems.length} {visibleItems.length === 1 ? "title" : "titles"}</span></div>
+          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
+            {visibleItems.map((item) => (
               <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
             ))}
           </div>
@@ -249,7 +269,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
             </div>
             <span className="count-pill">{needsRating.length}</span>
           </div>
-          <div className="media-list">
+          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
             {needsRating.map((item) => (
               <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} promptRating />
             ))}
@@ -260,7 +280,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
       {!loading && mode === "watched" && rated.length > 0 ? (
         <section className="media-section" aria-labelledby="rated-heading">
           <div className="section-label" id="rated-heading"><span>Rated</span><span>{rated.length}</span></div>
-          <div className="media-list">
+          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
             {rated.map((item) => (
               <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
             ))}
@@ -284,6 +304,50 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         </div>
       ) : null}
       {!undo && notice ? <div className="toast notice-toast" role="status"><span>{notice}</span></div> : null}
+    </div>
+  );
+}
+
+function LibraryTools({
+  filter,
+  onFilter,
+  onView,
+  view,
+}: {
+  filter: MediaFilter;
+  onFilter: (filter: MediaFilter) => void;
+  onView: (view: ViewStyle) => void;
+  view: ViewStyle;
+}) {
+  const filters: Array<{ label: string; value: MediaFilter }> = [
+    { label: "All", value: "all" },
+    { label: "Movies", value: "movie" },
+    { label: "Shows", value: "tv" },
+  ];
+
+  return (
+    <div className="library-tools">
+      <div aria-label="Filter titles" className="media-filter" role="group">
+        {filters.map((option) => (
+          <button
+            aria-pressed={filter === option.value}
+            className={filter === option.value ? "active" : undefined}
+            key={option.value}
+            onClick={() => onFilter(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <div aria-label="Choose layout" className="view-switch" role="group">
+        <button aria-label="List view" aria-pressed={view === "list"} className={view === "list" ? "active" : undefined} onClick={() => onView("list")} title="List view" type="button">
+          <List aria-hidden="true" size={16} />
+        </button>
+        <button aria-label="Tile view" aria-pressed={view === "grid"} className={view === "grid" ? "active" : undefined} onClick={() => onView("grid")} title="Tile view" type="button">
+          <LayoutGrid aria-hidden="true" size={16} />
+        </button>
+      </div>
     </div>
   );
 }
