@@ -9,11 +9,7 @@ postgres "main" {
   }
 }
 
-secret "tmdb_access_token" {
-  # Generates a harmless placeholder for the first deploy so its public URL can
-  # be used when requesting the real TMDB token. Override it in the dashboard.
-  generated = true
-}
+secret "tmdb_read_access_token" {}
 
 secret "better_auth_secret" {
   generated = true
@@ -40,7 +36,7 @@ service "web" {
   env = {
     PORT                  = port
     DATABASE_URL          = postgres.main.url
-    TMDB_ACCESS_TOKEN     = secret.tmdb_access_token
+    TMDB_ACCESS_TOKEN     = secret.tmdb_read_access_token
     BETTER_AUTH_SECRET    = secret.better_auth_secret
     BETTER_AUTH_URL       = "https://${service.web.public_url}"
     BOOTSTRAP_USERNAME    = config.bootstrap_username
