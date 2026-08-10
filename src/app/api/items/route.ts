@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getRequestUserId } from "@/lib/api-auth";
@@ -59,6 +59,19 @@ export async function POST(request: Request) {
           eq(mediaItems.provider, provider),
           eq(mediaItems.mediaType, input.mediaType),
           eq(mediaItems.externalId, input.externalId),
+        ),
+      )
+      .limit(1);
+    existing.push(...matches);
+  } else {
+    const matches = await db
+      .select()
+      .from(mediaItems)
+      .where(
+        and(
+          eq(mediaItems.userId, userId),
+          eq(mediaItems.provider, provider),
+          sql`lower(${mediaItems.title}) = lower(${input.title})`,
         ),
       )
       .limit(1);

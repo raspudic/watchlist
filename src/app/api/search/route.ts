@@ -18,6 +18,8 @@ type TmdbSearchResult = {
   first_air_date?: string;
   poster_path?: string | null;
   overview?: string | null;
+  popularity?: number;
+  vote_average?: number;
 };
 
 function releaseYear(date: string | undefined) {
@@ -63,6 +65,7 @@ export async function GET(request: Request) {
   const results = (payload.results ?? [])
     .filter((result) => (result.media_type === "movie" || result.media_type === "tv") && Number.isInteger(result.id))
     .map((result) => ({
+      provider: "tmdb" as const,
       externalId: result.id,
       mediaType: result.media_type,
       title: result.media_type === "movie" ? result.title ?? "Untitled" : result.name ?? "Untitled",
@@ -71,6 +74,8 @@ export async function GET(request: Request) {
       releaseYear: releaseYear(result.media_type === "movie" ? result.release_date : result.first_air_date),
       posterPath: result.poster_path ?? null,
       overview: result.overview?.trim() || null,
+      popularity: typeof result.popularity === "number" ? result.popularity : 0,
+      voteAverage: typeof result.vote_average === "number" ? result.vote_average : null,
     }));
 
   return NextResponse.json({ results });

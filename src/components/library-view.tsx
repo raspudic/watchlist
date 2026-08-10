@@ -10,15 +10,19 @@ import {
   ChevronRight,
   Clapperboard,
   LoaderCircle,
-  Plus,
   RotateCcw,
-  Search,
   Star,
   Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+
+import {
+  AddTitleActions,
+  type AddableTitle,
+  type BulkAddOutcome,
+} from "@/components/add-title";
 
 type ViewMode = "watchlist" | "watched";
 
@@ -39,11 +43,6 @@ export type MediaItem = {
   addedAt: string;
   watchedAt: string | null;
 };
-
-type SearchResult = Pick<
-  MediaItem,
-  "externalId" | "mediaType" | "title" | "originalTitle" | "releaseYear" | "posterPath" | "overview"
-> & { provider: "tmdb" };
 
 type UndoState = { item: MediaItem; timer: ReturnType<typeof setTimeout> };
 
@@ -69,6 +68,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -92,16 +92,58 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     if (undo) clearTimeout(undo.timer);
   }, [undo]);
 
-  async function addItem(result: SearchResult | { provider: "custom"; title: string; mediaType: "other" }) {
-    const data = await readJson<{ item: MediaItem }>(
-      await fetch("/api/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result),
-      }),
-    );
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  function postItem(result: AddableTitle) {
+    return fetch("/api/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
+    });
+  }
+
+  async function addItem(result: AddableTitle) {
+    const data = await readJson<{ item: MediaItem }>(await postItem(result));
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
     setSelected(data.item);
+  }
+
+  async function addItems(results: AddableTitle[]): Promise<BulkAddOutcome> {
+    const addedItems: MediaItem[] = [];
+    const failedTitles: string[] = [];
+    let duplicates = 0;
+
+    for (let index = 0; index < results.length; index += 4) {
+      const outcomes = await Promise.all(results.slice(index, index + 4).map(async (result) => {
+        try {
+          const response = await postItem(result);
+          if (response.status === 409) return { kind: "duplicate" as const };
+          const data = await readJson<{ item: MediaItem }>(response);
+          return { kind: "added" as const, item: data.item };
+        } catch {
+          return { kind: "failed" as const, title: result.title };
+        }
+      }));
+
+      for (const outcome of outcomes) {
+        if (outcome.kind === "added") addedItems.push(outcome.item);
+        if (outcome.kind === "duplicate") duplicates += 1;
+        if (outcome.kind === "failed") failedTitles.push(outcome.title);
+      }
+    }
+
+    if (addedItems.length > 0) {
+      setItems((current) => {
+        const addedIds = new Set(addedItems.map((item) => item.id));
+        return [...addedItems, ...current.filter((item) => !addedIds.has(item.id))];
+      });
+    }
+
+    return { added: addedItems.length, duplicates, failedTitles };
   }
 
   function replaceItem(item: MediaItem) {
@@ -158,11 +200,11 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           <h1>{mode === "watchlist" ? "Watchlist" : "Watched"}</h1>
           <p className="heading-copy">
             {mode === "watchlist"
-              ? "Everything you want to make time for."
-              : "What you have seen, remembered your way."}
+              ? "Movies, shows, and anime saved for later."
+              : "Your watched titles, ratings, and notes."}
           </p>
         </div>
-        {mode === "watchlist" ? <QuickAdd onAdd={addItem} /> : null}
+        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} onNotice={setNotice} /> : null}
       </div>
 
       {error ? (
@@ -230,122 +272,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           <button onClick={undoRemove} type="button"><RotateCcw size={15} /> Undo</button>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function QuickAdd({ onAdd }: { onAdd: (item: SearchResult | { provider: "custom"; title: string; mediaType: "other" }) => Promise<void> }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [adding, setAdding] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [open]);
-
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      setError("");
-      try {
-        const data = await readJson<{ results: SearchResult[] }>(
-          await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal }),
-        );
-        setResults(data.results);
-      } catch (caught) {
-        if ((caught as Error).name !== "AbortError") {
-          setError(caught instanceof Error ? caught.message : "Search is unavailable.");
-        }
-      } finally {
-        setSearching(false);
-      }
-    }, 280);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
-
-  async function choose(item: SearchResult | { provider: "custom"; title: string; mediaType: "other" }, key: string) {
-    setAdding(key);
-    setError("");
-    try {
-      await onAdd(item);
-      setOpen(false);
-      setQuery("");
-      setResults([]);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not add that title.");
-    } finally {
-      setAdding(null);
-    }
-  }
-
-  return (
-    <div className={open ? "quick-add open" : "quick-add"}>
-      {!open ? (
-        <button className="add-button" onClick={() => setOpen(true)} type="button">
-          <Plus aria-hidden="true" size={18} /> Add a title
-        </button>
-      ) : (
-        <div className="search-popover">
-          <div className="search-input-wrap">
-            {searching ? <LoaderCircle className="spin" size={18} /> : <Search size={18} />}
-            <input
-              aria-label="Search movies and shows"
-              autoComplete="off"
-              onChange={(event) => {
-                setQuery(event.target.value);
-                if (event.target.value.trim().length < 2) {
-                  setResults([]);
-                  setSearching(false);
-                }
-              }}
-              placeholder="Search movies, shows, anime…"
-              ref={inputRef}
-              value={query}
-            />
-            <button className="close-search" onClick={() => setOpen(false)} type="button"><X size={17} /></button>
-          </div>
-          <div className="search-results">
-            {error ? <p className="search-message error">{error}</p> : null}
-            {!error && query.trim().length < 2 ? <p className="search-message">Type a title to find it.</p> : null}
-            {results.map((result) => {
-              const key = `${result.mediaType}-${result.externalId}`;
-              const poster = posterUrl(result.posterPath, "w92");
-              return (
-                <button className="search-result" disabled={adding !== null} key={key} onClick={() => choose(result, key)} type="button">
-                  {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
-                  <span className="result-copy">
-                    <strong>{result.title}</strong>
-                    <span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" · ")}</span>
-                  </span>
-                  {adding === key ? <LoaderCircle className="spin" size={17} /> : <Plus size={17} />}
-                </button>
-              );
-            })}
-            {query.trim().length >= 2 && !searching ? (
-              <button className="custom-result" disabled={adding !== null} onClick={() => choose({ provider: "custom", title: query.trim(), mediaType: "other" }, "custom")} type="button">
-                <span className="mini-poster"><Plus size={17} /></span>
-                <span className="result-copy"><strong>Add “{query.trim()}”</strong><span>Use your own title</span></span>
-                {adding === "custom" ? <LoaderCircle className="spin" size={17} /> : null}
-              </button>
-            ) : null}
-          </div>
-          <p className="search-credit">Search data by TMDB</p>
-        </div>
-      )}
+      {!undo && notice ? <div className="toast notice-toast" role="status"><span>{notice}</span></div> : null}
     </div>
   );
 }
