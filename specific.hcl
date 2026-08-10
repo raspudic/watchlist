@@ -19,7 +19,7 @@ secret "better_auth_secret" {
   generated = true
 }
 
-secret "bootstrap_password" {}
+secret "mateo_password" {}
 
 config "bootstrap_username" {
   default = "mateo"
@@ -44,7 +44,7 @@ service "web" {
     BETTER_AUTH_SECRET    = secret.better_auth_secret
     BETTER_AUTH_URL       = "https://${service.web.public_url}"
     BOOTSTRAP_USERNAME    = config.bootstrap_username
-    BOOTSTRAP_PASSWORD    = secret.bootstrap_password
+    BOOTSTRAP_PASSWORD    = secret.mateo_password
   }
 
   dev {

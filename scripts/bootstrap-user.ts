@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { hashPassword } from "better-auth/crypto";
 
 import { createWatchlistAuth } from "../src/lib/auth";
 import { db } from "../src/lib/db/client";
-import { user } from "../src/lib/db/schema";
+import { account, user } from "../src/lib/db/schema";
 
 async function main() {
   const username = process.env.BOOTSTRAP_USERNAME?.trim().toLowerCase() || "mateo";
@@ -17,7 +18,23 @@ async function main() {
   });
 
   if (existing) {
-    console.log(`User ${username} already exists.`);
+    const passwordHash = await hashPassword(password);
+    const updatedAccounts = await db
+      .update(account)
+      .set({
+        password: passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(account.userId, existing.id), eq(account.providerId, "credential")),
+      )
+      .returning({ id: account.id });
+
+    if (updatedAccounts.length !== 1) {
+      throw new Error(`Expected one credential account for ${username}.`);
+    }
+
+    console.log(`Updated credentials for user ${username}.`);
     return;
   }
 
