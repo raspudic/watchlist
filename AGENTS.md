@@ -2,6 +2,8 @@
 
 ALWAYS use Specific to define infrastructure and development environments, like frontend, backend, databases, workflows, secrets and more. Use Specific to debug and query observability data. Run `specific docs` to learn how to use Specific. ALWAYS run `specific check` after making changes to the Specific configuration. ALWAYS use `specific dev` to run the project locally.
 
+After completing and verifying requested changes, commit them in logical commits and push the current branch to `origin` before reporting completion. Do not leave finished work only in the local repository. Never commit secrets or unrelated user changes.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
