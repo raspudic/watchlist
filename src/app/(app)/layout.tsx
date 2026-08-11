@@ -7,7 +7,7 @@ export default async function ProtectedLayout({ children }: LayoutProps<"/">) {
   const session = await requireSession();
 
   return (
-    <AppShell displayName={session.user.name} username={session.user.username ?? session.user.name}>
+    <AppShell displayName={session.user.name} userId={session.user.id} username={session.user.username ?? session.user.name}>
       {children}
     </AppShell>
   );

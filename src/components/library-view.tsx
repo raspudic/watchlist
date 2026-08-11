@@ -26,29 +26,23 @@ import {
   type AddableTitle,
   type BulkAddOutcome,
 } from "@/components/add-title";
+import { useLibraryCacheScope } from "@/components/library-cache-provider";
+import {
+  getCachedLibrary,
+  isLibraryCacheFresh,
+  loadLibrary,
+  type LibraryMode,
+  type MediaItem,
+  removeCachedLibraryItem,
+  upsertCachedLibraryItem,
+} from "@/lib/library-cache";
 import { getSwipeRelease } from "@/lib/swipe";
 
-type ViewMode = "watchlist" | "watched";
+export type { MediaItem } from "@/lib/library-cache";
+
+type ViewMode = LibraryMode;
 type MediaFilter = "all" | "movie" | "tv";
 type ViewStyle = "list" | "grid";
-
-export type MediaItem = {
-  id: string;
-  provider: string;
-  externalId: number | null;
-  mediaType: "movie" | "tv" | "other";
-  title: string;
-  originalTitle: string | null;
-  releaseYear: number | null;
-  posterPath: string | null;
-  overview: string | null;
-  status: ViewMode;
-  watchlistNote: string | null;
-  reviewNote: string | null;
-  rating: number | null;
-  addedAt: string;
-  watchedAt: string | null;
-};
 
 type UndoState = { item: MediaItem; timer: ReturnType<typeof setTimeout> };
 
@@ -69,10 +63,12 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function LibraryView({ mode }: { mode: ViewMode }) {
+  const cacheScope = useLibraryCacheScope();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialItems = getCachedLibrary(cacheScope, mode);
+  const [items, setItems] = useState<MediaItem[]>(initialItems ?? []);
+  const [loading, setLoading] = useState(initialItems === null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
@@ -83,10 +79,17 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   useEffect(() => {
     let active = true;
 
-    async function loadItems() {
+    async function loadItems(force = false) {
       try {
-        const data = await readJson<{ items: MediaItem[] }>(await fetch(`/api/items?status=${mode}`));
-        if (active) setItems(data.items);
+        const data = await loadLibrary(cacheScope, mode, force);
+        if (active) {
+          setItems(data);
+          setError("");
+          setLoading(false);
+        }
+
+        const otherMode = mode === "watchlist" ? "watched" : "watchlist";
+        void loadLibrary(cacheScope, otherMode).catch(() => undefined);
       } catch (caught) {
         if (active) setError(caught instanceof Error ? caught.message : "Could not load your list.");
       } finally {
@@ -95,8 +98,21 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
 
     void loadItems();
-    return () => { active = false; };
-  }, [mode]);
+
+    function refreshStaleData() {
+      if (document.visibilityState === "visible" && !isLibraryCacheFresh(cacheScope, mode)) {
+        void loadItems(true);
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshStaleData);
+    window.addEventListener("focus", refreshStaleData);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", refreshStaleData);
+      window.removeEventListener("focus", refreshStaleData);
+    };
+  }, [cacheScope, mode]);
 
   useEffect(() => () => {
     if (undo) clearTimeout(undo.timer);
@@ -123,6 +139,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
   async function addItem(result: AddableTitle) {
     const data = await readJson<{ item: MediaItem }>(await postItem(result));
+    upsertCachedLibraryItem(cacheScope, data.item);
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
   }
 
@@ -151,6 +168,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
 
     if (addedItems.length > 0) {
+      for (const item of addedItems) upsertCachedLibraryItem(cacheScope, item);
       setItems((current) => {
         const addedIds = new Set(addedItems.map((item) => item.id));
         return [...addedItems, ...current.filter((item) => !addedIds.has(item.id))];
@@ -161,6 +179,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   }
 
   function replaceItem(item: MediaItem) {
+    upsertCachedLibraryItem(cacheScope, item);
     if (item.status !== mode) {
       setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
       closeDetail();
@@ -172,6 +191,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
   async function removeItem(item: MediaItem) {
     closeDetail();
+    removeCachedLibraryItem(cacheScope, item.id);
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
 
     try {
@@ -180,6 +200,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
       const timer = setTimeout(() => setUndo(null), 6000);
       setUndo({ item, timer });
     } catch (caught) {
+      upsertCachedLibraryItem(cacheScope, item);
       setItems((current) => [item, ...current]);
       setError(caught instanceof Error ? caught.message : "Could not remove that title.");
     }
@@ -198,6 +219,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           body: JSON.stringify({ status: item.status }),
         }),
       );
+      upsertCachedLibraryItem(cacheScope, data.item);
       setItems((current) => [data.item, ...current]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not restore that title.");

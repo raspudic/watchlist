@@ -7,7 +7,7 @@ import { CheckCircle2, Clapperboard, LoaderCircle, Search, Star, X } from "lucid
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import type { MediaItem } from "@/components/library-view";
+import type { MediaItem } from "@/lib/library-cache";
 
 function posterUrl(path: string | null) {
   return path ? `https://image.tmdb.org/t/p/w92${path}` : null;

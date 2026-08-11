@@ -33,7 +33,10 @@ export async function GET(request: Request) {
     .where(and(...conditions))
     .orderBy(desc(mediaItems.addedAt));
 
-  return NextResponse.json({ items });
+  return NextResponse.json(
+    { items },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 export async function POST(request: Request) {

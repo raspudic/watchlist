@@ -11,7 +11,8 @@ A deliberately simple personal library for movies, series, and anime. Add a titl
 - Item details open in a side inspector on desktop and a bottom sheet on mobile
 - Swipe left on a mobile row to reveal Remove; removals have Undo
 - System-aware light and dark themes
-- Installable PWA without an app store; authenticated responses are never cached
+- Installable PWA without an app store; the service worker never stores authenticated responses
+- User-scoped in-memory tab caching with background refresh and mutation-aware invalidation
 - Persistent database-backed sessions, public account creation, and in-app password changes
 - Eight-character minimum passwords, compromised-password checks, and database-backed auth rate limits
 
