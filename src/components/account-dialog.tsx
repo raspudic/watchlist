@@ -3,6 +3,7 @@
 import { Check, LoaderCircle, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 
+import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
 import { MIN_PASSWORD_LENGTH, validateNewPassword } from "@/lib/account-validation";
 import { authClient } from "@/lib/auth-client";
 
@@ -58,6 +59,7 @@ export function AccountDialog({
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
   const theme = useSyncExternalStore(subscribeToThemePreference, getThemePreference, getServerThemePreference);
+  const sheet = usePullToDismiss(onClose);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -136,14 +138,23 @@ export function AccountDialog({
 
   return (
     <div className="account-layer" onMouseDown={(event) => event.target === event.currentTarget && onClose()} role="presentation">
-      <section aria-labelledby="account-title" aria-modal="true" className="account-dialog" role="dialog">
-        <div className="account-dialog-header">
-          <div>
-            <p className="eyebrow">Account</p>
-            <h2 id="account-title">{displayName}</h2>
-            <p>@{username}</p>
+      <section
+        aria-labelledby="account-title"
+        aria-modal="true"
+        className={sheet.dragging ? "account-dialog sheet-dragging" : "account-dialog"}
+        role="dialog"
+        style={sheet.style}
+      >
+        <div className="sheet-drag-region" {...sheet.dragProps}>
+          <div className="panel-handle" aria-hidden="true" />
+          <div className="account-dialog-header">
+            <div>
+              <p className="eyebrow">Account</p>
+              <h2 id="account-title">{displayName}</h2>
+              <p>@{username}</p>
+            </div>
+            <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
           </div>
-          <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
         </div>
 
         <form className="profile-block" onSubmit={changeDisplayName}>

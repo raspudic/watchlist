@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
 import { MAX_BULK_TITLES, parseBulkTitles } from "@/lib/bulk-import";
 
 export type SearchResult = {
@@ -348,6 +349,7 @@ function BulkImportDialog({
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sheet = usePullToDismiss(onClose, matching || importing);
 
   useModalLifecycle(onClose);
 
@@ -426,14 +428,23 @@ function BulkImportDialog({
 
   return (
     <div className="modal-layer bulk-modal-layer" onMouseDown={(event) => event.target === event.currentTarget && !matching && !importing && onClose()} role="presentation">
-      <section aria-labelledby="bulk-dialog-title" aria-modal="true" className="bulk-dialog" role="dialog">
-        <div className="bulk-header">
-          <div>
-            <p className="eyebrow">{step === "paste" ? "Bulk import" : "Confirm matches"}</p>
-            <h2 id="bulk-dialog-title">{step === "paste" ? "Paste your list" : "Review before adding"}</h2>
-            <p>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</p>
+      <section
+        aria-labelledby="bulk-dialog-title"
+        aria-modal="true"
+        className={sheet.dragging ? "bulk-dialog sheet-dragging" : "bulk-dialog"}
+        role="dialog"
+        style={sheet.style}
+      >
+        <div className="sheet-drag-region" {...sheet.dragProps}>
+          <div className="panel-handle" aria-hidden="true" />
+          <div className="bulk-header">
+            <div>
+              <p className="eyebrow">{step === "paste" ? "Bulk import" : "Confirm matches"}</p>
+              <h2 id="bulk-dialog-title">{step === "paste" ? "Paste your list" : "Review before adding"}</h2>
+              <p>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</p>
+            </div>
+            <button className="panel-close" disabled={matching || importing} onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
           </div>
-          <button className="panel-close" disabled={matching || importing} onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
         </div>
 
         {step === "paste" ? (

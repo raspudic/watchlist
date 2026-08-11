@@ -4,7 +4,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import {
-  ArrowLeft,
   BookmarkPlus,
   Check,
   ChevronRight,
@@ -27,6 +26,8 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
+import { type LibraryViewStyle, useLibraryViewStyle } from "@/hooks/use-library-view-style";
+import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
 import {
   getCachedLibrary,
   isLibraryCacheFresh,
@@ -42,7 +43,6 @@ export type { MediaItem } from "@/lib/library-cache";
 
 type ViewMode = LibraryMode;
 type MediaFilter = "all" | "movie" | "tv";
-type ViewStyle = "list" | "grid";
 
 type UndoState = { item: MediaItem; timer: ReturnType<typeof setTimeout> };
 
@@ -74,7 +74,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [notice, setNotice] = useState("");
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
-  const [viewStyle, setViewStyle] = useState<ViewStyle>("list");
+  const [viewStyle, setViewStyle] = useLibraryViewStyle(cacheScope);
 
   useEffect(() => {
     let active = true;
@@ -339,8 +339,8 @@ function LibraryTools({
 }: {
   filter: MediaFilter;
   onFilter: (filter: MediaFilter) => void;
-  onView: (view: ViewStyle) => void;
-  view: ViewStyle;
+  onView: (view: LibraryViewStyle) => void;
+  view: LibraryViewStyle;
 }) {
   const filters: Array<{ label: string; value: MediaFilter }> = [
     { label: "All", value: "all" },
@@ -492,6 +492,7 @@ function DetailPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const poster = posterUrl(item.posterPath, "w342");
+  const sheet = usePullToDismiss(onClose);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -528,11 +529,19 @@ function DetailPanel({
   const note = item.status === "watchlist" ? watchlistNote : reviewNote;
   return (
     <div className="panel-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section aria-labelledby="detail-title" aria-modal="true" className="detail-panel" role="dialog">
-        <div className="panel-handle" aria-hidden="true" />
-        <div className="panel-topbar">
-          <button className="panel-back" onClick={onClose} type="button"><ArrowLeft size={19} /><span>Back</span></button>
-          <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
+      <section
+        aria-labelledby="detail-title"
+        aria-modal="true"
+        className={sheet.dragging ? "detail-panel sheet-dragging" : "detail-panel"}
+        role="dialog"
+        style={sheet.style}
+      >
+        <div className="sheet-drag-region" {...sheet.dragProps}>
+          <div className="panel-handle" aria-hidden="true" />
+          <div className="panel-topbar">
+            <button className="sheet-close-button" onClick={onClose} type="button"><X size={18} /><span>Close</span></button>
+            <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
+          </div>
         </div>
 
         <div className="detail-hero">

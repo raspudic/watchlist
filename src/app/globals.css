@@ -700,7 +700,7 @@ a {
 }
 .panel-handle { display: none; }
 .panel-topbar { min-height: 44px; display: flex; justify-content: space-between; align-items: center; }
-.panel-back { display: none; align-items: center; gap: 6px; background: transparent; color: var(--text-soft); cursor: pointer; }
+.sheet-close-button { display: none; align-items: center; gap: 6px; background: transparent; color: var(--text-soft); cursor: pointer; }
 .panel-close { margin-left: auto; }
 .detail-hero { margin-top: 14px; display: flex; align-items: flex-end; gap: 19px; }
 .detail-poster { width: 102px; height: 148px; flex: 0 0 auto; border-radius: 11px; object-fit: cover; background: var(--surface-strong); }
@@ -818,6 +818,7 @@ a {
   .keyboard-hint { display: none; }
   .bulk-modal-layer { align-items: flex-end; padding: 0; background: rgba(4, 5, 6, 0.48); }
   .bulk-dialog { width: 100%; height: min(92vh, 880px); max-height: none; border: 0; border-radius: 22px 22px 0 0; animation-name: sheet-in; }
+  .bulk-dialog .panel-handle { margin-top: 8px; margin-bottom: -2px; }
   .bulk-header { padding: 22px 19px 17px; }
   .bulk-header h2 { font-size: 21px; }
   .bulk-paste { padding: 19px 19px 13px; }
@@ -849,8 +850,15 @@ a {
     border-radius: 22px 22px 0 0;
     animation-name: sheet-in;
   }
+  .detail-panel,
+  .account-dialog,
+  .bulk-dialog { transform: translateY(var(--sheet-drag-offset, 0)); transition: transform 170ms cubic-bezier(.22,.9,.4,1); }
+  .detail-panel.sheet-dragging,
+  .account-dialog.sheet-dragging,
+  .bulk-dialog.sheet-dragging { transition: none; user-select: none; }
+  .sheet-drag-region { touch-action: none; cursor: grab; }
   .panel-handle { display: block; width: 38px; height: 4px; margin: 2px auto 7px; border-radius: 999px; background: var(--line-strong); }
-  .panel-back { display: flex; }
+  .sheet-close-button { display: flex; }
   .panel-close { display: none; }
   .add-search-header .panel-close,
   .account-dialog-header .panel-close { display: grid; }
@@ -863,7 +871,7 @@ a {
   .panel-actions .primary-button,
   .panel-actions .secondary-button { width: 100%; }
   .account-layer { padding: 0; align-items: flex-end; background: rgba(4, 5, 6, 0.48); }
-  .account-dialog { width: 100%; max-height: min(90vh, 760px); padding: 25px 20px calc(27px + env(safe-area-inset-bottom)); border: 0; border-radius: 22px 22px 0 0; animation-name: sheet-in; }
+  .account-dialog { width: 100%; max-height: min(90vh, 760px); padding: 7px 20px calc(27px + env(safe-area-inset-bottom)); border: 0; border-radius: 22px 22px 0 0; animation-name: sheet-in; }
   .toast { left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); }
   @keyframes sheet-in { from { transform: translateY(45px); opacity: 0.65; } }
 }
