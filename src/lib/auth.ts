@@ -33,7 +33,7 @@ export function createWatchlistAuth(disableSignUp = true) {
     emailAndPassword: {
       enabled: true,
       disableSignUp,
-      minPasswordLength: 15,
+      minPasswordLength: 8,
       maxPasswordLength: 128,
     },
     session: {

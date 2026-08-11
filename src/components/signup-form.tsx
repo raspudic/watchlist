@@ -29,11 +29,12 @@ export function SignupForm() {
     }
 
     setPending(true);
+    const normalizedUsername = username.trim();
     const result = await authClient.signUp.email({
       email: email.trim(),
-      name: displayName.trim(),
+      name: displayName.trim() || normalizedUsername,
       password,
-      username: username.trim(),
+      username: normalizedUsername,
     });
 
     if (result.error) {
@@ -54,18 +55,6 @@ export function SignupForm() {
 
   return (
     <form className="login-form" onSubmit={handleSubmit}>
-      <label className="field-label" htmlFor="display-name">Display name</label>
-      <input
-        autoComplete="name"
-        className="text-input"
-        id="display-name"
-        maxLength={50}
-        name="name"
-        onChange={(event) => setDisplayName(event.target.value)}
-        required
-        value={displayName}
-      />
-
       <label className="field-label" htmlFor="new-username">Username</label>
       <input
         autoCapitalize="none"
@@ -82,6 +71,18 @@ export function SignupForm() {
         value={username}
       />
       <p className="field-help">Letters, numbers, dots, and underscores.</p>
+
+      <label className="field-label" htmlFor="display-name">Display name <span className="label-optional">Optional</span></label>
+      <input
+        autoComplete="name"
+        className="text-input"
+        id="display-name"
+        maxLength={50}
+        name="name"
+        onChange={(event) => setDisplayName(event.target.value)}
+        placeholder="Leave blank to use your username"
+        value={displayName}
+      />
 
       <label className="field-label" htmlFor="new-email">Email</label>
       <input

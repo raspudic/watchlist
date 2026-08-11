@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 
 import { PwaRegistration } from "@/components/pwa-registration";
 
@@ -30,8 +31,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
+        <Script id="theme-preference" strategy="beforeInteractive">
+          {`try{var theme=localStorage.getItem("watchlist-theme");if(theme!=="light"&&theme!=="dark"&&theme!=="system")theme="system";document.documentElement.dataset.theme=theme}catch{}`}
+        </Script>
         <PwaRegistration />
         {children}
       </body>

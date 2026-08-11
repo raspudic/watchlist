@@ -22,11 +22,36 @@
   --radius-md: 14px;
   --radius-lg: 20px;
   --sidebar-width: 232px;
-  --mobile-hosting-clearance: 43px;
+  --mobile-hosting-clearance: 0px;
 }
 
+:root:has(a[href^="https://specific.dev"]) { --mobile-hosting-clearance: 43px; }
+
+:root[data-theme="dark"] {
+  --canvas: #111214;
+  --sidebar: #17181b;
+  --surface: #1c1d20;
+  --surface-raised: #222327;
+  --surface-hover: #24262a;
+  --surface-strong: #2b2d31;
+  --text: #f1f1f2;
+  --text-soft: #a8a9ae;
+  --text-faint: #777980;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --accent: #9a9df3;
+  --accent-soft: #2a2b4e;
+  --accent-text: #b9baf8;
+  --danger: #ed6a6a;
+  --danger-soft: #3b2325;
+  --shadow-panel: 0 28px 90px rgba(0, 0, 0, 0.48), 0 2px 14px rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --canvas: #111214;
     --sidebar: #17181b;
     --surface: #1c1d20;
@@ -54,13 +79,19 @@
 }
 
 html {
+  width: 100%;
+  max-width: 100%;
   min-height: 100%;
+  overflow-x: clip;
   background: var(--canvas);
   color-scheme: light dark;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
   min-height: 100vh;
+  overflow-x: clip;
   background: var(--canvas);
   color: var(--text);
   font-family: var(--font-sans);
@@ -147,6 +178,7 @@ a {
 .signup-panel .login-copy { margin: 30px 0 20px; }
 .field-label { font-size: 13px; color: var(--text-soft); font-weight: 560; margin: 17px 0 7px; }
 .field-label:first-child { margin-top: 0; }
+.label-optional { margin-left: 5px; color: var(--text-faint); font-size: 11px; font-weight: 500; }
 .text-input,
 .note-block textarea {
   width: 100%;
@@ -192,7 +224,7 @@ a {
 .login-button { width: 100%; margin-top: 24px; }
 
 /* Main shell */
-.app-frame { min-height: 100vh; }
+.app-frame { width: 100%; min-height: 100vh; overflow-x: clip; }
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -326,6 +358,15 @@ a {
 .account-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .account-dialog-header h2 { margin-top: 5px; font-size: 24px; letter-spacing: -0.035em; }
 .account-dialog-header > div > p:last-child { margin-top: 4px; color: var(--text-faint); font-size: 12px; }
+.appearance-block { margin-top: 25px; padding-top: 23px; border-top: 1px solid var(--line); }
+.profile-block { margin-top: 25px; padding-top: 23px; border-top: 1px solid var(--line); }
+.account-profile-row { margin-top: 15px; display: flex; align-items: center; gap: 8px; }
+.account-profile-row .text-input { min-width: 0; flex: 1; }
+.account-profile-row .secondary-button { min-height: 43px; flex: 0 0 auto; }
+.theme-control { margin-top: 15px; padding: 3px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.theme-control button { height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 7px; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 11.5px; font-weight: 620; }
+.theme-control button:hover { color: var(--text); }
+.theme-control button.active { background: var(--surface-strong); color: var(--text); }
 .account-form {
   margin-top: 27px;
   padding-top: 25px;
@@ -392,6 +433,12 @@ a {
   overflow: hidden;
   animation: modal-in 170ms cubic-bezier(.22,.9,.4,1);
 }
+.add-search-header { min-height: 76px; padding: 14px 16px 13px 19px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent-soft) 24%, var(--surface-raised)); }
+.add-search-header > div { min-width: 0; flex: 1; }
+.add-search-header h2 { margin-top: 3px; font-size: 17px; letter-spacing: -0.025em; }
+.add-search-icon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: var(--accent); color: white; }
+.search-input-wrap.add-search-input { min-height: 54px; margin: 12px 12px 0; padding-left: 14px; border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); border-radius: 11px; background: var(--surface); }
+.add-search-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .search-input-wrap { min-height: 62px; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 12px; color: var(--text-faint); }
 .search-input-wrap input { height: 100%; min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); }
 .search-input-wrap input::placeholder { color: var(--text-faint); }
@@ -715,11 +762,8 @@ a {
   body { padding-bottom: calc(67px + var(--mobile-hosting-clearance) + env(safe-area-inset-bottom)); }
   .sidebar { display: none; }
   .nav-search-button { display: none; }
+  .mobile-header-actions { display: flex; align-items: center; gap: 6px; }
   .mobile-search-button {
-    position: fixed;
-    z-index: 52;
-    top: calc(12px + env(safe-area-inset-top));
-    right: 57px;
     width: 34px;
     height: 34px;
     display: grid;
@@ -748,9 +792,9 @@ a {
   .bottom-nav {
     position: fixed;
     z-index: 50;
-    inset: auto 0 calc(var(--mobile-hosting-clearance) + env(safe-area-inset-bottom));
-    height: 63px;
-    padding: 5px 12px;
+    inset: auto 0 var(--mobile-hosting-clearance);
+    height: calc(63px + env(safe-area-inset-bottom));
+    padding: 5px 12px calc(5px + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     border-top: 1px solid var(--line);
@@ -773,6 +817,7 @@ a {
   .library-search-dialog { max-height: min(650px, calc(100vh - 95px - env(safe-area-inset-top))); border-radius: 16px; }
   .library-search-results { max-height: 62vh; }
   .library-note-match { max-width: 64vw; }
+  .keyboard-hint { display: none; }
   .bulk-modal-layer { align-items: flex-end; padding: 0; background: rgba(4, 5, 6, 0.48); }
   .bulk-dialog { width: 100%; height: min(92vh, 880px); max-height: none; border: 0; border-radius: 22px 22px 0 0; animation-name: sheet-in; }
   .bulk-header { padding: 22px 19px 17px; }

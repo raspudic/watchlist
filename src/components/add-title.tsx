@@ -235,8 +235,12 @@ function SearchDialog({
   return (
     <div className="modal-layer search-modal-layer" onMouseDown={(event) => event.target === event.currentTarget && onClose()} role="presentation">
       <section aria-labelledby="search-dialog-title" aria-modal="true" className="search-dialog" role="dialog">
-        <h2 className="sr-only" id="search-dialog-title">Add a title</h2>
-        <div className="search-input-wrap">
+        <div className="add-search-header">
+          <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
+          <div><p className="eyebrow">Add to watchlist</p><h2 id="search-dialog-title">Find a title</h2></div>
+          <button className="panel-close" onClick={onClose} type="button"><X size={18} /><span className="sr-only">Close</span></button>
+        </div>
+        <div className="search-input-wrap add-search-input">
           {searching ? <LoaderCircle className="spin" size={20} /> : <Search size={20} />}
           <input
             aria-label="Search movies and shows"
@@ -257,7 +261,6 @@ function SearchDialog({
             ref={inputRef}
             value={query}
           />
-          <button className="close-search" onClick={onClose} type="button"><X size={18} /><span className="sr-only">Close</span></button>
         </div>
 
         <div className="search-results">

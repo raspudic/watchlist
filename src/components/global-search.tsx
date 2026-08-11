@@ -5,7 +5,7 @@
 
 import { CheckCircle2, Clapperboard, LoaderCircle, Search, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import type { MediaItem } from "@/components/library-view";
 
@@ -34,7 +34,7 @@ function matchingNote(item: MediaItem, query: string) {
   return notes.find((note) => note.value?.toLocaleLowerCase().includes(needle)) ?? null;
 }
 
-export function GlobalSearch() {
+export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -113,18 +113,17 @@ export function GlobalSearch() {
 
   const watchlist = items.filter((item) => item.status === "watchlist");
   const watched = items.filter((item) => item.status === "watched");
+  const openSearch = () => setOpen(true);
 
   return (
     <>
-      <button className="nav-search-button" onClick={() => setOpen(true)} type="button">
+      <button className="nav-search-button" onClick={openSearch} type="button">
         <Search aria-hidden="true" size={18} strokeWidth={1.8} />
         <span>Search</span>
         <kbd>Ctrl K</kbd>
       </button>
 
-      <button aria-label="Search library" className="mobile-search-button" onClick={() => setOpen(true)} type="button">
-        <Search aria-hidden="true" size={18} />
-      </button>
+      {mobileHeader(openSearch)}
 
       {open ? (
         <div className="modal-layer global-search-layer" onMouseDown={(event) => event.target === event.currentTarget && close()} role="presentation">
@@ -158,7 +157,7 @@ export function GlobalSearch() {
               {watchlist.length > 0 ? <SearchGroup items={watchlist} label="Watchlist" onOpen={openItem} query={query} /> : null}
               {watched.length > 0 ? <SearchGroup items={watched} label="Watched" onOpen={openItem} query={query} /> : null}
             </div>
-            <div className="library-search-footer"><span>Titles and notes</span><span>Esc to close</span></div>
+            <div className="library-search-footer"><span>Titles and notes</span><span className="keyboard-hint">Esc to close</span></div>
           </section>
         </div>
       ) : null}
