@@ -326,7 +326,13 @@ a {
 .account-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .account-dialog-header h2 { margin-top: 5px; font-size: 24px; letter-spacing: -0.035em; }
 .account-dialog-header > div > p:last-child { margin-top: 4px; color: var(--text-faint); font-size: 12px; }
-.account-form { margin-top: 25px; padding-top: 23px; border-top: 1px solid var(--line); }
+.account-form {
+  margin-top: 27px;
+  padding-top: 25px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
 .account-section-heading { display: flex; align-items: flex-start; gap: 10px; }
 .account-section-heading > svg { margin-top: 1px; color: var(--accent-text); }
 .account-section-heading h3 { font-size: 14px; }
@@ -570,18 +576,24 @@ a {
   z-index: 0;
   inset: 0 0 0 auto;
   width: 100%;
-  padding-right: 20px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
   background: var(--danger);
   color: white;
   cursor: pointer;
   font-size: 11px;
   opacity: 0;
   transition: opacity 100ms;
+}
+.swipe-delete-content {
+  width: 92px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 .swipe-row.revealed .swipe-delete { opacity: 1; }
 .media-row {

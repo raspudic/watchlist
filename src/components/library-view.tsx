@@ -414,7 +414,7 @@ function MediaRow({
   return (
     <div className={offset < 0 ? "swipe-row revealed" : "swipe-row"}>
       <button className="swipe-delete" onClick={() => onRemove(item)} tabIndex={offset < 0 ? 0 : -1} type="button">
-        <Trash2 size={19} /><span>Remove</span>
+        <span className="swipe-delete-content"><Trash2 size={19} /><span>Remove</span></span>
       </button>
       <button
         className="media-row"
