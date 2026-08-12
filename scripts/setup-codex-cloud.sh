@@ -85,6 +85,10 @@ specific check
 chown -R "$codex_cloud_runtime_user:$codex_cloud_runtime_user" "$codex_cloud_project_dir"
 git config --global --add safe.directory "$codex_cloud_project_dir"
 
+# Download and initialize development resources during setup so `specific dev`
+# can expose the web service promptly inside the shorter agent command window.
+specific exec web -- true
+
 printf 'Codex Cloud environment ready: Node %s, pnpm %s, Specific %s\n' \
   "$(node --version)" \
   "$(pnpm --version)" \
