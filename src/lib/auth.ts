@@ -8,6 +8,11 @@ import * as schema from "@/lib/db/schema";
 const SIX_MONTHS = 60 * 60 * 24 * 180;
 const ONE_DAY = 60 * 60 * 24;
 
+interface WatchlistAuthOptions {
+  disableSignUp?: boolean;
+  checkCompromisedPasswords?: boolean;
+}
+
 function getSecret() {
   const secret = process.env.BETTER_AUTH_SECRET;
 
@@ -18,7 +23,10 @@ function getSecret() {
   return secret ?? "build-time-placeholder-not-used-at-runtime";
 }
 
-export function createWatchlistAuth(disableSignUp = true) {
+export function createWatchlistAuth({
+  disableSignUp = true,
+  checkCompromisedPasswords = true,
+}: WatchlistAuthOptions = {}) {
   const baseURL = process.env.BETTER_AUTH_URL;
 
   return betterAuth({
@@ -64,6 +72,7 @@ export function createWatchlistAuth(disableSignUp = true) {
     disabledPaths: ["/is-username-available"],
     plugins: [
       haveIBeenPwned({
+        enabled: checkCompromisedPasswords,
         customPasswordCompromisedMessage: "Choose a password that has not appeared in a known data breach.",
       }),
       username({
@@ -78,4 +87,4 @@ export function createWatchlistAuth(disableSignUp = true) {
   });
 }
 
-export const auth = createWatchlistAuth(false);
+export const auth = createWatchlistAuth({ disableSignUp: false });

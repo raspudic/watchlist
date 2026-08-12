@@ -86,10 +86,10 @@ printf 'Validating Specific configuration before startup...\n'
 specific check
 
 # Codex Cloud may terminate detached descendants even when they use nohup or a
-# separate session. Keep Specific attached to this command instead. The shell
-# runner can yield an ongoing session while `specific dev` remains foreground.
+# separate session. Keep Specific attached to this command and give it a PTY so
+# its interactive supervisor remains alive after the shell runner yields.
 set +e
-specific dev 2>&1 | tee "$codex_cloud_dev_log"
+script -q -e -f -c "specific dev" /dev/null 2>&1 | tee "$codex_cloud_dev_log"
 specific_status="${PIPESTATUS[0]}"
 set -e
 

@@ -21,7 +21,10 @@ async function main() {
     return;
   }
 
-  const bootstrapAuth = createWatchlistAuth(false);
+  const bootstrapAuth = createWatchlistAuth({
+    disableSignUp: false,
+    checkCompromisedPasswords: false,
+  });
 
   await bootstrapAuth.api.signUpEmail({
     body: {

@@ -30,7 +30,7 @@ npm install --global --prefix /usr/local pnpm@11.16.0
 curl -fsSL https://specific.dev/install.sh | sh
 install -m 0755 /root/.local/bin/specific /usr/local/bin/specific-real
 
-if ! command -v runuser >/dev/null 2>&1; then
+if ! command -v runuser >/dev/null 2>&1 || ! command -v script >/dev/null 2>&1; then
   apt-get update
   apt-get install -y --no-install-recommends util-linux
 fi
