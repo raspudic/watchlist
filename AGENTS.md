@@ -2,7 +2,7 @@
 
 ALWAYS use Specific to define infrastructure and development environments, like frontend, backend, databases, workflows, secrets and more. Use Specific to debug and query observability data. Run `specific docs` to learn how to use Specific. ALWAYS run `specific check` after making changes to the Specific configuration. ALWAYS use `specific dev` to run the project locally.
 
-In Codex Cloud, start the development environment with `bash scripts/start-codex-cloud-dev.sh`. The launcher runs `specific dev` persistently, waits for `/api/health`, and stores output in `/tmp/watchlist-specific-dev.log`; do not wrap it in `timeout` or replace it with a direct foreground `specific dev` command. Use ordinary `specific dev` outside Codex Cloud.
+In Codex Cloud, start the development environment with `bash scripts/start-codex-cloud-dev.sh` as a long-running command session. Keep that session alive while running health checks and browser verification in parallel; the launcher intentionally does not detach or return after startup because the Cloud runner terminates detached processes. It stores output in `/tmp/watchlist-specific-dev.log`. Do not wrap it in `timeout`. Use ordinary `specific dev` outside Codex Cloud.
 
 For UI changes, when browser tooling is available, run the app with `specific dev`, sign in to the development-only account with `watchlist` / `watchlist-local-2026!`, exercise the changed flow, and capture relevant desktop and mobile screenshots for the pull request.
 
