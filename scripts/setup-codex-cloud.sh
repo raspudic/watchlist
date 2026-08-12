@@ -30,7 +30,7 @@ npm install --global --prefix /usr/local pnpm@11.16.0
 curl -fsSL https://specific.dev/install.sh | sh
 install -m 0755 /root/.local/bin/specific /usr/local/bin/specific-real
 
-if ! command -v runuser >/dev/null 2>&1; then
+if ! command -v runuser >/dev/null 2>&1 || ! command -v setsid >/dev/null 2>&1; then
   apt-get update
   apt-get install -y --no-install-recommends util-linux
 fi
@@ -73,6 +73,10 @@ fi
 
 cd "$codex_cloud_project_dir"
 pnpm install --frozen-lockfile
+# Keep Chromium available to Cloud tasks for responsive UI verification and
+# screenshots. Container caching avoids repeating the browser download for
+# every task created from this environment.
+pnpm exec playwright install --with-deps chromium
 
 umask 077
 printf 'secrets {\n  tmdb_read_access_token = "%s"\n}\n' \
