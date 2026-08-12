@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "auth:bootstrap": "tsx scripts/bootstrap-user.ts"
+    "auth:bootstrap": "tsx scripts/bootstrap-user.ts",
+    "dev:seed": "tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "better-auth": "^1.6.26",

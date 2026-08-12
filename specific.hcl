@@ -15,15 +15,9 @@ secret "better_auth_secret" {
   generated = true
 }
 
-secret "mateo_password_v2" {}
-
-config "bootstrap_username" {
-  default = "mateo"
-}
-
 service "web" {
   build   = build.web
-  command = "pnpm auth:bootstrap && pnpm start"
+  command = "pnpm start"
 
   endpoint {
     public = true
@@ -39,15 +33,16 @@ service "web" {
     TMDB_ACCESS_TOKEN     = secret.tmdb_read_access_token
     BETTER_AUTH_SECRET    = secret.better_auth_secret
     BETTER_AUTH_URL       = "https://${service.web.public_url}"
-    BOOTSTRAP_USERNAME    = config.bootstrap_username
-    BOOTSTRAP_PASSWORD    = secret.mateo_password_v2
   }
 
   dev {
-    command = "pnpm dev"
+    command = "pnpm auth:bootstrap && pnpm dev:seed && pnpm dev"
 
     env = {
-      BETTER_AUTH_URL = "http://${service.web.public_url}"
+      BETTER_AUTH_URL      = "http://${service.web.public_url}"
+      BOOTSTRAP_USERNAME   = "watchlist"
+      BOOTSTRAP_PASSWORD   = "watchlist-local-2026!"
+      SEED_DEVELOPMENT_DATA = "true"
     }
   }
 }

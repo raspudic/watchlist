@@ -5,7 +5,7 @@ import { db } from "../src/lib/db/client";
 import { user } from "../src/lib/db/schema";
 
 async function main() {
-  const username = process.env.BOOTSTRAP_USERNAME?.trim().toLowerCase() || "mateo";
+  const username = process.env.BOOTSTRAP_USERNAME?.trim().toLowerCase() || "watchlist";
   const password = process.env.BOOTSTRAP_PASSWORD;
 
   if (!password) {
