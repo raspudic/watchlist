@@ -60,6 +60,17 @@ exec /usr/local/bin/specific-real "$@"
 SPECIFIC_WRAPPER
 chmod 0755 /usr/local/bin/specific
 
+# The Specific installer adds /root/.local/bin ahead of /usr/local/bin in the
+# Cloud agent's PATH. Replace that original entry with the wrapper as well;
+# otherwise `specific dev` resolves to the root-running binary and initdb
+# refuses to start.
+ln -sfn /usr/local/bin/specific /root/.local/bin/specific
+
+if [ "$(readlink -f "$(command -v specific)")" != "/usr/local/bin/specific" ]; then
+  echo "Specific wrapper is not first on PATH" >&2
+  exit 1
+fi
+
 cd "$codex_cloud_project_dir"
 pnpm install --frozen-lockfile
 
