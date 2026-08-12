@@ -2,7 +2,7 @@
 
 ALWAYS use Specific to define infrastructure and development environments, like frontend, backend, databases, workflows, secrets and more. Use Specific to debug and query observability data. Run `specific docs` to learn how to use Specific. ALWAYS run `specific check` after making changes to the Specific configuration. ALWAYS use `specific dev` to run the project locally.
 
-After completing and verifying requested changes, commit them in logical commits and push the current branch to `origin` before reporting completion. Do not leave finished work only in the local repository. Never commit secrets or unrelated user changes.
+After completing and verifying requested changes, commit them in logical commits and publish them before reporting completion. In local/Desktop sessions, push the current branch to `origin`. In Codex Cloud, create a commit and use Codex's built-in **Create PR** workflow; do not install `gh`, attempt an unauthenticated shell push, or run `specific deploy`. Merging the PR into `main` triggers the configured Specific deployment. Never commit secrets or unrelated user changes.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
