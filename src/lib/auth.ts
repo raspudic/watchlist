@@ -1,12 +1,50 @@
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { haveIBeenPwned, username } from "better-auth/plugins";
+import { count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
 
 const ONE_DAY = 60 * 60 * 24;
 const THIRTY_DAYS = ONE_DAY * 30;
+const ACCOUNT_DELETION_LOCK_ID = 2_026_08_19;
+
+async function deleteAccountTransaction(userId: string) {
+  await db.transaction(async (transaction) => {
+    await transaction.execute(sql`SELECT pg_advisory_xact_lock(${ACCOUNT_DELETION_LOCK_ID})`);
+
+    const [account] = await transaction
+      .select({ role: schema.user.role })
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
+
+    if (!account) {
+      throw new APIError("NOT_FOUND", { code: "USER_NOT_FOUND", message: "Account not found." });
+    }
+
+    if (account.role === "admin") {
+      const [result] = await transaction
+        .select({ total: count() })
+        .from(schema.user)
+        .where(eq(schema.user.role, "admin"));
+
+      if (result.total <= 1) {
+        throw new APIError("BAD_REQUEST", {
+          code: "FINAL_ADMIN",
+          message: "Create another administrator before deleting this account.",
+        });
+      }
+    }
+
+    // accepted_by is intentionally not a foreign key because invitation redemption
+    // uses a short-lived claim value before the new user exists.
+    await transaction.delete(schema.invitations).where(eq(schema.invitations.acceptedBy, userId));
+    await transaction.delete(schema.user).where(eq(schema.user.id, userId));
+  });
+}
 
 interface WatchlistAuthOptions {
   disableSignUp?: boolean;
@@ -48,6 +86,24 @@ export function createWatchlistAuth({
       expiresIn: THIRTY_DAYS,
       updateAge: ONE_DAY,
     },
+    user: {
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (account) => deleteAccountTransaction(account.id),
+      },
+    },
+    hooks: {
+      before: createAuthMiddleware(async (context) => {
+        if (context.path !== "/delete-user") return;
+        const body = context.body as { password?: unknown } | undefined;
+        if (typeof body?.password !== "string" || body.password.length === 0) {
+          throw new APIError("BAD_REQUEST", {
+            code: "PASSWORD_REQUIRED",
+            message: "Your current password is required.",
+          });
+        }
+      }),
+    },
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -66,6 +122,10 @@ export function createWatchlistAuth({
         "/change-password": {
           window: 60 * 10,
           max: 5,
+        },
+        "/delete-user": {
+          window: 60 * 10,
+          max: 3,
         },
       },
     },

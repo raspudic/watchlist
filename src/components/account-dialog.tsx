@@ -1,11 +1,17 @@
 "use client";
 
-import { Check, Info, KeyRound, LoaderCircle, LogOut, Monitor, MonitorSmartphone, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
+import { Check, Info, KeyRound, LoaderCircle, LogOut, Monitor, MonitorSmartphone, Moon, Palette, ShieldCheck, Sun, Trash2, UserRound, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 
 import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
-import { MIN_PASSWORD_LENGTH, validateNewPassword } from "@/lib/account-validation";
+import {
+  ACCOUNT_DELETION_CONFIRMATION,
+  MIN_PASSWORD_LENGTH,
+  validateAccountDeletion,
+  validateNewPassword,
+} from "@/lib/account-validation";
 import { authClient } from "@/lib/auth-client";
 
 type ThemePreference = "light" | "system" | "dark";
@@ -61,6 +67,11 @@ export function AccountDialog({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deletePending, setDeletePending] = useState(false);
+  const router = useRouter();
   const theme = useSyncExternalStore(subscribeToThemePreference, getThemePreference, getServerThemePreference);
   const sheet = usePullToDismiss(onClose);
 
@@ -133,6 +144,35 @@ export function AccountDialog({
     setProfilePending(false);
     setProfileSuccess(true);
     onDisplayNameChange(nextName);
+  }
+
+  async function deleteAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDeleteError("");
+
+    const validationError = validateAccountDeletion(deletePassword, deleteConfirmation);
+    if (validationError) {
+      setDeleteError(validationError);
+      return;
+    }
+
+    setDeletePending(true);
+    const result = await authClient.deleteUser({ password: deletePassword });
+
+    if (result.error) {
+      setDeleteError(
+        result.error.status === 429
+          ? "Too many attempts. Please try again later."
+          : result.error.code === "FINAL_ADMIN"
+            ? "Create another administrator before deleting this account."
+            : "Your current password was not accepted.",
+      );
+      setDeletePending(false);
+      return;
+    }
+
+    router.replace("/login?deleted=1");
+    router.refresh();
   }
 
   function changeTheme(nextTheme: ThemePreference) {
@@ -251,6 +291,51 @@ export function AccountDialog({
           <button className="primary-button account-save" disabled={pending} type="submit">
             {pending ? <LoaderCircle aria-hidden="true" className="spin" size={17} /> : null}
             {pending ? "Updating…" : "Update password"}
+          </button>
+        </form>
+
+        <form className="account-danger-form" onSubmit={deleteAccount}>
+          <div className="account-section-heading">
+            <Trash2 aria-hidden="true" size={18} />
+            <div><h3>Delete account</h3><p>Permanently removes your profile, sessions, and complete library.</p></div>
+          </div>
+
+          <label className="field-label" htmlFor="delete-account-password">Current password</label>
+          <input
+            autoComplete="current-password"
+            className="text-input"
+            id="delete-account-password"
+            maxLength={128}
+            onChange={(event) => setDeletePassword(event.target.value)}
+            required
+            type="password"
+            value={deletePassword}
+          />
+
+          <label className="field-label" htmlFor="delete-account-confirmation">
+            Type {ACCOUNT_DELETION_CONFIRMATION} to confirm
+          </label>
+          <input
+            autoComplete="off"
+            className="text-input"
+            id="delete-account-confirmation"
+            onChange={(event) => setDeleteConfirmation(event.target.value)}
+            pattern={ACCOUNT_DELETION_CONFIRMATION}
+            required
+            spellCheck={false}
+            value={deleteConfirmation}
+          />
+
+          <p className="account-danger-warning">This cannot be undone.</p>
+          {deleteError ? <p className="form-error" role="alert">{deleteError}</p> : null}
+
+          <button
+            className="account-delete-button"
+            disabled={deletePending || deleteConfirmation !== ACCOUNT_DELETION_CONFIRMATION}
+            type="submit"
+          >
+            {deletePending ? <LoaderCircle aria-hidden="true" className="spin" size={17} /> : <Trash2 aria-hidden="true" size={16} />}
+            {deletePending ? "Deleting…" : "Permanently delete account"}
           </button>
         </form>
 

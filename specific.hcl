@@ -45,3 +45,13 @@ service "web" {
     }
   }
 }
+
+cron "lifecycle-cleanup" {
+  build    = build.web
+  command  = "pnpm cleanup:lifecycle"
+  schedule = "0 2 * * *"
+
+  env = {
+    DATABASE_URL = postgres.main.url
+  }
+}

@@ -1,0 +1,37 @@
+# Validate cascade constraints before replacing the existing constraints. The
+# referential behavior is compatible with both application versions, and there
+# is no point during rollout at which new child rows are left unenforced.
+[[actions]]
+type = "custom"
+start = """
+ALTER TABLE "session" ADD CONSTRAINT session_user_id_cascade_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE "session" VALIDATE CONSTRAINT session_user_id_cascade_fkey;
+ALTER TABLE "session" DROP CONSTRAINT session_user_id_fkey;
+ALTER TABLE "session" RENAME CONSTRAINT session_user_id_cascade_fkey TO session_user_id_fkey;
+ALTER TABLE account ADD CONSTRAINT account_user_id_cascade_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE account VALIDATE CONSTRAINT account_user_id_cascade_fkey;
+ALTER TABLE account DROP CONSTRAINT account_user_id_fkey;
+ALTER TABLE account RENAME CONSTRAINT account_user_id_cascade_fkey TO account_user_id_fkey;
+ALTER TABLE media_items ADD CONSTRAINT media_items_user_id_cascade_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE media_items VALIDATE CONSTRAINT media_items_user_id_cascade_fkey;
+ALTER TABLE media_items DROP CONSTRAINT media_items_user_id_fkey;
+ALTER TABLE media_items RENAME CONSTRAINT media_items_user_id_cascade_fkey TO media_items_user_id_fkey;
+ALTER TABLE invitations ADD CONSTRAINT invitations_created_by_cascade_fkey FOREIGN KEY (created_by) REFERENCES "user" (id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE invitations VALIDATE CONSTRAINT invitations_created_by_cascade_fkey;
+ALTER TABLE invitations DROP CONSTRAINT invitations_created_by_fkey;
+ALTER TABLE invitations RENAME CONSTRAINT invitations_created_by_cascade_fkey TO invitations_created_by_fkey;
+"""
+abort = """
+ALTER TABLE "session" DROP CONSTRAINT session_user_id_fkey;
+ALTER TABLE "session" ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) NOT VALID;
+ALTER TABLE "session" VALIDATE CONSTRAINT session_user_id_fkey;
+ALTER TABLE account DROP CONSTRAINT account_user_id_fkey;
+ALTER TABLE account ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) NOT VALID;
+ALTER TABLE account VALIDATE CONSTRAINT account_user_id_fkey;
+ALTER TABLE media_items DROP CONSTRAINT media_items_user_id_fkey;
+ALTER TABLE media_items ADD CONSTRAINT media_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES "user" (id) NOT VALID;
+ALTER TABLE media_items VALIDATE CONSTRAINT media_items_user_id_fkey;
+ALTER TABLE invitations DROP CONSTRAINT invitations_created_by_fkey;
+ALTER TABLE invitations ADD CONSTRAINT invitations_created_by_fkey FOREIGN KEY (created_by) REFERENCES "user" (id) NOT VALID;
+ALTER TABLE invitations VALIDATE CONSTRAINT invitations_created_by_fkey;
+"""
