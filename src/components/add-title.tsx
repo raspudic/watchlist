@@ -258,7 +258,7 @@ function SearchDialog({
               }
             }}
             onKeyDown={handleSearchKeys}
-            placeholder="Search movies, shows, anime..."
+            placeholder="Search movies and shows..."
             ref={inputRef}
             value={query}
           />

@@ -1,6 +1,6 @@
 # Watchlist
 
-A simple personal library for movies, series, and anime.
+A simple personal library for movies and shows.
 
 ## Run locally
 

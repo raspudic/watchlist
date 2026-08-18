@@ -241,7 +241,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           <h1>{mode === "watchlist" ? "Watchlist" : "Watched"}</h1>
           <p className="heading-copy">
             {mode === "watchlist"
-              ? "Movies, shows, and anime saved for later."
+              ? "Movies and shows saved for later."
               : "Your watched titles, ratings, and notes."}
           </p>
         </div>
@@ -633,7 +633,7 @@ function EmptyState({ mode }: { mode: ViewMode }) {
     <div className="empty-state">
       <span className="empty-icon">{mode === "watchlist" ? <BookmarkPlus size={24} /> : <Check size={25} />}</span>
       <h2>{mode === "watchlist" ? "Nothing waiting yet" : "Nothing watched yet"}</h2>
-      <p>{mode === "watchlist" ? "Add a title above. Movies, series, and anime all work." : "Titles you finish will move here."}</p>
+      <p>{mode === "watchlist" ? "Add a movie or show above." : "Titles you finish will move here."}</p>
     </div>
   );
 }
