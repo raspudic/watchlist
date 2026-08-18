@@ -28,6 +28,6 @@ A simple personal library for movies and shows.
 
 4. Sign in with username `watchlist` and password `watchlist-local-2026!`.
 
-The development library includes a few sample titles. These credentials and seed data are development-only; production is configured separately in Specific.
+These credentials are development-only; production is configured separately in Specific.
 
 Movie and television metadata and images are supplied by [TMDB](https://www.themoviedb.org/). This product is not endorsed or certified by TMDB.

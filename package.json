@@ -10,8 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "auth:bootstrap": "tsx scripts/bootstrap-user.ts",
-    "dev:seed": "tsx scripts/seed-dev.ts"
+    "auth:bootstrap": "tsx scripts/bootstrap-user.ts"
   },
   "dependencies": {
     "better-auth": "^1.6.26",
