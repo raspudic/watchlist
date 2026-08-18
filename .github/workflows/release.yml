@@ -6,6 +6,7 @@ on:
       - main
 
 permissions:
+  checks: write
   contents: write
   issues: write
   pull-requests: write
@@ -20,6 +21,25 @@ jobs:
         uses: googleapis/release-please-action@v5
         with:
           release-type: node
+
+      - name: Authorize production promotion
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/github-script@v8
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        with:
+          script: |
+            await github.rest.checks.create({
+              ...context.repo,
+              name: "Released",
+              head_sha: process.env.RELEASE_SHA,
+              status: "completed",
+              conclusion: "success",
+              output: {
+                title: "GitHub release created",
+                summary: "This exact commit is authorized for production promotion.",
+              },
+            });
 
       - name: Check out released commit
         if: ${{ steps.release.outputs.release_created == 'true' }}
