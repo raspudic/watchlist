@@ -65,7 +65,6 @@ export function AppShell({
               </Link>
             ))}
           </nav>
-          <p className="data-credit">Metadata by TMDB</p>
           <div className="sidebar-account">
             <button className="account-trigger" onClick={() => setAccountOpen(true)} type="button">
               <span className="avatar" aria-hidden="true">{currentDisplayName.slice(0, 1).toUpperCase()}</span>

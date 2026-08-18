@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/login-form";
@@ -21,6 +22,7 @@ export default async function LoginPage() {
           <p>Sign in to get to your list.</p>
         </div>
         <LoginForm />
+        <p className="auth-meta"><Link href="/about">About &amp; privacy</Link></p>
       </section>
     </main>
   );

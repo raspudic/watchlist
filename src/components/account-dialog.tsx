@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, KeyRound, LoaderCircle, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
+import { Check, Info, KeyRound, LoaderCircle, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 
@@ -255,7 +255,10 @@ export function AccountDialog({
         </form>
 
         {isAdmin ? <Link className="account-admin-link" href="/admin/invites" onClick={onClose}><KeyRound size={16} /> Manage invitations</Link> : null}
-        <button className="account-signout" onClick={onSignOut} type="button"><LogOut size={16} /> Sign out</button>
+        <div className="account-footer">
+          <button className="account-signout" onClick={onSignOut} type="button"><LogOut size={16} /> Sign out</button>
+          <Link className="account-about" href="/about" onClick={onClose}><Info aria-hidden="true" size={16} /> About &amp; privacy</Link>
+        </div>
       </section>
     </div>
   );
