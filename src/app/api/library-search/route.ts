@@ -2,6 +2,7 @@ import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
 import { db } from "@/lib/db/client";
 import { mediaItems } from "@/lib/db/schema";
@@ -13,6 +14,9 @@ const querySchema = z.string().trim().min(1).max(100);
 export async function GET(request: Request) {
   const userId = await getRequestUserId(request);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryRead);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   const parsed = querySchema.safeParse(new URL(request.url).searchParams.get("q") ?? "");
   if (!parsed.success) {

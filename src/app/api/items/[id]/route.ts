@@ -1,6 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
 import { validateStateChangingApiRequest } from "@/lib/api-request-security";
 import { db } from "@/lib/db/client";
@@ -21,6 +22,9 @@ export async function PATCH(request: Request, context: ItemRouteContext) {
 
   const userId = await getRequestUserId(request);
   if (!userId) return unauthorized();
+
+  const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryWrite);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   const parsed = updateMediaItemSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -72,6 +76,9 @@ export async function DELETE(request: Request, context: ItemRouteContext) {
 
   const userId = await getRequestUserId(request);
   if (!userId) return unauthorized();
+
+  const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryWrite);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   const { id } = await context.params;
   const [item] = await db

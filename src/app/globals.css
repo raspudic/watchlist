@@ -532,6 +532,9 @@ a {
 .result-copy span { color: var(--text-faint); font-size: 12px; }
 .search-message { padding: 15px 12px; color: var(--text-faint); font-size: 13px; }
 .search-message.error { color: var(--danger); }
+.search-limit-message { margin: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-hover); color: var(--text-soft); font-size: 13px; line-height: 1.45; }
+.search-limit-message button { margin-top: 9px; padding: 7px 10px; border-radius: 7px; background: var(--surface-strong); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 620; }
+.search-limit-message button:disabled { color: var(--text-faint); cursor: default; }
 .search-footer { flex: 0 0 auto; padding: 7px; border-top: 1px solid var(--line); background: var(--surface); }
 .search-footer .custom-result { border: 1px solid transparent; }
 .search-footer .custom-result:not(:disabled) { background: var(--surface-hover); }

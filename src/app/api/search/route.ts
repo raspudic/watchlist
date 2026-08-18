@@ -1,33 +1,26 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  API_RATE_LIMITS,
+  consumeRateLimits,
+  rateLimitResponse,
+} from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
+import { logOperationalEvent } from "@/lib/operational-events";
+import {
+  cacheTmdbSearch,
+  getCachedTmdbSearch,
+  mapTmdbResults,
+  parseRetryAfter,
+} from "@/lib/tmdb-search";
 
 export const dynamic = "force-dynamic";
 
 const querySchema = z.string().trim().min(1).max(100);
 
-type TmdbSearchResult = {
-  id: number;
-  media_type: "movie" | "tv" | string;
-  title?: string;
-  name?: string;
-  original_title?: string;
-  original_name?: string;
-  release_date?: string;
-  first_air_date?: string;
-  poster_path?: string | null;
-  overview?: string | null;
-  popularity?: number;
-  vote_average?: number;
-};
-
-function releaseYear(date: string | undefined) {
-  const match = date?.match(/^\d{4}/);
-  return match ? Number(match[0]) : null;
-}
-
 export async function GET(request: Request) {
+  const startedAt = performance.now();
   const userId = await getRequestUserId(request);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -40,6 +33,25 @@ export async function GET(request: Request) {
   if (!token) {
     return NextResponse.json({ error: "Search is not configured yet." }, { status: 503 });
   }
+
+  const accountLimit = await consumeRateLimits(userId, API_RATE_LIMITS.tmdbAccount);
+  if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
+
+  const cached = await getCachedTmdbSearch(parsedQuery.data);
+  if (cached) {
+    logOperationalEvent("tmdb_search_completed", {
+      cacheHit: true,
+      durationMs: Math.round(performance.now() - startedAt),
+      status: 200,
+    });
+    return NextResponse.json(
+      { results: cached },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+
+  const applicationLimit = await consumeRateLimits("application", API_RATE_LIMITS.tmdbApplication);
+  if (!applicationLimit.allowed) return rateLimitResponse(applicationLimit);
 
   const url = new URL("https://api.themoviedb.org/3/search/multi");
   url.searchParams.set("query", parsedQuery.data);
@@ -54,29 +66,52 @@ export async function GET(request: Request) {
       cache: "no-store",
     });
   } catch {
+    logOperationalEvent("tmdb_search_failed", {
+      durationMs: Math.round(performance.now() - startedAt),
+      status: 502,
+    });
     return NextResponse.json({ error: "Search is temporarily unavailable." }, { status: 502 });
+  }
+
+  if (response.status === 429) {
+    const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
+    logOperationalEvent("tmdb_upstream_limited", {
+      durationMs: Math.round(performance.now() - startedAt),
+      retryAfter,
+      status: 429,
+    });
+    return rateLimitResponse({ allowed: false, reason: "tmdb_upstream", retryAfter });
   }
 
   if (!response.ok) {
+    logOperationalEvent("tmdb_search_failed", {
+      durationMs: Math.round(performance.now() - startedAt),
+      status: response.status,
+    });
     return NextResponse.json({ error: "Search is temporarily unavailable." }, { status: 502 });
   }
 
-  const payload = (await response.json()) as { results?: TmdbSearchResult[] };
-  const results = (payload.results ?? [])
-    .filter((result) => (result.media_type === "movie" || result.media_type === "tv") && Number.isInteger(result.id))
-    .map((result) => ({
-      provider: "tmdb" as const,
-      externalId: result.id,
-      mediaType: result.media_type,
-      title: result.media_type === "movie" ? result.title ?? "Untitled" : result.name ?? "Untitled",
-      originalTitle:
-        result.media_type === "movie" ? result.original_title ?? null : result.original_name ?? null,
-      releaseYear: releaseYear(result.media_type === "movie" ? result.release_date : result.first_air_date),
-      posterPath: result.poster_path ?? null,
-      overview: result.overview?.trim() || null,
-      popularity: typeof result.popularity === "number" ? result.popularity : 0,
-      voteAverage: typeof result.vote_average === "number" ? result.vote_average : null,
-    }));
+  let results;
+  try {
+    const payload = (await response.json()) as { results?: Parameters<typeof mapTmdbResults>[0] };
+    results = mapTmdbResults(payload.results ?? []);
+  } catch {
+    logOperationalEvent("tmdb_search_failed", {
+      durationMs: Math.round(performance.now() - startedAt),
+      status: 502,
+    });
+    return NextResponse.json({ error: "Search is temporarily unavailable." }, { status: 502 });
+  }
 
-  return NextResponse.json({ results });
+  await cacheTmdbSearch(parsedQuery.data, results);
+  logOperationalEvent("tmdb_search_completed", {
+    cacheHit: false,
+    durationMs: Math.round(performance.now() - startedAt),
+    status: 200,
+  });
+
+  return NextResponse.json(
+    { results },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
