@@ -87,4 +87,4 @@ export function createWatchlistAuth({
   });
 }
 
-export const auth = createWatchlistAuth({ disableSignUp: false });
+export const auth = createWatchlistAuth({ disableSignUp: true });

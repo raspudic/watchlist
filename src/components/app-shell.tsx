@@ -20,12 +20,14 @@ const links = [
 export function AppShell({
   children,
   displayName,
+  isAdmin,
   searchShortcut,
   userId,
   username,
 }: {
   children: ReactNode;
   displayName: string;
+  isAdmin: boolean;
   searchShortcut: KeyboardShortcut;
   userId: string;
   username: string;
@@ -105,6 +107,7 @@ export function AppShell({
         {accountOpen ? (
           <AccountDialog
             displayName={currentDisplayName}
+            isAdmin={isAdmin}
             onClose={() => setAccountOpen(false)}
             onDisplayNameChange={(name) => {
               setCurrentDisplayName(name);

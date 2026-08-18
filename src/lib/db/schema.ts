@@ -19,12 +19,35 @@ export const user = pgTable(
     image: text("image"),
     username: text("username"),
     displayUsername: text("display_username"),
+    role: text("role").default("user").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("user_email_unique").on(table.email),
     uniqueIndex("user_username_unique").on(table.username),
+  ],
+);
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedBy: text("accepted_by"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("invitations_token_hash_unique").on(table.tokenHash),
+    index("invitations_email_idx").on(table.email),
+    index("invitations_expires_at_idx").on(table.expiresAt),
   ],
 );
 

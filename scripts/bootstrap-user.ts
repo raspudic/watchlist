@@ -6,19 +6,19 @@ import { user } from "../src/lib/db/schema";
 
 async function main() {
   const username = process.env.BOOTSTRAP_USERNAME?.trim().toLowerCase() || "watchlist";
-  const password = process.env.BOOTSTRAP_PASSWORD;
-
-  if (!password) {
-    throw new Error("BOOTSTRAP_PASSWORD is required. Run this command through `specific exec web`.");
-  }
-
   const existing = await db.query.user.findFirst({
     where: eq(user.username, username),
   });
 
   if (existing) {
-    console.log(`User ${username} already exists; leaving their password unchanged.`);
+    await db.update(user).set({ role: "admin", updatedAt: new Date() }).where(eq(user.id, existing.id));
+    console.log(`User ${username} is configured as an administrator; their password is unchanged.`);
     return;
+  }
+
+  const password = process.env.BOOTSTRAP_PASSWORD;
+  if (!password) {
+    throw new Error("BOOTSTRAP_PASSWORD is required to create the administrator. Run this command through `specific exec web`.");
   }
 
   const bootstrapAuth = createWatchlistAuth({
@@ -26,7 +26,7 @@ async function main() {
     checkCompromisedPasswords: false,
   });
 
-  await bootstrapAuth.api.signUpEmail({
+  const result = await bootstrapAuth.api.signUpEmail({
     body: {
       email: `${username}@local.invalid`,
       name: username.charAt(0).toUpperCase() + username.slice(1),
@@ -35,7 +35,9 @@ async function main() {
     },
   });
 
-  console.log(`Created user ${username}.`);
+  await db.update(user).set({ role: "admin", updatedAt: new Date() }).where(eq(user.id, result.user.id));
+
+  console.log(`Created administrator ${username}.`);
 }
 
 main()

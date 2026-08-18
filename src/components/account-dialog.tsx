@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, LoaderCircle, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
+import { Check, KeyRound, LoaderCircle, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound, X } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 
 import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
@@ -37,12 +38,14 @@ function setThemePreference(theme: ThemePreference) {
 
 export function AccountDialog({
   displayName,
+  isAdmin,
   onClose,
   onDisplayNameChange,
   onSignOut,
   username,
 }: {
   displayName: string;
+  isAdmin: boolean;
   onClose: () => void;
   onDisplayNameChange: (name: string) => void;
   onSignOut: () => void;
@@ -251,6 +254,7 @@ export function AccountDialog({
           </button>
         </form>
 
+        {isAdmin ? <Link className="account-admin-link" href="/admin/invites" onClick={onClose}><KeyRound size={16} /> Manage invitations</Link> : null}
         <button className="account-signout" onClick={onSignOut} type="button"><LogOut size={16} /> Sign out</button>
       </section>
     </div>

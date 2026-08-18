@@ -1,0 +1,87 @@
+[[actions]]
+type = "add_column"
+table = "user"
+
+  [actions.column]
+  name = "role"
+  type = "TEXT"
+  nullable = false
+  default = "'user'"
+
+[[actions]]
+type = "create_table"
+name = "invitations"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "email"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "token_hash"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "created_by"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+  [[actions.columns]]
+  name = "accepted_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "accepted_by"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "revoked_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.foreign_keys]]
+  columns = ["created_by"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+
+[[actions]]
+type = "add_index"
+table = "invitations"
+
+  [actions.index]
+  name = "invitations_token_hash_unique"
+  columns = ["token_hash"]
+  unique = true
+
+[[actions]]
+type = "add_index"
+table = "invitations"
+
+  [actions.index]
+  name = "invitations_email_idx"
+  columns = ["email"]
+
+[[actions]]
+type = "add_index"
+table = "invitations"
+
+  [actions.index]
+  name = "invitations_expires_at_idx"
+  columns = ["expires_at"]

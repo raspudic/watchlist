@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 
-import { SignupForm } from "@/components/signup-form";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +16,11 @@ export default async function SignupPage() {
       <section className="login-panel signup-panel">
         <div className="login-brand"><span>/</span> watchlist</div>
         <div className="login-copy">
-          <h1>Create your account</h1>
-          <p>Your library stays private to your sign-in.</p>
+          <h1>Invitation required</h1>
+          <p>Watchlist accounts are created from single-use invitations.</p>
         </div>
-        <SignupForm />
+        <p className="auth-switch">Have an invitation link? Open it to create your account.</p>
+        <p className="auth-switch"><a href="/login">Return to sign in</a></p>
       </section>
     </main>
   );
