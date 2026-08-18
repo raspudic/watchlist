@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare or publish release
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          release-type: node
+
+      - name: Check out released commit
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Promote release to production
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: git push origin HEAD:refs/heads/release
