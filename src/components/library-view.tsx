@@ -195,7 +195,10 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
 
     try {
-      await readJson(await fetch(`/api/items/${item.id}`, { method: "DELETE" }));
+      await readJson(await fetch(`/api/items/${item.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }));
       if (undo) clearTimeout(undo.timer);
       const timer = setTimeout(() => setUndo(null), 6000);
       setUndo({ item, timer });

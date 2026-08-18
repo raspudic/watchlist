@@ -2,6 +2,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getRequestUserId } from "@/lib/api-auth";
+import { validateStateChangingApiRequest } from "@/lib/api-request-security";
 import { db } from "@/lib/db/client";
 import { mediaItems } from "@/lib/db/schema";
 import { updateMediaItemSchema } from "@/lib/media-validation";
@@ -15,6 +16,9 @@ function unauthorized() {
 type ItemRouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: ItemRouteContext) {
+  const invalidRequest = validateStateChangingApiRequest(request);
+  if (invalidRequest) return invalidRequest;
+
   const userId = await getRequestUserId(request);
   if (!userId) return unauthorized();
 
@@ -63,6 +67,9 @@ export async function PATCH(request: Request, context: ItemRouteContext) {
 }
 
 export async function DELETE(request: Request, context: ItemRouteContext) {
+  const invalidRequest = validateStateChangingApiRequest(request);
+  if (invalidRequest) return invalidRequest;
+
   const userId = await getRequestUserId(request);
   if (!userId) return unauthorized();
 
