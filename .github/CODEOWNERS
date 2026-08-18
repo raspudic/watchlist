@@ -1,0 +1,4 @@
+# Require explicit owner approval for GitHub Actions policy changes.
+/.github/workflows/ @raspudic
+/.github/actions/ @raspudic
+/.github/CODEOWNERS @raspudic
