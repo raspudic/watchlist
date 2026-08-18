@@ -8,11 +8,11 @@
 
 ## Git
 
-- Use Conventional Commits. Each final commit must be coherent, independently understandable, and pass its relevant checks. Never commit secrets or unrelated changes.
-- Small changes may be committed directly to `main`. For larger work, use a short-lived branch and preserve a clean series of logical commits with rebase-and-merge. Squash only a PR that is one indivisible change; do not use merge commits.
-- Autosquash `fixup!` commits before publishing. Do not publish WIP, feedback, test-fix, or similar development-only commits.
-- Use `fix:` only for behavior present in a previous release; fold fixes to unpublished work into the introducing commit.
-- After verification, commit and publish through the environment's supported GitHub workflow before reporting completion.
+- Make every change on a short-lived branch and open a pull request; never push directly to `main` or `release`.
+- Use a Conventional Commit pull-request title. GitHub squash-merges that title into `main`; branch commits may stay granular, but must not include secrets or unrelated changes.
+- Use `fix:` only for behavior present in a previous release. Fold fixes to unpublished work into the change that introduced them.
+- After verification, publish the pull request. Agents may squash-merge ordinary pull requests once required checks pass and must never bypass those checks.
+- The Release Please pull request is the production gate: merge it only with explicit user approval. Only the release workflow may update `release`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
