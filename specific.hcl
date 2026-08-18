@@ -36,10 +36,13 @@ service "web" {
   }
 
   dev {
-    command = "BOOTSTRAP_USERNAME=watchlist BOOTSTRAP_PASSWORD='watchlist-local-2026!' pnpm auth:bootstrap && SEED_DEVELOPMENT_DATA=true pnpm dev:seed && pnpm dev"
+    command = "pnpm auth:bootstrap && pnpm dev:seed && pnpm dev"
 
     env = {
-      BETTER_AUTH_URL = "http://${service.web.public_url}"
+      BETTER_AUTH_URL       = "http://${service.web.public_url}"
+      BOOTSTRAP_USERNAME    = "watchlist"
+      BOOTSTRAP_PASSWORD    = "watchlist-local-2026!"
+      SEED_DEVELOPMENT_DATA = "true"
     }
   }
 }

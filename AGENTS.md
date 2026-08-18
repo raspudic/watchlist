@@ -2,9 +2,9 @@
 
 ALWAYS use Specific to define infrastructure and development environments, like frontend, backend, databases, workflows, secrets and more. Use Specific to debug and query observability data. Run `specific docs` to learn how to use Specific. ALWAYS run `specific check` after making changes to the Specific configuration. ALWAYS use `specific dev` to run the project locally.
 
-In Codex Cloud, start the development environment with `bash scripts/start-codex-cloud-dev.sh` as a long-running command session. Keep that session alive while running health checks and browser verification in parallel; the launcher intentionally does not detach or return after startup because the Cloud runner terminates detached processes. It stores output in `/tmp/watchlist-specific-dev.log`. Do not wrap it in `timeout`. Use ordinary `specific dev` outside Codex Cloud.
+In Codex Cloud, default to making the requested change and running non-interactive checks. Do not start the development server, install a browser, capture screenshots, or add binary evidence unless the user explicitly requests it. Do not commit screenshot binaries from Cloud tasks because the Cloud pull-request workflow cannot publish binary diffs.
 
-For UI changes, when browser tooling is available, run the app with `specific dev`, sign in to the development-only account with `watchlist` / `watchlist-local-2026!`, exercise the changed flow, and capture relevant desktop and mobile screenshots for the pull request.
+Outside Codex Cloud, UI changes may be verified with `specific dev` and the development-only account documented in README.md when browser verification is useful or explicitly requested.
 
 After completing and verifying requested changes, commit them in logical commits and publish them using the environment's supported GitHub workflow before reporting completion. Never commit secrets or unrelated user changes.
 
