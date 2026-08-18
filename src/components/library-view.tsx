@@ -542,14 +542,14 @@ function DetailPanel({
             <button className="sheet-close-button" onClick={onClose} type="button"><X size={18} /><span>Close</span></button>
             <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
           </div>
-        </div>
 
-        <div className="detail-hero">
-          {poster ? <img className="detail-poster" alt="" src={poster} /> : <span className="detail-poster placeholder"><Clapperboard size={32} /></span>}
-          <div className="detail-title-copy">
-            <span className="type-pill">{mediaLabel(item.mediaType)}</span>
-            <h2 id="detail-title">{item.title}</h2>
-            {item.releaseYear ? <p>{item.releaseYear}</p> : null}
+          <div className="detail-hero">
+            {poster ? <img className="detail-poster" alt="" src={poster} /> : <span className="detail-poster placeholder"><Clapperboard size={32} /></span>}
+            <div className="detail-title-copy">
+              <span className="type-pill">{mediaLabel(item.mediaType)}</span>
+              <h2 id="detail-title">{item.title}</h2>
+              {item.releaseYear ? <p>{item.releaseYear}</p> : null}
+            </div>
           </div>
         </div>
 
