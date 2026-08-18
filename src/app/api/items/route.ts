@@ -2,6 +2,7 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getRequestUserId } from "@/lib/api-auth";
+import { validateStateChangingApiRequest } from "@/lib/api-request-security";
 import { db } from "@/lib/db/client";
 import { mediaItems } from "@/lib/db/schema";
 import { createMediaItemSchema, itemStatusSchema } from "@/lib/media-validation";
@@ -40,6 +41,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const invalidRequest = validateStateChangingApiRequest(request);
+  if (invalidRequest) return invalidRequest;
+
   const userId = await getRequestUserId(request);
 
   if (!userId) return unauthorized();
