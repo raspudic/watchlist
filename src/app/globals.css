@@ -106,6 +106,12 @@ textarea {
   font: inherit;
 }
 
+input,
+textarea {
+  /* Prevent iOS from zooming the visual viewport when a field receives focus. */
+  font-size: 16px;
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
