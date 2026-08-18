@@ -299,7 +299,6 @@ function SearchDialog({
           </button>
           <div className="search-footer-line">
             <p aria-live="polite" className="quick-add-status">{lastAdded ? `Added ${lastAdded}. Ready for another.` : "Enter adds the selected result"}</p>
-            <p className="search-credit">Search data by TMDB</p>
           </div>
         </div>
       </section>
