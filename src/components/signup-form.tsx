@@ -6,13 +6,17 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { MIN_PASSWORD_LENGTH, validateNewPassword } from "@/lib/account-validation";
-import { authClient } from "@/lib/auth-client";
 
-export function SignupForm() {
+export function SignupForm({
+  email,
+  invitationToken,
+}: {
+  email: string;
+  invitationToken: string;
+}) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
@@ -30,20 +34,23 @@ export function SignupForm() {
 
     setPending(true);
     const normalizedUsername = username.trim();
-    const result = await authClient.signUp.email({
-      email: email.trim(),
-      name: displayName.trim() || normalizedUsername,
-      password,
-      username: normalizedUsername,
+    const response = await fetch("/api/invitations/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: invitationToken,
+        name: displayName.trim(),
+        password,
+        username: normalizedUsername,
+      }),
     });
+    const result = await response.json() as { error?: string };
 
-    if (result.error) {
+    if (!response.ok) {
       setError(
-        result.error.status === 429
+        response.status === 429
           ? "Too many account attempts. Please try again later."
-          : result.error.code === "PASSWORD_COMPROMISED"
-            ? "That password has appeared in a known data breach. Choose another one."
-            : "Could not create that account. Try a different username or email.",
+          : result.error ?? "Could not create that account. Try a different username.",
       );
       setPending(false);
       return;
@@ -92,7 +99,7 @@ export function SignupForm() {
         className="text-input"
         id="new-email"
         name="email"
-        onChange={(event) => setEmail(event.target.value)}
+        readOnly
         required
         type="email"
         value={email}

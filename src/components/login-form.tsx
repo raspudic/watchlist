@@ -1,7 +1,6 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -68,7 +67,7 @@ export function LoginForm() {
         {pending ? <LoaderCircle aria-hidden="true" className="spin" size={17} /> : null}
         {pending ? "Signing in…" : "Sign in"}
       </button>
-      <p className="auth-switch">New here? <Link href="/signup">Create an account</Link></p>
+      <p className="auth-switch">Accounts are invitation-only.</p>
     </form>
   );
 }
