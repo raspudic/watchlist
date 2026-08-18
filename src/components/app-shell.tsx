@@ -10,6 +10,7 @@ import { GlobalSearch } from "@/components/global-search";
 import { LibraryCacheProvider } from "@/components/library-cache-provider";
 import { authClient } from "@/lib/auth-client";
 import { clearLibraryCache } from "@/lib/library-cache";
+import type { KeyboardShortcut } from "@/lib/keyboard-shortcut";
 
 const links = [
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
@@ -19,11 +20,13 @@ const links = [
 export function AppShell({
   children,
   displayName,
+  searchShortcut,
   userId,
   username,
 }: {
   children: ReactNode;
   displayName: string;
+  searchShortcut: KeyboardShortcut;
   userId: string;
   username: string;
 }) {
@@ -31,6 +34,7 @@ export function AppShell({
   const router = useRouter();
   const [accountOpen, setAccountOpen] = useState(false);
   const [currentDisplayName, setCurrentDisplayName] = useState(displayName);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   async function signOut() {
     await authClient.signOut();
@@ -46,6 +50,11 @@ export function AppShell({
           <Link className="brand" href="/watchlist" aria-label="Watchlist home">
             <span aria-hidden="true">/</span> watchlist
           </Link>
+          <button className="nav-search-button" onClick={() => setSearchOpen(true)} type="button">
+            <Search aria-hidden="true" size={18} strokeWidth={1.8} />
+            <span>Search</span>
+            <kbd aria-label={searchShortcut.ariaLabel}>{searchShortcut.display}</kbd>
+          </button>
           <nav className="side-nav" aria-label="Library">
             {links.map(({ href, label, icon: Icon }) => (
               <Link className={pathname === href ? "nav-link active" : "nav-link"} href={href} key={href}>
@@ -68,19 +77,19 @@ export function AppShell({
           </div>
         </aside>
 
-        <GlobalSearch mobileHeader={(openSearch) => (
-          <header className="mobile-header">
-            <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>
-            <div className="mobile-header-actions">
-              <button aria-label="Search library" className="mobile-search-button" onClick={openSearch} type="button">
-                <Search aria-hidden="true" size={18} />
-              </button>
-              <button className="mobile-avatar" onClick={() => setAccountOpen(true)} title="Account" type="button">
-                {currentDisplayName.slice(0, 1).toUpperCase()}
-              </button>
-            </div>
-          </header>
-        )} />
+        <header className="mobile-header">
+          <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>
+          <div className="mobile-header-actions">
+            <button aria-label="Search library" className="mobile-search-button" onClick={() => setSearchOpen(true)} type="button">
+              <Search aria-hidden="true" size={18} />
+            </button>
+            <button className="mobile-avatar" onClick={() => setAccountOpen(true)} title="Account" type="button">
+              {currentDisplayName.slice(0, 1).toUpperCase()}
+            </button>
+          </div>
+        </header>
+
+        <GlobalSearch onOpenChange={setSearchOpen} open={searchOpen} />
 
         <main className="app-main">{children}</main>
 

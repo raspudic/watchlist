@@ -5,7 +5,7 @@
 
 import { CheckCircle2, Clapperboard, LoaderCircle, Search, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { MediaItem } from "@/lib/library-cache";
 
@@ -34,8 +34,13 @@ function matchingNote(item: MediaItem, query: string) {
   return notes.find((note) => note.value?.toLocaleLowerCase().includes(needle)) ?? null;
 }
 
-export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () => void) => ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function GlobalSearch({
+  onOpenChange,
+  open,
+}: {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<MediaItem[]>([]);
   const [searching, setSearching] = useState(false);
@@ -49,18 +54,18 @@ export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () =
       const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
       if ((event.key.toLocaleLowerCase() === "k" && (event.metaKey || event.ctrlKey)) || (event.key === "/" && !isTyping)) {
         event.preventDefault();
-        setOpen(true);
+        onOpenChange(true);
       }
     }
     document.addEventListener("keydown", openFromKeyboard);
     return () => document.removeEventListener("keydown", openFromKeyboard);
-  }, []);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(() => inputRef.current?.focus(), 40);
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") onOpenChange(false);
     }
     document.addEventListener("keydown", closeOnEscape);
     document.body.classList.add("panel-open");
@@ -69,7 +74,7 @@ export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () =
       document.removeEventListener("keydown", closeOnEscape);
       document.body.classList.remove("panel-open");
     };
-  }, [open]);
+  }, [onOpenChange, open]);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -100,7 +105,7 @@ export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () =
   }, [open, query]);
 
   function close() {
-    setOpen(false);
+    onOpenChange(false);
     setQuery("");
     setItems([]);
     setError("");
@@ -113,18 +118,9 @@ export function GlobalSearch({ mobileHeader }: { mobileHeader: (openSearch: () =
 
   const watchlist = items.filter((item) => item.status === "watchlist");
   const watched = items.filter((item) => item.status === "watched");
-  const openSearch = () => setOpen(true);
 
   return (
     <>
-      <button className="nav-search-button" onClick={openSearch} type="button">
-        <Search aria-hidden="true" size={18} strokeWidth={1.8} />
-        <span>Search</span>
-        <kbd>Ctrl K</kbd>
-      </button>
-
-      {mobileHeader(openSearch)}
-
       {open ? (
         <div className="modal-layer global-search-layer" onMouseDown={(event) => event.target === event.currentTarget && close()} role="presentation">
           <section aria-labelledby="library-search-title" aria-modal="true" className="library-search-dialog" role="dialog">
