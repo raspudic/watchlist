@@ -5,8 +5,8 @@ import { haveIBeenPwned, username } from "better-auth/plugins";
 import { db } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
 
-const SIX_MONTHS = 60 * 60 * 24 * 180;
 const ONE_DAY = 60 * 60 * 24;
+const THIRTY_DAYS = ONE_DAY * 30;
 
 interface WatchlistAuthOptions {
   disableSignUp?: boolean;
@@ -45,7 +45,7 @@ export function createWatchlistAuth({
       maxPasswordLength: 128,
     },
     session: {
-      expiresIn: SIX_MONTHS,
+      expiresIn: THIRTY_DAYS,
       updateAge: ONE_DAY,
     },
     rateLimit: {
