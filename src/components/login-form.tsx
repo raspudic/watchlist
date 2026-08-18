@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth-client";
 
-export function LoginForm() {
+export function LoginForm({ returnTo = "/watchlist" }: { returnTo?: string }) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -18,7 +19,7 @@ export function LoginForm() {
     setError("");
     setPending(true);
 
-    const result = await authClient.signIn.username({ username, password });
+    const result = await authClient.signIn.username({ username, password, rememberMe });
 
     if (result.error) {
       setError(
@@ -30,7 +31,7 @@ export function LoginForm() {
       return;
     }
 
-    router.replace("/watchlist");
+    router.replace(returnTo);
     router.refresh();
   }
 
@@ -60,6 +61,23 @@ export function LoginForm() {
         type="password"
         value={password}
       />
+
+      <label className="remember-me">
+        <input
+          checked={rememberMe}
+          name="rememberMe"
+          onChange={(event) => setRememberMe(event.target.checked)}
+          type="checkbox"
+        />
+        <span>
+          <strong>Keep me signed in</strong>
+          <small>
+            {rememberMe
+              ? "Stay signed in for 30 days after your latest visit."
+              : "Otherwise, sign out when this browser closes or after 24 hours."}
+          </small>
+        </span>
+      </label>
 
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 

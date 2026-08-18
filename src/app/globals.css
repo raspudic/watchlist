@@ -260,6 +260,11 @@ a {
 .secondary-button { background: var(--surface-strong); padding: 0 17px; }
 .secondary-button:hover { background: var(--surface-hover); }
 .login-button { width: 100%; margin-top: 24px; }
+.remember-me { margin-top: 18px; display: flex; align-items: flex-start; gap: 10px; color: var(--text-soft); cursor: pointer; }
+.remember-me input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); }
+.remember-me span { display: flex; flex-direction: column; gap: 2px; }
+.remember-me strong { color: var(--text); font-size: 12.5px; font-weight: 620; }
+.remember-me small { color: var(--text-faint); font-size: 11px; line-height: 1.4; }
 
 /* Main shell */
 .app-frame { width: 100%; min-height: 100vh; overflow-x: clip; }
@@ -413,8 +418,42 @@ a {
 .account-section-heading h3 { font-size: 14px; }
 .account-section-heading p { margin-top: 4px; color: var(--text-faint); font-size: 11.5px; }
 .account-save { width: 100%; margin-top: 20px; }
-.account-admin-link { margin-top: 20px; padding: 10px 2px; display: flex; align-items: center; gap: 7px; border-top: 1px solid var(--line); color: var(--accent-text); font-size: 12px; font-weight: 650; }
-.account-admin-link:hover { color: var(--text); }
+.account-links { margin-top: 20px; padding-top: 10px; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--line); }
+.account-links a { padding: 7px 2px; display: flex; align-items: center; gap: 7px; color: var(--accent-text); font-size: 12px; font-weight: 650; }
+.account-links a:hover { color: var(--text); }
+
+/* Sessions */
+.sessions-page { width: min(100%, 820px); margin: 0 auto; padding: 68px 54px 100px; }
+.sessions-heading h1 { margin-top: 6px; font-size: 32px; letter-spacing: -0.04em; }
+.sessions-heading > p:last-child { max-width: 590px; margin-top: 10px; color: var(--text-soft); line-height: 1.5; }
+.sessions-card { margin-top: 28px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.sessions-state { min-height: 180px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--text-soft); }
+.sessions-error { align-items: flex-start; justify-content: flex-start; gap: 14px; }
+.sessions-error > svg { flex: 0 0 auto; color: var(--accent-text); }
+.sessions-error h2 { font-size: 17px; }
+.sessions-error p { max-width: 520px; margin: 7px 0 18px; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.sessions-error button { min-height: 38px; }
+.session-list { padding: 0 26px; }
+.session-row { padding: 23px 0; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: start; gap: 14px; border-bottom: 1px solid var(--line); }
+.session-row:last-child { border-bottom: 0; }
+.session-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); }
+.session-copy { min-width: 0; }
+.session-title { min-height: 26px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.session-title h2 { font-size: 14px; }
+.session-title span { padding: 3px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 9.5px; font-weight: 700; text-transform: uppercase; }
+.session-copy dl { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 7px 18px; color: var(--text-faint); font-size: 10.5px; }
+.session-copy dl div { display: flex; gap: 5px; }
+.session-copy dt { font-weight: 650; }
+.session-copy dd { margin: 0; }
+.session-revoke { min-height: 34px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; background: transparent; color: var(--danger); cursor: pointer; font-size: 11px; font-weight: 650; }
+.session-revoke:hover { background: var(--danger-soft); }
+.session-revoke:disabled { cursor: default; opacity: 0.55; }
+.sessions-message { margin: 0 26px; padding: 13px 0 0; border-top: 1px solid var(--line); color: var(--accent-text); font-size: 12px; }
+.sessions-actions { padding: 20px 26px 24px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid var(--line); }
+.sessions-message + .sessions-actions { border-top: 0; }
+.sessions-actions .secondary-button { min-height: 38px; }
+.sessions-actions > a { color: var(--text-soft); font-size: 12px; font-weight: 620; }
+.sessions-actions > a:hover { color: var(--text); }
 
 /* Administration */
 .admin-invitations { width: min(100%, 820px); margin: 0 auto; padding: 68px 54px 100px; }
@@ -876,6 +915,15 @@ a {
   .bottom-link.active { color: var(--accent-text); }
   .library-page { padding: 31px 15px 42px; }
   .admin-invitations { padding: 31px 15px 42px; }
+  .sessions-page { padding: 31px 15px 42px; }
+  .sessions-heading h1 { font-size: 29px; }
+  .session-list { padding: 0 19px; }
+  .session-row { grid-template-columns: 38px minmax(0, 1fr); }
+  .session-revoke { grid-column: 2; justify-self: start; }
+  .session-copy dl { flex-direction: column; gap: 5px; }
+  .sessions-actions { padding: 18px 19px 21px; align-items: stretch; flex-direction: column; }
+  .sessions-actions .secondary-button { width: 100%; }
+  .sessions-actions > a { text-align: center; }
   .admin-card { padding: 20px; }
   .invite-form-row { align-items: stretch; flex-direction: column; }
   .invite-link-result { grid-template-columns: 1fr; }
