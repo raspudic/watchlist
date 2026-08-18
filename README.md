@@ -37,3 +37,15 @@ deploying this migration, run `specific exec web -- pnpm auth:bootstrap`; no pas
 See [Operations](docs/operations.md) for API limits and privacy-safe runtime events.
 
 Movie and television metadata and images are supplied by [TMDB](https://www.themoviedb.org/). This product is not endorsed or certified by TMDB.
+
+## Account deletion and lifecycle operations
+
+Account deletion requires the current password and an explicit irreversible confirmation. It permanently removes the live account, credential records, sessions, invitations associated with that account, and every library row, including previously removed titles. The final administrator cannot delete their account; promote another existing user first with `specific exec web -- env BOOTSTRAP_USERNAME=their-username pnpm auth:bootstrap`.
+
+Specific runs `lifecycle-cleanup` daily at 02:00 UTC. The idempotent job removes expired sessions, verification records, API limiter buckets and TMDB cache entries; Better Auth limiter rows idle for more than 24 hours; and invitations that have been accepted, revoked, or expired for more than 30 days. It uses a PostgreSQL advisory lock, so an overlapping run exits without making changes. Run it manually with:
+
+```sh
+specific exec lifecycle-cleanup
+```
+
+Deletion affects the live database immediately. Infrastructure backups may retain deleted data until the provider's normal backup-retention period ends.

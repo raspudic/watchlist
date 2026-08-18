@@ -455,6 +455,35 @@ a {
 .sessions-actions > a { color: var(--text-soft); font-size: 12px; font-weight: 620; }
 .sessions-actions > a:hover { color: var(--text); }
 
+.account-danger-form {
+  margin-top: 27px;
+  padding-top: 25px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.account-danger-form .account-section-heading > svg { color: var(--danger); }
+.account-danger-warning { margin-top: 11px; color: var(--danger); font-size: 11.5px; font-weight: 620; }
+.account-delete-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 18px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 9px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 680;
+}
+.account-delete-button:hover:not(:disabled) { border-color: var(--danger); }
+.account-delete-button:disabled { cursor: not-allowed; opacity: 0.48; }
+
 /* Administration */
 .admin-invitations { width: min(100%, 820px); margin: 0 auto; padding: 68px 54px 100px; }
 .admin-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }

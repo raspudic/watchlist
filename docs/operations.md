@@ -14,7 +14,7 @@ There is no daily quota. Identical normalized TMDB searches are cached for 30 se
 
 Limited requests return HTTP `429`, a `Retry-After` header, and a JSON body with `code`, `reason`, and `retryAfter`. The UI keeps the user's search text, shows a retry countdown, and leaves library and custom-title actions available.
 
-Expired limiter buckets and TMDB cache entries are intentionally safe to delete. `cleanupApiProtectionData` in `src/lib/api-protection-cleanup.ts` provides the cleanup operation for the lifecycle job.
+Expired limiter buckets and TMDB cache entries are deleted by the daily `lifecycle-cleanup` job.
 
 ## Operational events
 
