@@ -16,6 +16,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
+import {
+  friendlySearchLimitMessage,
+  isRateLimitError,
+  readApiJson,
+} from "@/lib/api-response";
 import { MAX_BULK_TITLES, parseBulkTitles } from "@/lib/bulk-import";
 
 export type SearchResult = {
@@ -58,14 +63,8 @@ function normalizedTitle(title: string) {
   return title.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-async function readJson<T>(response: Response): Promise<T> {
-  const body = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(body.error ?? "Something went wrong.");
-  return body;
-}
-
 async function searchTitles(query: string, signal?: AbortSignal) {
-  return readJson<{ results: SearchResult[] }>(
+  return readApiJson<{ results: SearchResult[] }>(
     await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal }),
   );
 }
@@ -155,6 +154,9 @@ function SearchDialog({
   const [error, setError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [lastAdded, setLastAdded] = useState("");
+  const [rateLimit, setRateLimit] = useState<{ message: string; retryAt: number } | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [clock, setClock] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useModalLifecycle(onClose);
@@ -165,8 +167,15 @@ function SearchDialog({
   }, []);
 
   useEffect(() => {
+    if (!rateLimit) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [rateLimit]);
+
+  useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) return;
+    if (rateLimit && rateLimit.retryAt > Date.now()) return;
 
     const controller = new AbortController();
     const timer = setTimeout(async () => {
@@ -176,9 +185,21 @@ function SearchDialog({
         const data = await searchTitles(trimmed, controller.signal);
         setResults(data.results);
         setHighlightedIndex(0);
+        setRateLimit(null);
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") {
-          setError(caught instanceof Error ? caught.message : "Search is unavailable.");
+          if (isRateLimitError(caught)) {
+            const limitedAt = Date.now();
+            setClock(limitedAt);
+            setResults([]);
+            setHighlightedIndex(0);
+            setRateLimit({
+              message: friendlySearchLimitMessage(caught.reason),
+              retryAt: limitedAt + caught.retryAfter * 1000,
+            });
+          } else {
+            setError(caught instanceof Error ? caught.message : "Search is unavailable.");
+          }
         }
       } finally {
         setSearching(false);
@@ -189,7 +210,7 @@ function SearchDialog({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, rateLimit, retryNonce]);
 
   async function choose(item: AddableTitle, key: string) {
     setAdding(key);
@@ -200,6 +221,7 @@ function SearchDialog({
       onNotice(`Added ${item.title}`);
       setQuery("");
       setResults([]);
+      setRateLimit(null);
       setHighlightedIndex(0);
       inputRef.current?.focus();
     } catch (caught) {
@@ -210,6 +232,7 @@ function SearchDialog({
   }
 
   const customTitle = query.trim();
+  const retryIn = rateLimit ? Math.max(0, Math.ceil((rateLimit.retryAt - clock) / 1000)) : 0;
 
   function handleSearchKeys(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown" && results.length > 0) {
@@ -250,11 +273,12 @@ function SearchDialog({
               const value = event.target.value;
               setQuery(value);
               setLastAdded("");
-              if (value.trim().length >= 2) setSearching(true);
+              if (value.trim().length >= 2 && !rateLimit) setSearching(true);
               if (value.trim().length < 2) {
                 setResults([]);
                 setSearching(false);
                 setError("");
+                setRateLimit(null);
               }
             }}
             onKeyDown={handleSearchKeys}
@@ -265,10 +289,25 @@ function SearchDialog({
         </div>
 
         <div className="search-results">
+          {rateLimit ? (
+            <div className="search-limit-message" role="status">
+              <p>{rateLimit.message}</p>
+              <button
+                disabled={retryIn > 0}
+                onClick={() => {
+                  setRateLimit(null);
+                  setRetryNonce((current) => current + 1);
+                }}
+                type="button"
+              >
+                {retryIn > 0 ? `Try again in ${retryIn}s` : "Try search again"}
+              </button>
+            </div>
+          ) : null}
           {error ? <p className="search-message error">{error}</p> : null}
-          {!error && customTitle.length < 2 ? <p className="search-message">Start typing to search TMDB.</p> : null}
-          {!error && customTitle.length >= 2 && !searching && results.length === 0 ? <p className="search-message">No close matches found.</p> : null}
-          {results.map((result) => {
+          {!error && !rateLimit && customTitle.length < 2 ? <p className="search-message">Start typing to search TMDB.</p> : null}
+          {!error && !rateLimit && customTitle.length >= 2 && !searching && results.length === 0 ? <p className="search-message">No close matches found.</p> : null}
+          {!rateLimit ? results.map((result) => {
             const key = `${result.mediaType}-${result.externalId}`;
             return (
               <SearchResultButton
@@ -280,7 +319,7 @@ function SearchDialog({
                 selected={highlightedIndex === results.indexOf(result)}
               />
             );
-          })}
+          }) : null}
         </div>
 
         <div className="search-footer">
@@ -373,6 +412,7 @@ function BulkImportDialog({
     setMatching(true);
     setError("");
     try {
+      let limitedRetryAfter = 0;
       const matched = await mapWithConcurrency(parsedTitles, 4, async (sourceTitle, index): Promise<BulkDraft> => {
         try {
           const data = await searchTitles(sourceTitle);
@@ -384,7 +424,10 @@ function BulkImportDialog({
             skipped: false,
             searchFailed: false,
           };
-        } catch {
+        } catch (caught) {
+          if (isRateLimitError(caught)) {
+            limitedRetryAfter = Math.max(limitedRetryAfter, caught.retryAfter);
+          }
           return {
             id: `${index}-${sourceTitle}`,
             sourceTitle,
@@ -397,6 +440,9 @@ function BulkImportDialog({
       });
       setDrafts(matched);
       setStep("review");
+      if (limitedRetryAfter > 0) {
+        setError(`TMDB paused some lookups. Try unresolved titles again in about ${limitedRetryAfter} seconds, or add them as custom titles.`);
+      }
     } finally {
       setMatching(false);
     }
@@ -519,7 +565,11 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
         const data = await searchTitles(pickerQuery.trim(), controller.signal);
         setPickerResults(data.results.slice(0, 6));
       } catch (caught) {
-        if ((caught as Error).name !== "AbortError") setPickerError("Could not search. Try again.");
+        if ((caught as Error).name !== "AbortError") {
+          setPickerError(isRateLimitError(caught)
+            ? `Search is cooling down. Try again in about ${caught.retryAfter} seconds.`
+            : "Could not search. Try again.");
+        }
       } finally {
         setSearching(false);
       }

@@ -1,0 +1,56 @@
+[[actions]]
+type = "create_table"
+name = "api_rate_limit_buckets"
+primary_key = ["key"]
+
+  [[actions.columns]]
+  name = "key"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "count"
+  type = "INTEGER"
+  nullable = false
+  default = "1"
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+[[actions]]
+type = "add_index"
+table = "api_rate_limit_buckets"
+
+  [actions.index]
+  name = "api_rate_limit_buckets_expires_at_idx"
+  columns = ["expires_at"]
+
+[[actions]]
+type = "create_table"
+name = "tmdb_search_cache"
+primary_key = ["key"]
+
+  [[actions.columns]]
+  name = "key"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "payload"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+[[actions]]
+type = "add_index"
+table = "tmdb_search_cache"
+
+  [actions.index]
+  name = "tmdb_search_cache_expires_at_idx"
+  columns = ["expires_at"]

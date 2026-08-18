@@ -34,4 +34,6 @@ Public sign-up is disabled. The bootstrap user is an administrator and can creat
 single-use links from `/admin/invites`. To promote an existing production bootstrap user after
 deploying this migration, run `specific exec web -- pnpm auth:bootstrap`; no password is changed.
 
+See [Operations](docs/operations.md) for API limits and privacy-safe runtime events.
+
 Movie and television metadata and images are supplied by [TMDB](https://www.themoviedb.org/). This product is not endorsed or certified by TMDB.

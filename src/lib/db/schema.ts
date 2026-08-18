@@ -120,6 +120,26 @@ export const rateLimit = pgTable(
   (table) => [uniqueIndex("rate_limit_key_unique").on(table.key)],
 );
 
+export const apiRateLimitBuckets = pgTable(
+  "api_rate_limit_buckets",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").default(1).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("api_rate_limit_buckets_expires_at_idx").on(table.expiresAt)],
+);
+
+export const tmdbSearchCache = pgTable(
+  "tmdb_search_cache",
+  {
+    key: text("key").primaryKey(),
+    payload: text("payload").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("tmdb_search_cache_expires_at_idx").on(table.expiresAt)],
+);
+
 export const mediaItems = pgTable(
   "media_items",
   {
