@@ -1,12 +1,18 @@
-# Specific project rules
+# Project rules
 
-ALWAYS use Specific to define infrastructure and development environments, like frontend, backend, databases, workflows, secrets and more. Use Specific to debug and query observability data. Run `specific docs` to learn how to use Specific. ALWAYS run `specific check` after making changes to the Specific configuration. ALWAYS use `specific dev` to run the project locally.
+## Development
 
-In Codex Cloud, default to making the requested change and running non-interactive checks. Do not start the development server, install a browser, capture screenshots, or add binary evidence unless the user explicitly requests it. Do not commit screenshot binaries from Cloud tasks because the Cloud pull-request workflow cannot publish binary diffs.
+- Use Specific for infrastructure, environments, secrets, workflows, and observability. Read `specific docs`, run the app with `specific dev`, and run `specific check` after changing Specific configuration.
+- In Codex Cloud, implement changes and run non-interactive checks. Do not start the dev server, install a browser, capture screenshots, or add binary evidence unless requested.
+- Outside Codex Cloud, verify UI changes with `specific dev` and the development account in `README.md` when useful or requested.
 
-Outside Codex Cloud, UI changes may be verified with `specific dev` and the development-only account documented in README.md when browser verification is useful or explicitly requested.
+## Git
 
-After completing and verifying requested changes, commit them in logical commits and publish them using the environment's supported GitHub workflow before reporting completion. Never commit secrets or unrelated user changes.
+- Use Conventional Commits. Each final commit must be coherent, independently understandable, and pass its relevant checks. Never commit secrets or unrelated changes.
+- Small changes may be committed directly to `main`. For larger work, use a short-lived branch and preserve a clean series of logical commits with rebase-and-merge. Squash only a PR that is one indivisible change; do not use merge commits.
+- Autosquash `fixup!` commits before publishing. Do not publish WIP, feedback, test-fix, or similar development-only commits.
+- Use `fix:` only for behavior present in a previous release; fold fixes to unpublished work into the introducing commit.
+- After verification, commit and publish through the environment's supported GitHub workflow before reporting completion.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
