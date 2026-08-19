@@ -568,8 +568,7 @@ function DetailPanel({
         {item.status === "watched" ? (
           <div className="rating-block">
             <div className="detail-section-title">
-              <div><h3>Your rating</h3><p>{rating ? `${rating} out of 10` : "Pick the number that feels right."}</p></div>
-              {rating ? <span className="rating-large">{rating}</span> : null}
+              <div><h3>Your rating</h3>{rating === null ? <p>Pick the number that feels right.</p> : null}</div>
             </div>
             <div className="rating-grid" role="group" aria-label="Rating out of 10">
               {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
@@ -605,7 +604,7 @@ function DetailPanel({
               Save notes
             </button>
           ) : (
-            <button className="primary-button" disabled={saving} onClick={() => save({ rating, reviewNote: reviewNote || null })} type="button">
+            <button className="primary-button" disabled={saving} onClick={() => save({ rating, reviewNote: reviewNote || null }, true)} type="button">
               {saving ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}
               Save review
             </button>

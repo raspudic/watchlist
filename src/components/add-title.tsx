@@ -154,6 +154,7 @@ function SearchDialog({
   const [error, setError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [lastAdded, setLastAdded] = useState("");
+  const [quickAdd, setQuickAdd] = useState(false);
   const [rateLimit, setRateLimit] = useState<{ message: string; retryAt: number } | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const [clock, setClock] = useState(0);
@@ -217,8 +218,12 @@ function SearchDialog({
     setError("");
     try {
       await onAdd(item);
-      setLastAdded(item.title);
       onNotice(`Added ${item.title}`);
+      if (!quickAdd) {
+        onClose();
+        return;
+      }
+      setLastAdded(item.title);
       setQuery("");
       setResults([]);
       setRateLimit(null);
@@ -337,7 +342,18 @@ function SearchDialog({
             {adding === "custom" ? <LoaderCircle className="spin" size={17} /> : null}
           </button>
           <div className="search-footer-line">
-            <p aria-live="polite" className="quick-add-status">{lastAdded ? `Added ${lastAdded}. Ready for another.` : "Enter adds the selected result"}</p>
+            <p aria-live="polite" className="quick-add-status">
+              {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Enter adds the selected result" : "Enter adds and closes"}
+            </p>
+            <label className="quick-add-toggle">
+              <input
+                checked={quickAdd}
+                disabled={adding !== null}
+                onChange={(event) => setQuickAdd(event.target.checked)}
+                type="checkbox"
+              />
+              <span>Quick add</span>
+            </label>
           </div>
         </div>
       </section>
