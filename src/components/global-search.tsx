@@ -10,23 +10,12 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { readApiJson } from "@/lib/api-response";
 import type { MediaItem } from "@/lib/library-cache";
+import { mediaLabel, posterUrl } from "@/lib/media-display";
 
-function posterUrl(path: string | null) {
-  return path ? `https://image.tmdb.org/t/p/w92${path}` : null;
-}
 
-function mediaLabel(type: MediaItem["mediaType"]) {
-  if (type === "tv") return "Series";
-  if (type === "movie") return "Movie";
-  return "Title";
-}
 
-async function readJson<T>(response: Response): Promise<T> {
-  const body = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(body.error ?? "Something went wrong.");
-  return body;
-}
 
 function matchingNote(item: MediaItem, query: string) {
   const needle = query.toLocaleLowerCase();
@@ -72,7 +61,7 @@ export function GlobalSearch({
       setSearching(true);
       setError("");
       try {
-        const data = await readJson<{ items: MediaItem[] }>(
+        const data = await readApiJson<{ items: MediaItem[] }>(
           await fetch(`/api/library-search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal }),
         );
         setItems(data.items);
@@ -167,7 +156,7 @@ function SearchGroup({
             {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
             <span className="result-copy">
               <strong>{item.title}</strong>
-              <span>{[item.releaseYear, mediaLabel(item.mediaType)].filter(Boolean).join(" / ")}</span>
+              <span>{[item.releaseYear, mediaLabel(item.mediaType)].filter(Boolean).join(" \u00b7 ")}</span>
               {note ? <span className="library-note-match"><b>{note.label}</b> {note.value}</span> : null}
             </span>
             {item.rating !== null ? <span className="search-rating"><Star size={12} fill="currentColor" />{item.rating}</span> : null}

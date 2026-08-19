@@ -1,4 +1,4 @@
-# Watchlist
+# Later
 
 A simple personal library for movies and shows.
 
@@ -31,7 +31,7 @@ A simple personal library for movies and shows.
 These credentials are development-only; production is configured separately in Specific.
 
 Public sign-up is disabled. The bootstrap user is an administrator and can create seven-day,
-single-use links from `/admin/invites`. To promote an existing production bootstrap user after
+single-use links from `/people`. To promote an existing production bootstrap user after
 deploying this migration, run `specific exec web -- pnpm auth:bootstrap`; no password is changed.
 
 See [Operations](docs/operations.md) for API limits and privacy-safe runtime events.

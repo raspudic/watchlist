@@ -18,6 +18,7 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
+import { mediaLabel, posterUrl } from "@/lib/media-display";
 import { useToast } from "@/components/ui/toast";
 import {
   friendlySearchLimitMessage,
@@ -52,15 +53,7 @@ type BulkDraft = {
   searchFailed: boolean;
 };
 
-function posterUrl(path: string | null) {
-  return path ? `https://image.tmdb.org/t/p/w92${path}` : null;
-}
 
-function mediaLabel(type: AddableTitle["mediaType"]) {
-  if (type === "tv") return "Series";
-  if (type === "movie") return "Movie";
-  return "Custom title";
-}
 
 function normalizedTitle(title: string) {
   return title.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -365,7 +358,7 @@ function SearchResultButton({
       {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
       <span className="result-copy">
         <strong>{result.title}</strong>
-        <span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" \u00b7 ")}</span>
+        <span>{[result.releaseYear, mediaLabel(result.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ")}</span>
       </span>
       {adding ? <Spinner size={17} /> : <Plus aria-hidden="true" size={17} />}
     </button>
@@ -607,7 +600,7 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
             {poster ? <img alt="" src={poster} /> : <span className="mini-poster">{match ? <FileText size={16} /> : <Search size={16} />}</span>}
             <span className="result-copy">
               <strong>{match?.title ?? (draft.searchFailed ? "Search failed" : "No match selected")}</strong>
-              <span>{match ? ["Closest match", "releaseYear" in match ? match.releaseYear : null, mediaLabel(match.mediaType)].filter(Boolean).join(" / ") : "Choose a different result or use your original title"}</span>
+              <span>{match ? ["Closest match", "releaseYear" in match ? match.releaseYear : null, mediaLabel(match.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ") : "Choose a different result or use your original title"}</span>
             </span>
             {versionCount > 1 ? <span className="version-cue">{versionCount} versions</span> : null}
             <button className="change-match" onClick={() => setEditing((current) => !current)} type="button">{editing ? "Done" : "Change"}</button>
@@ -635,7 +628,7 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
                       type="button"
                     >
                       {resultPoster ? <img alt="" src={resultPoster} /> : <span className="mini-poster"><Clapperboard size={14} /></span>}
-                      <span className="result-copy"><strong>{result.title}</strong><span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" \u00b7 ")}</span></span>
+                      <span className="result-copy"><strong>{result.title}</strong><span>{[result.releaseYear, mediaLabel(result.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ")}</span></span>
                       {selected ? <Check size={16} /> : null}
                     </button>
                   );

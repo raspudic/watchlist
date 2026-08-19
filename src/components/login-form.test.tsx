@@ -28,7 +28,7 @@ afterEach(() => {
 describe("LoginForm", () => {
   it("remembers the session by default and passes the explicit choice", async () => {
     mocks.username.mockResolvedValue({ data: {}, error: null });
-    render(<LoginForm returnTo="/account/sessions" />);
+    render(<LoginForm returnTo="/settings" />);
 
     const rememberMe = screen.getByRole("checkbox", { name: /keep me signed in/i });
     expect(rememberMe).toBeChecked();
@@ -42,6 +42,6 @@ describe("LoginForm", () => {
       rememberMe: false,
       username: "friend",
     }));
-    expect(mocks.replace).toHaveBeenCalledWith("/account/sessions");
+    expect(mocks.replace).toHaveBeenCalledWith("/settings");
   });
 });

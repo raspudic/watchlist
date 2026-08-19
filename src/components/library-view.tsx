@@ -43,7 +43,8 @@ import {
   removeCachedLibraryItem,
   upsertCachedLibraryItem,
 } from "@/lib/library-cache";
-import { mediaLabel, mediaMeta, posterUrl, readJson } from "@/lib/media-display";
+import { readApiJson } from "@/lib/api-response";
+import { mediaLabel, mediaMeta, posterUrl } from "@/lib/media-display";
 import { getSwipeRelease } from "@/lib/swipe";
 
 export type { MediaItem } from "@/lib/library-cache";
@@ -118,7 +119,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   }
 
   async function addItem(result: AddableTitle) {
-    const data = await readJson<{ item: MediaItem }>(await postItem(result));
+    const data = await readApiJson<{ item: MediaItem }>(await postItem(result));
     upsertCachedLibraryItem(cacheScope, data.item);
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
   }
@@ -133,7 +134,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         try {
           const response = await postItem(result);
           if (response.status === 409) return { kind: "duplicate" as const };
-          const data = await readJson<{ item: MediaItem }>(response);
+          const data = await readApiJson<{ item: MediaItem }>(response);
           return { kind: "added" as const, item: data.item };
         } catch {
           return { kind: "failed" as const, title: result.title };
@@ -171,7 +172,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
   async function restoreItem(item: MediaItem) {
     try {
-      const data = await readJson<{ item: MediaItem }>(
+      const data = await readApiJson<{ item: MediaItem }>(
         await fetch(`/api/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -191,7 +192,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
 
     try {
-      await readJson(await fetch(`/api/items/${item.id}`, {
+      await readApiJson(await fetch(`/api/items/${item.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       }));
@@ -453,7 +454,7 @@ function DetailSheet({
     setSaving(true);
     setError("");
     try {
-      const data = await readJson<{ item: MediaItem }>(
+      const data = await readApiJson<{ item: MediaItem }>(
         await fetch(`/api/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
