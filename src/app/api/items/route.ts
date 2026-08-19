@@ -1,5 +1,6 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
@@ -9,6 +10,8 @@ import { mediaItems } from "@/lib/db/schema";
 import { createMediaItemSchema, itemStatusSchema } from "@/lib/media-validation";
 
 export const dynamic = "force-dynamic";
+
+const scopeSchema = z.literal("bulk").optional();
 
 function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,7 +55,13 @@ export async function POST(request: Request) {
 
   if (!userId) return unauthorized();
 
-  const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryWrite);
+  const parsedScope = scopeSchema.safeParse(new URL(request.url).searchParams.get("scope") ?? undefined);
+  const limit = await consumeRateLimits(
+    userId,
+    parsedScope.success && parsedScope.data === "bulk"
+      ? API_RATE_LIMITS.libraryBulkWrite
+      : API_RATE_LIMITS.libraryWrite,
+  );
   if (!limit.allowed) return rateLimitResponse(limit);
 
   const parsed = createMediaItemSchema.safeParse(await request.json().catch(() => null));

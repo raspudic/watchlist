@@ -25,10 +25,12 @@ vi.mock("@/lib/tmdb-search", async () => {
   };
 });
 
+import { API_RATE_LIMITS } from "@/lib/api-rate-limit";
+
 import { GET } from "./route";
 
-function request() {
-  return new Request("http://watchlist.test/api/search?q=Arrival");
+function request(query = "?q=Arrival") {
+  return new Request(`http://watchlist.test/api/search${query}`);
 }
 
 describe("GET /api/search", () => {
@@ -108,5 +110,29 @@ describe("GET /api/search", () => {
     })]);
     const serializedEvents = JSON.stringify(mocks.logOperationalEvent.mock.calls);
     expect(serializedEvents).not.toContain("Arrival");
+  });
+
+  it("charges the interactive account tier when no scope is given", async () => {
+    mocks.getCachedTmdbSearch.mockResolvedValue([]);
+
+    await GET(request());
+
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbAccount);
+  });
+
+  it("charges the bulk import tier for scope=bulk", async () => {
+    mocks.getCachedTmdbSearch.mockResolvedValue([]);
+
+    await GET(request("?q=Arrival&scope=bulk"));
+
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbBulkImport);
+  });
+
+  it("falls back to the interactive tier for an unrecognized scope", async () => {
+    mocks.getCachedTmdbSearch.mockResolvedValue([]);
+
+    await GET(request("?q=Arrival&scope=nonsense"));
+
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbAccount);
   });
 });

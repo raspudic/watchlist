@@ -18,22 +18,30 @@ import {
 export const dynamic = "force-dynamic";
 
 const querySchema = z.string().trim().min(1).max(100);
+const scopeSchema = z.literal("bulk").optional();
 
 export async function GET(request: Request) {
   const startedAt = performance.now();
   const userId = await getRequestUserId(request);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const parsedQuery = querySchema.safeParse(new URL(request.url).searchParams.get("q") ?? "");
+  const { searchParams } = new URL(request.url);
+  const parsedQuery = querySchema.safeParse(searchParams.get("q") ?? "");
   if (!parsedQuery.success) {
     return NextResponse.json({ error: "Enter a title to search for." }, { status: 400 });
   }
+  const parsedScope = scopeSchema.safeParse(searchParams.get("scope") ?? undefined);
 
   if (!process.env.TMDB_ACCESS_TOKEN) {
     return NextResponse.json({ error: "Search is not configured yet." }, { status: 503 });
   }
 
-  const accountLimit = await consumeRateLimits(userId, API_RATE_LIMITS.tmdbAccount);
+  const accountLimit = await consumeRateLimits(
+    userId,
+    parsedScope.success && parsedScope.data === "bulk"
+      ? API_RATE_LIMITS.tmdbBulkImport
+      : API_RATE_LIMITS.tmdbAccount,
+  );
   if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
 
   const cached = await getCachedTmdbSearch(parsedQuery.data);

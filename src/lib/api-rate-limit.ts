@@ -70,6 +70,16 @@ export const API_RATE_LIMITS = {
     { id: "tmdb-application-burst", limit: 12, windowSeconds: 0.5, reason: "tmdb_application" },
     { id: "tmdb-application", limit: 30, windowSeconds: 1, reason: "tmdb_application" },
   ],
+  // A 40-title import is one deliberate action, not 40 searches; it gets its own
+  // tier so a paste does not lock the user out of ordinary search for a minute.
+  tmdbBulkImport: [
+    { id: "tmdb-bulk-burst", limit: 50, windowSeconds: 20, reason: "tmdb_account_burst" },
+    { id: "tmdb-bulk-minute", limit: 120, windowSeconds: 60, reason: "tmdb_account_minute" },
+  ],
+  libraryBulkWrite: [
+    { id: "library-bulk-burst", limit: 50, windowSeconds: 20, reason: "account_write" },
+    { id: "library-bulk-minute", limit: 120, windowSeconds: 60, reason: "account_write" },
+  ],
 } satisfies Record<string, RateLimitRule[]>;
 
 function opaqueScope(scope: string) {
