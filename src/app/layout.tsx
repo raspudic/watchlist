@@ -2,20 +2,21 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { PwaRegistration } from "@/components/pwa-registration";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Watchlist",
-    template: "%s | Watchlist",
+    default: "Later",
+    template: "%s · Later",
   },
   description: "A quiet place for what you want to watch and what you loved.",
-  applicationName: "Watchlist",
+  applicationName: "Later",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Watchlist",
+    title: "Later",
   },
   formatDetection: { telephone: false },
 };
@@ -34,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" suppressHydrationWarning>
       <body>
         <Script id="theme-preference" strategy="beforeInteractive">
-          {`try{var theme=localStorage.getItem("watchlist-theme");if(theme!=="light"&&theme!=="dark"&&theme!=="system")theme="system";document.documentElement.dataset.theme=theme}catch{}`}
+          {THEME_BOOTSTRAP_SCRIPT}
         </Script>
         <PwaRegistration />
         {children}

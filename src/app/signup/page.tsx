@@ -14,10 +14,10 @@ export default async function SignupPage() {
   return (
     <main className="login-page signup-page">
       <section className="login-panel signup-panel">
-        <div className="login-brand"><span>/</span> watchlist</div>
+        <div className="login-brand"><span>/</span> later</div>
         <div className="login-copy">
           <h1>Invitation required</h1>
-          <p>Watchlist accounts are created from single-use invitations.</p>
+          <p>Later accounts are created from single-use invitations.</p>
         </div>
         <p className="auth-switch">Have an invitation link? Open it to create your account.</p>
         <p className="auth-switch"><a href="/login">Return to sign in</a></p>

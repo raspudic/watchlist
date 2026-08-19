@@ -27,7 +27,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
   return (
     <main className="login-page signup-page">
       <section className="login-panel signup-panel">
-        <div className="login-brand"><span>/</span> watchlist</div>
+        <div className="login-brand"><span>/</span> later</div>
         <div className="login-copy">
           <h1>{invitation ? "Accept your invitation" : "Invitation unavailable"}</h1>
           <p>

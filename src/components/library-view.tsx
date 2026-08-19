@@ -10,8 +10,6 @@ import {
   Clapperboard,
   LayoutGrid,
   List,
-  LoaderCircle,
-  RotateCcw,
   Star,
   Trash2,
   X,
@@ -26,8 +24,16 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
+import { Badge, TypeBadge } from "@/components/ui/badge";
+import { Button, IconButton } from "@/components/ui/button";
+import { EmptyInline, EmptyState } from "@/components/ui/empty-state";
+import { TextareaField } from "@/components/ui/field";
+import { FilterTabs } from "@/components/ui/filter-tabs";
+import { InlineMessage } from "@/components/ui/inline-message";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Sheet, SheetTitle } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/toast";
 import { type LibraryViewStyle, useLibraryViewStyle } from "@/hooks/use-library-view-style";
-import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
 import {
   getCachedLibrary,
   isLibraryCacheFresh,
@@ -37,6 +43,8 @@ import {
   removeCachedLibraryItem,
   upsertCachedLibraryItem,
 } from "@/lib/library-cache";
+import { readApiJson } from "@/lib/api-response";
+import { mediaLabel, mediaMeta, posterUrl } from "@/lib/media-display";
 import { getSwipeRelease } from "@/lib/swipe";
 
 export type { MediaItem } from "@/lib/library-cache";
@@ -44,35 +52,18 @@ export type { MediaItem } from "@/lib/library-cache";
 type ViewMode = LibraryMode;
 type MediaFilter = "all" | "movie" | "tv";
 
-type UndoState = { item: MediaItem; timer: ReturnType<typeof setTimeout> };
-
-function posterUrl(path: string | null, size = "w185") {
-  return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
-}
-
-function mediaLabel(type: MediaItem["mediaType"]) {
-  if (type === "tv") return "Series";
-  if (type === "movie") return "Movie";
-  return "Title";
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  const body = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(body.error ?? "Something went wrong.");
-  return body;
-}
+const UNDO_WINDOW_MS = 6000;
 
 export function LibraryView({ mode }: { mode: ViewMode }) {
   const cacheScope = useLibraryCacheScope();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const initialItems = getCachedLibrary(cacheScope, mode);
   const [items, setItems] = useState<MediaItem[]>(initialItems ?? []);
   const [loading, setLoading] = useState(initialItems === null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<MediaItem | null>(null);
-  const [undo, setUndo] = useState<UndoState | null>(null);
-  const [notice, setNotice] = useState("");
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [viewStyle, setViewStyle] = useLibraryViewStyle(cacheScope);
 
@@ -114,16 +105,6 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     };
   }, [cacheScope, mode]);
 
-  useEffect(() => () => {
-    if (undo) clearTimeout(undo.timer);
-  }, [undo]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 5000);
-    return () => clearTimeout(timer);
-  }, [notice]);
-
   function closeDetail() {
     setSelected(null);
     if (searchParams.has("item")) window.history.replaceState(null, "", pathname);
@@ -138,7 +119,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   }
 
   async function addItem(result: AddableTitle) {
-    const data = await readJson<{ item: MediaItem }>(await postItem(result));
+    const data = await readApiJson<{ item: MediaItem }>(await postItem(result));
     upsertCachedLibraryItem(cacheScope, data.item);
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
   }
@@ -153,7 +134,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         try {
           const response = await postItem(result);
           if (response.status === 409) return { kind: "duplicate" as const };
-          const data = await readJson<{ item: MediaItem }>(response);
+          const data = await readApiJson<{ item: MediaItem }>(response);
           return { kind: "added" as const, item: data.item };
         } catch {
           return { kind: "failed" as const, title: result.title };
@@ -189,33 +170,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
   }
 
-  async function removeItem(item: MediaItem) {
-    closeDetail();
-    removeCachedLibraryItem(cacheScope, item.id);
-    setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
-
+  async function restoreItem(item: MediaItem) {
     try {
-      await readJson(await fetch(`/api/items/${item.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      }));
-      if (undo) clearTimeout(undo.timer);
-      const timer = setTimeout(() => setUndo(null), 6000);
-      setUndo({ item, timer });
-    } catch (caught) {
-      upsertCachedLibraryItem(cacheScope, item);
-      setItems((current) => [item, ...current]);
-      setError(caught instanceof Error ? caught.message : "Could not remove that title.");
-    }
-  }
-
-  async function undoRemove() {
-    if (!undo) return;
-    clearTimeout(undo.timer);
-    const item = undo.item;
-    setUndo(null);
-    try {
-      const data = await readJson<{ item: MediaItem }>(
+      const data = await readApiJson<{ item: MediaItem }>(
         await fetch(`/api/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -229,151 +186,146 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
   }
 
+  async function removeItem(item: MediaItem) {
+    closeDetail();
+    removeCachedLibraryItem(cacheScope, item.id);
+    setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+
+    try {
+      await readApiJson(await fetch(`/api/items/${item.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }));
+      /* A fixed id keeps a repeated removal of the same title in one toast. */
+      const toastId = `removed-${item.id}`;
+      toast.add({
+        actionProps: {
+          children: "Undo",
+          onClick: () => {
+            toast.close(toastId);
+            void restoreItem(item);
+          },
+        },
+        id: toastId,
+        timeout: UNDO_WINDOW_MS,
+        title: `Removed ${item.title}`,
+      });
+    } catch (caught) {
+      upsertCachedLibraryItem(cacheScope, item);
+      setItems((current) => [item, ...current]);
+      setError(caught instanceof Error ? caught.message : "Could not remove that title.");
+    }
+  }
+
   const visibleItems = mediaFilter === "all" ? items : items.filter((item) => item.mediaType === mediaFilter);
   const needsRating = mode === "watched" ? visibleItems.filter((item) => item.rating === null) : [];
   const rated = mode === "watched" ? visibleItems.filter((item) => item.rating !== null) : [];
   const linkedItemId = searchParams.get("item");
   const linkedItem = linkedItemId ? items.find((item) => item.id === linkedItemId) ?? null : null;
   const detailItem = linkedItem ?? selected;
+  const listClass = viewStyle === "grid" ? "media-grid" : "media-list";
+
+  const filters: Array<{ count: number; label: string; value: MediaFilter }> = [
+    { count: items.length, label: "All", value: "all" },
+    { count: items.filter((item) => item.mediaType === "movie").length, label: "Movies", value: "movie" },
+    { count: items.filter((item) => item.mediaType === "tv").length, label: "Series", value: "tv" },
+  ];
 
   return (
     <div className="library-page">
-      <div className="library-heading">
+      <header className="library-header">
         <div>
-          <p className="eyebrow">Your library</p>
           <h1>{mode === "watchlist" ? "Watchlist" : "Watched"}</h1>
-          <p className="heading-copy">
-            {mode === "watchlist"
-              ? "Movies and shows saved for later."
-              : "Your watched titles, ratings, and notes."}
-          </p>
+          {mode === "watchlist" ? <p className="library-subtitle">Movies and shows saved for later.</p> : null}
         </div>
-        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} onNotice={setNotice} /> : null}
-      </div>
+        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} /> : null}
+      </header>
 
-      {error ? (
-        <div className="inline-error" role="alert">
-          <span>{error}</span>
-          <button onClick={() => setError("")} type="button"><X size={16} /></button>
-        </div>
-      ) : null}
+      {error ? <InlineMessage onDismiss={() => setError("")}>{error}</InlineMessage> : null}
 
       {loading ? <LoadingList /> : null}
 
-      {!loading && items.length === 0 ? <EmptyState mode={mode} /> : null}
-
-      {!loading && items.length > 0 ? (
-        <LibraryTools
-          filter={mediaFilter}
-          onFilter={setMediaFilter}
-          onView={setViewStyle}
-          view={viewStyle}
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          actions={mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} variant="empty" /> : undefined}
+          description={mode === "watchlist" ? "Add a movie or show to get started." : "Titles you finish will move here."}
+          icon={mode === "watchlist" ? <BookmarkPlus size={24} /> : <Check size={25} />}
+          title={mode === "watchlist" ? "Nothing waiting yet" : "Nothing watched yet"}
         />
       ) : null}
 
-      {!loading && items.length > 0 && visibleItems.length === 0 ? (
-        <div className="filter-empty">No {mediaFilter === "movie" ? "movies" : "shows"} here yet.</div>
-      ) : null}
+      {!loading && items.length > 0 ? (
+        <FilterTabs
+          items={filters}
+          label="Filter titles"
+          onValueChange={setMediaFilter}
+          trailing={
+            <SegmentedControl<LibraryViewStyle>
+              iconsOnly
+              items={[
+                { icon: <List aria-hidden="true" size={16} />, label: "List view", value: "list" },
+                { icon: <LayoutGrid aria-hidden="true" size={16} />, label: "Tile view", value: "grid" },
+              ]}
+              label="Choose layout"
+              onValueChange={(next) => { if (next) setViewStyle(next); }}
+              value={viewStyle}
+            />
+          }
+          value={mediaFilter}
+        >
+          {visibleItems.length === 0 ? (
+            <EmptyInline>No {mediaFilter === "movie" ? "movies" : "series"} here yet.</EmptyInline>
+          ) : null}
 
-      {!loading && mode === "watchlist" && visibleItems.length > 0 ? (
-        <section className="media-section" aria-label="Watchlist titles">
-          <div className="section-label"><span>{visibleItems.length} {visibleItems.length === 1 ? "title" : "titles"}</span></div>
-          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
-            {visibleItems.map((item) => (
-              <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+          {mode === "watchlist" && visibleItems.length > 0 ? (
+            <section aria-label="Watchlist titles" className="media-section">
+              <div className={listClass}>
+                {visibleItems.map((item) => (
+                  <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-      {!loading && mode === "watched" && needsRating.length > 0 ? (
-        <section className="media-section rating-section" aria-labelledby="needs-rating-heading">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Worth remembering</p>
-              <h2 id="needs-rating-heading">How was it?</h2>
-            </div>
-            <span className="count-pill">{needsRating.length}</span>
-          </div>
-          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
-            {needsRating.map((item) => (
-              <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} promptRating />
-            ))}
-          </div>
-        </section>
-      ) : null}
+          {mode === "watched" && needsRating.length > 0 ? (
+            <section aria-labelledby="needs-rating-label" className="media-section">
+              <div className="section-label">
+                <span id="needs-rating-label">How was it?</span>
+                <span>{needsRating.length}</span>
+              </div>
+              <div className={listClass}>
+                {needsRating.map((item) => (
+                  <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} promptRating />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-      {!loading && mode === "watched" && rated.length > 0 ? (
-        <section className="media-section" aria-labelledby="rated-heading">
-          <div className="section-label" id="rated-heading"><span>Rated</span><span>{rated.length}</span></div>
-          <div className={viewStyle === "grid" ? "media-grid" : "media-list"}>
-            {rated.map((item) => (
-              <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
-            ))}
-          </div>
-        </section>
+          {mode === "watched" && rated.length > 0 ? (
+            <section aria-labelledby="rated-label" className="media-section">
+              <div className="section-label">
+                <span id="rated-label">Rated</span>
+                <span>{rated.length}</span>
+              </div>
+              <div className={listClass}>
+                {rated.map((item) => (
+                  <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </FilterTabs>
       ) : null}
 
       {detailItem ? (
-        <DetailPanel
+        <DetailSheet
           item={detailItem}
+          key={detailItem.id}
           onClose={closeDetail}
           onRemove={removeItem}
           onUpdate={replaceItem}
         />
       ) : null}
-
-      {undo ? (
-        <div className="toast" role="status">
-          <span>Removed <strong>{undo.item.title}</strong></span>
-          <button onClick={undoRemove} type="button"><RotateCcw size={15} /> Undo</button>
-        </div>
-      ) : null}
-      {!undo && notice ? <div className="toast notice-toast" role="status"><span>{notice}</span></div> : null}
-    </div>
-  );
-}
-
-function LibraryTools({
-  filter,
-  onFilter,
-  onView,
-  view,
-}: {
-  filter: MediaFilter;
-  onFilter: (filter: MediaFilter) => void;
-  onView: (view: LibraryViewStyle) => void;
-  view: LibraryViewStyle;
-}) {
-  const filters: Array<{ label: string; value: MediaFilter }> = [
-    { label: "All", value: "all" },
-    { label: "Movies", value: "movie" },
-    { label: "Shows", value: "tv" },
-  ];
-
-  return (
-    <div className="library-tools">
-      <div aria-label="Filter titles" className="media-filter" role="group">
-        {filters.map((option) => (
-          <button
-            aria-pressed={filter === option.value}
-            className={filter === option.value ? "active" : undefined}
-            key={option.value}
-            onClick={() => onFilter(option.value)}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <div aria-label="Choose layout" className="view-switch" role="group">
-        <button aria-label="List view" aria-pressed={view === "list"} className={view === "list" ? "active" : undefined} onClick={() => onView("list")} title="List view" type="button">
-          <List aria-hidden="true" size={16} />
-        </button>
-        <button aria-label="Tile view" aria-pressed={view === "grid"} className={view === "grid" ? "active" : undefined} onClick={() => onView("grid")} title="Tile view" type="button">
-          <LayoutGrid aria-hidden="true" size={16} />
-        </button>
-      </div>
     </div>
   );
 }
@@ -466,9 +418,9 @@ function MediaRow({
         <span className="row-content">
           <span className="row-title-line">
             <strong>{item.title}</strong>
-            {item.rating !== null ? <span className="rating-badge"><Star size={13} fill="currentColor" /> {item.rating}</span> : null}
+            {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
           </span>
-          <span className="row-meta">{[item.releaseYear, mediaLabel(item.mediaType)].filter(Boolean).join(" · ")}</span>
+          <span className="row-meta">{mediaMeta(item.releaseYear, item.mediaType)}</span>
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
         </span>
@@ -478,7 +430,9 @@ function MediaRow({
   );
 }
 
-function DetailPanel({
+const RATINGS = Array.from({ length: 10 }, (_, index) => String(index + 1));
+
+function DetailSheet({
   item,
   onClose,
   onRemove,
@@ -495,25 +449,12 @@ function DetailPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const poster = posterUrl(item.posterPath, "w342");
-  const sheet = usePullToDismiss(onClose);
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    document.body.classList.add("panel-open");
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      document.body.classList.remove("panel-open");
-    };
-  }, [onClose]);
 
   async function save(patch: Record<string, unknown>, closeAfterSave = false) {
     setSaving(true);
     setError("");
     try {
-      const data = await readJson<{ item: MediaItem }>(
+      const data = await readApiJson<{ item: MediaItem }>(
         await fetch(`/api/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -530,29 +471,27 @@ function DetailPanel({
   }
 
   const note = item.status === "watchlist" ? watchlistNote : reviewNote;
-  return (
-    <div className="panel-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section
-        aria-labelledby="detail-title"
-        aria-modal="true"
-        className={sheet.dragging ? "detail-panel sheet-dragging" : "detail-panel"}
-        role="dialog"
-        style={sheet.style}
-      >
-        <div className="sheet-drag-region" {...sheet.dragProps}>
-          <div className="panel-handle" aria-hidden="true" />
-          <div className="panel-topbar">
-            <button className="sheet-close-button" onClick={onClose} type="button"><X size={18} /><span>Close</span></button>
-            <button className="panel-close" onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
-          </div>
 
-          <div className="detail-hero">
-            {poster ? <img className="detail-poster" alt="" src={poster} /> : <span className="detail-poster placeholder"><Clapperboard size={32} /></span>}
-            <div className="detail-title-copy">
-              <span className="type-pill">{mediaLabel(item.mediaType)}</span>
-              <h2 id="detail-title">{item.title}</h2>
-              {item.releaseYear ? <p>{item.releaseYear}</p> : null}
-            </div>
+  return (
+    <Sheet
+      className="detail-sheet"
+      dismissible={!saving}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      open
+    >
+      <div className="sheet-topbar">
+        <IconButton disabled={saving} label="Close" onClick={onClose}>
+          <X aria-hidden="true" size={19} />
+        </IconButton>
+      </div>
+
+      <div className="sheet-body">
+        <div className="detail-hero">
+          {poster ? <img className="detail-poster" alt="" src={poster} /> : <span className="detail-poster placeholder"><Clapperboard size={32} /></span>}
+          <div className="detail-title-copy">
+            <TypeBadge>{mediaLabel(item.mediaType)}</TypeBadge>
+            <SheetTitle className="detail-title">{item.title}</SheetTitle>
+            {item.releaseYear ? <p className="detail-year">{item.releaseYear}</p> : null}
           </div>
         </div>
 
@@ -570,24 +509,21 @@ function DetailPanel({
             <div className="detail-section-title">
               <div><h3>Your rating</h3>{rating === null ? <p>Pick the number that feels right.</p> : null}</div>
             </div>
-            <div className="rating-grid" role="group" aria-label="Rating out of 10">
-              {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
-                <button
-                  aria-pressed={rating === value}
-                  className={rating === value ? "rating-option selected" : "rating-option"}
-                  key={value}
-                  onClick={() => setRating(rating === value ? null : value)}
-                  type="button"
-                >{value}</button>
-              ))}
-            </div>
+            <SegmentedControl
+              allowEmpty
+              className="rating-control"
+              items={RATINGS.map((value) => ({ label: value, value }))}
+              label="Rating out of 10"
+              onValueChange={(next) => setRating(next === null ? null : Number(next))}
+              value={rating === null ? null : String(rating)}
+            />
           </div>
         ) : null}
 
         <div className="note-block">
-          <label htmlFor="item-note">Notes</label>
-          <textarea
+          <TextareaField
             id="item-note"
+            label="Notes"
             onChange={(event) => item.status === "watchlist" ? setWatchlistNote(event.target.value) : setReviewNote(event.target.value)}
             placeholder="Add anything you want to remember."
             rows={4}
@@ -599,43 +535,51 @@ function DetailPanel({
 
         <div className="panel-actions">
           {item.status === "watchlist" ? (
-            <button className="primary-button" disabled={saving} onClick={() => save({ watchlistNote: watchlistNote || null }, true)} type="button">
-              {saving ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}
+            <Button
+              loading={saving}
+              onClick={() => save({ watchlistNote: watchlistNote || null }, true)}
+            >
+              {saving ? null : <Check aria-hidden="true" size={18} />}
               Save notes
-            </button>
+            </Button>
           ) : (
-            <button className="primary-button" disabled={saving} onClick={() => save({ rating, reviewNote: reviewNote || null }, true)} type="button">
-              {saving ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}
+            <Button
+              loading={saving}
+              onClick={() => save({ rating, reviewNote: reviewNote || null }, true)}
+            >
+              {saving ? null : <Check aria-hidden="true" size={18} />}
               Save review
-            </button>
+            </Button>
           )}
           {item.status === "watchlist" ? (
-            <button className="secondary-button watched-button" disabled={saving} onClick={() => save({ status: "watched", watchlistNote: watchlistNote || null })} type="button">
-              <Check size={17} /> Move to watched
-            </button>
+            <Button
+              disabled={saving}
+              onClick={() => save({ status: "watched", watchlistNote: watchlistNote || null })}
+              variant="secondary"
+            >
+              <Check aria-hidden="true" size={17} /> Move to watched
+            </Button>
           ) : null}
         </div>
 
-        <button className="danger-button" onClick={() => onRemove(item)} type="button"><Trash2 size={16} /> Remove from library</button>
-      </section>
-    </div>
+        <Button
+          className="detail-remove"
+          disabled={saving}
+          onClick={() => onRemove(item)}
+          size="sm"
+          variant="danger"
+        >
+          <Trash2 aria-hidden="true" size={16} /> Remove from library
+        </Button>
+      </div>
+    </Sheet>
   );
 }
 
 function LoadingList() {
   return (
-    <div className="media-list loading-list" aria-label="Loading titles">
+    <div aria-label="Loading titles" className="media-section media-list">
       {[0, 1, 2].map((value) => <div className="row-skeleton" key={value}><span /><div><i /><i /></div></div>)}
-    </div>
-  );
-}
-
-function EmptyState({ mode }: { mode: ViewMode }) {
-  return (
-    <div className="empty-state">
-      <span className="empty-icon">{mode === "watchlist" ? <BookmarkPlus size={24} /> : <Check size={25} />}</span>
-      <h2>{mode === "watchlist" ? "Nothing waiting yet" : "Nothing watched yet"}</h2>
-      <p>{mode === "watchlist" ? "Add a movie or show above." : "Titles you finish will move here."}</p>
     </div>
   );
 }

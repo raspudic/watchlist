@@ -55,7 +55,7 @@ describe("SessionManager", () => {
 
     render(<SessionManager currentSessionId="current-session" />);
 
-    expect(await screen.findByText("Current device")).toBeInTheDocument();
+    expect(await screen.findByText("This device")).toBeInTheDocument();
     expect(screen.getByText("Chrome on Windows")).toBeInTheDocument();
     expect(screen.getByText("203.0.x.x")).toBeInTheDocument();
     expect(screen.queryByText("203.0.113.42")).not.toBeInTheDocument();

@@ -1,7 +1,12 @@
 "use client";
 
-import { Check, Clipboard, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Clipboard, RotateCcw, Trash2 } from "lucide-react";
 import { FormEvent, useState } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button, IconButton } from "@/components/ui/button";
+import { TextField } from "@/components/ui/field";
+import { InlineMessage } from "@/components/ui/inline-message";
 
 export type InvitationSummary = {
   id: string;
@@ -13,7 +18,27 @@ export type InvitationSummary = {
   status: "pending" | "accepted" | "expired" | "revoked";
 };
 
-export function AdminInvitations({ initialInvitations }: { initialInvitations: InvitationSummary[] }) {
+const STATUS_LABEL: Record<InvitationSummary["status"], string> = {
+  pending: "Pending",
+  accepted: "Joined",
+  expired: "Expired",
+  revoked: "Revoked",
+};
+
+function invitationMeta(invitation: InvitationSummary) {
+  switch (invitation.status) {
+    case "accepted":
+      return `Joined ${new Date(invitation.acceptedAt!).toLocaleString()}`;
+    case "revoked":
+      return `Revoked ${new Date(invitation.revokedAt!).toLocaleString()}`;
+    case "expired":
+      return `Expired ${new Date(invitation.expiresAt).toLocaleString()}`;
+    default:
+      return `Created ${new Date(invitation.createdAt).toLocaleString()}`;
+  }
+}
+
+export function PeopleInvitations({ initialInvitations }: { initialInvitations: InvitationSummary[] }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [invitations, setInvitations] = useState(initialInvitations);
@@ -74,61 +99,62 @@ export function AdminInvitations({ initialInvitations }: { initialInvitations: I
   }
 
   return (
-    <div className="admin-invitations">
-      <section className="admin-card">
-        <div className="section-heading">
-          <div><p className="eyebrow">Access</p><h1>Invitations</h1></div>
-        </div>
-        <p className="admin-intro">Create a seven-day, single-use link and send it through a trusted channel.</p>
+    <div className="people-page">
+      <header className="people-heading">
+        <p className="eyebrow">Admins only</p>
+        <h1>People</h1>
+        <p>Later is invite-only. Links last seven days and work once.</p>
+      </header>
+
+      <section className="people-card">
+        <h2>Invite someone</h2>
         <form className="invite-form" onSubmit={createInvitation}>
-          <label className="field-label" htmlFor="invite-email">Friend&apos;s email</label>
           <div className="invite-form-row">
-            <input
+            <TextField
               autoCapitalize="none"
               autoComplete="email"
-              className="text-input"
               id="invite-email"
+              label="Friend's email"
               onChange={(event) => setEmail(event.target.value)}
               required
               type="email"
               value={email}
             />
-            <button className="primary-button" disabled={pending} type="submit">
-              {pending ? <LoaderCircle aria-hidden="true" className="spin" size={16} /> : null}
-              Create link
-            </button>
+            <Button loading={pending} loadingLabel="Creating…" type="submit">Create link</Button>
           </div>
         </form>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? <InlineMessage tone="error">{error}</InlineMessage> : null}
         {invitationUrl ? (
           <div className="invite-link-result" role="status">
             <div><strong>Invitation created</strong><p>This link is shown only now.</p></div>
             <div className="invite-link-field">
               <code>{invitationUrl}</code>
-              <button className="invite-copy-button" onClick={copyInvitation} type="button">
+              <Button onClick={copyInvitation} size="sm" type="button" variant="ghost">
                 {copied ? <Check aria-hidden="true" size={16} /> : <Clipboard aria-hidden="true" size={16} />}
                 {copied ? "Copied" : "Copy"}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
       </section>
 
-      <section className="admin-card">
-        <div className="section-heading"><div><p className="eyebrow">History</p><h2>Recent invitations</h2></div></div>
-        {invitations.length === 0 ? <p className="admin-empty">No invitations yet.</p> : (
+      <section className="people-card">
+        <h2>Invitations</h2>
+        {invitations.length === 0 ? <p className="people-empty">No invitations yet.</p> : (
           <div className="invitation-list">
             {invitations.map((invitation) => (
               <article className="invitation-row" key={invitation.id}>
                 <div>
                   <strong>{invitation.email}</strong>
-                  <p>Created {new Date(invitation.createdAt).toLocaleString()}</p>
+                  <p>{invitationMeta(invitation)}</p>
                 </div>
-                <span className={`invitation-status ${invitation.status}`}>{invitation.status}</span>
+                <Badge tone={invitation.status === "pending" ? "accent" : "neutral"} uppercase>
+                  {STATUS_LABEL[invitation.status]}
+                </Badge>
                 {invitation.status === "pending" ? (
-                  <button className="icon-button" onClick={() => revokeInvitation(invitation.id)} title="Revoke invitation" type="button">
-                    <Trash2 aria-hidden="true" size={16} /><span className="sr-only">Revoke invitation</span>
-                  </button>
+                  <IconButton label="Revoke invitation" onClick={() => revokeInvitation(invitation.id)}>
+                    <Trash2 aria-hidden="true" size={16} />
+                  </IconButton>
                 ) : <RotateCcw aria-hidden="true" className="invitation-history-icon" size={15} />}
               </article>
             ))}

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">Watchlist</title>
+  <title id="title">Later</title>
   <rect width="512" height="512" rx="120" fill="#111214"/>
-  <rect x="105" y="122" width="302" height="268" rx="38" fill="#1c1e22" stroke="#34373d" stroke-width="14"/>
-  <path d="M203 197.5c0-18.2 20-29.4 35.5-20l100 57.7c15.5 8.9 15.5 31.3 0 40.2l-100 57.7c-15.5 8.9-35.5-2.3-35.5-20z" fill="#dbeafe"/>
-  <circle cx="382" cy="154" r="15" fill="#83b6ff"/>
+  <rect x="105" y="122" width="302" height="268" rx="38" fill="#1c1d20" stroke="#3a3c46" stroke-width="14"/>
+  <path d="M203 197.5c0-18.2 20-29.4 35.5-20l100 57.7c15.5 8.9 15.5 31.3 0 40.2l-100 57.7c-15.5 8.9-35.5-2.3-35.5-20z" fill="#e9e9fb"/>
+  <circle cx="382" cy="154" r="15" fill="#9a9df3"/>
 </svg>
