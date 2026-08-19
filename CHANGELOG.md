@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/raspudic/watchlist/compare/v0.2.0...v0.3.0) (2026-08-19)
+
+
+### Features
+
+* rename to Later and rebuild the UI on Base UI ([#30](https://github.com/raspudic/watchlist/issues/30)) ([7ed66e5](https://github.com/raspudic/watchlist/commit/7ed66e59cd78358717d1867be1894f1f09ac470f))
+
+
+### Bug Fixes
+
+* use public invitation URLs ([#28](https://github.com/raspudic/watchlist/issues/28)) ([b3adc5a](https://github.com/raspudic/watchlist/commit/b3adc5af04d4d5d88994ed5dc3696aee2fb06b40))
+
 ## [0.2.0](https://github.com/raspudic/watchlist/compare/v0.1.1...v0.2.0) (2026-08-19)
 
 
