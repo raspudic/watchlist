@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/raspudic/watchlist/compare/v0.4.0...v0.4.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* repair the bulk import dialog layout and let full imports complete ([#34](https://github.com/raspudic/watchlist/issues/34)) ([0b2b99d](https://github.com/raspudic/watchlist/commit/0b2b99d7c29e3e35fcd60d2d6006984055d0f28d))
+
 ## [0.4.0](https://github.com/raspudic/watchlist/compare/v0.3.0...v0.4.0) (2026-08-19)
 
 
