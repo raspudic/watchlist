@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createInvitationUrl,
   createInvitationToken,
   hashInvitationToken,
   invitationExpiresAt,
@@ -20,6 +21,21 @@ describe("invitation helpers", () => {
   it("expires invitations seven days after creation", () => {
     const now = new Date("2026-08-19T10:00:00Z");
     expect(invitationExpiresAt(now).toISOString()).toBe("2026-08-26T10:00:00.000Z");
+  });
+
+  it("uses the configured public app URL instead of the internal request URL", () => {
+    expect(createInvitationUrl({
+      publicBaseUrl: "https://watchlist.example",
+      requestUrl: "https://localhost:8080/api/admin/invitations",
+      token: "invite-token",
+    })).toBe("https://watchlist.example/invite/invite-token");
+  });
+
+  it("falls back to the request origin for local development", () => {
+    expect(createInvitationUrl({
+      requestUrl: "http://localhost:3000/api/admin/invitations",
+      token: "invite-token",
+    })).toBe("http://localhost:3000/invite/invite-token");
   });
 
   it("reports terminal states before expiration", () => {

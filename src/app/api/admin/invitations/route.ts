@@ -6,6 +6,7 @@ import { getRequestAdmin } from "@/lib/admin";
 import { db } from "@/lib/db/client";
 import { invitations } from "@/lib/db/schema";
 import {
+  createInvitationUrl,
   createInvitationToken,
   hashInvitationToken,
   invitationExpiresAt,
@@ -86,7 +87,11 @@ export async function POST(request: Request) {
     })
     .returning();
 
-  const invitationUrl = new URL(`/invite/${token}`, request.url).toString();
+  const invitationUrl = createInvitationUrl({
+    publicBaseUrl: process.env.BETTER_AUTH_URL,
+    requestUrl: request.url,
+    token,
+  });
   return NextResponse.json(
     { invitation: serializeInvitation(invitation), invitationUrl },
     { status: 201, headers: { "Cache-Control": "private, no-store" } },

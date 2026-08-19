@@ -18,6 +18,19 @@ export function invitationExpiresAt(now = new Date()) {
   return new Date(now.getTime() + INVITATION_LIFETIME_DAYS * 24 * 60 * 60 * 1000);
 }
 
+export function createInvitationUrl({
+  publicBaseUrl,
+  requestUrl,
+  token,
+}: {
+  publicBaseUrl?: string;
+  requestUrl: string;
+  token: string;
+}) {
+  const baseUrl = publicBaseUrl?.trim() || requestUrl;
+  return new URL(`/invite/${encodeURIComponent(token)}`, baseUrl).toString();
+}
+
 export function invitationStatus(invitation: {
   acceptedAt: Date | null;
   expiresAt: Date;

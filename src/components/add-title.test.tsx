@@ -78,7 +78,9 @@ describe("AddTitleActions add behavior", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add "Arrival"/ }));
 
     await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
-    expect(screen.queryByRole("dialog", { name: "Find a title" })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Find a title" })).not.toBeInTheDocument();
+    });
   });
 
   it("stays open and resets the search when Quick add is enabled", async () => {
