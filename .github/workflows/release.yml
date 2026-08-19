@@ -18,13 +18,13 @@ jobs:
     steps:
       - name: Prepare or publish release
         id: release
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           release-type: node
 
       - name: Authorize production promotion
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           RELEASE_SHA: ${{ steps.release.outputs.sha }}
         with:
@@ -43,7 +43,7 @@ jobs:
 
       - name: Check out released commit
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ steps.release.outputs.sha }}
           fetch-depth: 0
