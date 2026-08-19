@@ -2,10 +2,12 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AddTitleActions } from "./add-title";
+
+afterEach(cleanup);
 
 describe("AddTitleActions rate-limit experience", () => {
   beforeEach(() => {
@@ -53,5 +55,51 @@ describe("AddTitleActions rate-limit experience", () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
     expect(screen.getByRole("button", { name: "Try search again" })).toBeEnabled();
+  });
+});
+
+describe("AddTitleActions add behavior", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("closes after adding by default", async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AddTitleActions
+        onAdd={onAdd}
+        onBulkAdd={vi.fn()}
+        onNotice={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Search movies and shows" }), { target: { value: "Arrival" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add "Arrival"/ }));
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("dialog", { name: "Find a title" })).not.toBeInTheDocument();
+  });
+
+  it("stays open and resets the search when Quick add is enabled", async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AddTitleActions
+        onAdd={onAdd}
+        onBulkAdd={vi.fn()}
+        onNotice={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Quick add" }));
+    const input = screen.getByRole("textbox", { name: "Search movies and shows" });
+    fireEvent.change(input, { target: { value: "Arrival" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add "Arrival"/ }));
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
+    expect(screen.getByRole("dialog", { name: "Find a title" })).toBeInTheDocument();
+    expect(input).toHaveValue("");
+    expect(screen.getByText("Added Arrival. Ready for another.")).toBeInTheDocument();
   });
 });
