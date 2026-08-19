@@ -73,6 +73,50 @@ describe("consumeRateLimits", () => {
       retryAfter: 9,
     });
   });
+
+  it("gives a bulk import its own TMDB budget instead of sharing the interactive one", async () => {
+    const shared = memoryStore();
+    for (let request = 0; request < 10; request += 1) {
+      await consumeRateLimits("account-1", API_RATE_LIMITS.tmdbAccount, { now: 1_000, store: shared.store });
+    }
+    await expect(consumeRateLimits("account-1", API_RATE_LIMITS.tmdbAccount, { now: 1_000, store: shared.store }))
+      .resolves.toMatchObject({ allowed: false });
+
+    await expect(consumeRateLimits("account-1", API_RATE_LIMITS.tmdbBulkImport, { now: 1_000, store: shared.store }))
+      .resolves.toEqual({ allowed: true });
+  });
+
+  it("covers a full 40-title bulk import before the burst tier trips", async () => {
+    const shared = memoryStore();
+    for (let request = 0; request < 40; request += 1) {
+      await expect(consumeRateLimits("account-1", API_RATE_LIMITS.tmdbBulkImport, {
+        now: 1_000,
+        store: shared.store,
+      })).resolves.toEqual({ allowed: true });
+    }
+  });
+
+  it("gives a bulk write its own library budget instead of sharing the interactive one", async () => {
+    const shared = memoryStore();
+    for (let request = 0; request < 15; request += 1) {
+      await consumeRateLimits("account-1", API_RATE_LIMITS.libraryWrite, { now: 1_000, store: shared.store });
+    }
+    await expect(consumeRateLimits("account-1", API_RATE_LIMITS.libraryWrite, { now: 1_000, store: shared.store }))
+      .resolves.toMatchObject({ allowed: false });
+
+    await expect(consumeRateLimits("account-1", API_RATE_LIMITS.libraryBulkWrite, { now: 1_000, store: shared.store }))
+      .resolves.toEqual({ allowed: true });
+  });
+
+  it("covers a full 40-title bulk write before the burst tier trips", async () => {
+    const shared = memoryStore();
+    for (let request = 0; request < 40; request += 1) {
+      await expect(consumeRateLimits("account-1", API_RATE_LIMITS.libraryBulkWrite, {
+        now: 1_000,
+        store: shared.store,
+      })).resolves.toEqual({ allowed: true });
+    }
+  });
 });
 
 describe("rateLimitResponse", () => {

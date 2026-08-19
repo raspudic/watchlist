@@ -111,8 +111,8 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     if (searchParams.has("item")) window.history.replaceState(null, "", pathname);
   }
 
-  function postItem(result: AddableTitle) {
-    return fetch("/api/items", {
+  function postItem(result: AddableTitle, bulk?: boolean) {
+    return fetch(bulk ? "/api/items?scope=bulk" : "/api/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(result),
@@ -133,7 +133,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     for (let index = 0; index < results.length; index += 4) {
       const outcomes = await Promise.all(results.slice(index, index + 4).map(async (result) => {
         try {
-          const response = await postItem(result);
+          const response = await postItem(result, true);
           if (response.status === 409) return { kind: "duplicate" as const };
           const data = await readApiJson<{ item: MediaItem }>(response);
           return { kind: "added" as const, item: data.item };

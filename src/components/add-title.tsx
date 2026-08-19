@@ -19,7 +19,8 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { MediaResultContent } from "@/components/media/media-result-content";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetTitle } from "@/components/ui/sheet";
+import { TextareaField } from "@/components/ui/field";
+import { Sheet, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useAsyncSearch } from "@/hooks/use-async-search";
 import { mediaLabel, posterUrl } from "@/lib/media-display";
@@ -63,9 +64,11 @@ function normalizedTitle(title: string) {
   return title.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-async function searchTitles(query: string, signal?: AbortSignal) {
+async function searchTitles(query: string, signal?: AbortSignal, scope?: "bulk") {
+  const params = new URLSearchParams({ q: query });
+  if (scope) params.set("scope", scope);
   return readApiJson<{ results: SearchResult[] }>(
-    await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal }),
+    await fetch(`/api/search?${params}`, { signal }),
   );
 }
 
@@ -212,7 +215,7 @@ function SearchDialog({
     <Dialog className="search-dialog" onOpenChange={(next) => !next && onClose()} open>
       <div className="add-search-header">
         <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
-        <div><p className="eyebrow">Add to watchlist</p><DialogTitle>Find a title</DialogTitle></div>
+        <div><DialogTitle>Find a title</DialogTitle></div>
         <IconButton label="Close" onClick={onClose}><X aria-hidden="true" size={18} /></IconButton>
       </div>
 
@@ -364,7 +367,7 @@ function BulkImportDialog({
       let limitedRetryAfter = 0;
       const matched = await mapWithConcurrency(parsedTitles, 4, async (sourceTitle, index): Promise<BulkDraft> => {
         try {
-          const data = await searchTitles(sourceTitle);
+          const data = await searchTitles(sourceTitle, undefined, "bulk");
           return {
             id: `${index}-${sourceTitle}`,
             sourceTitle,
@@ -429,79 +432,80 @@ function BulkImportDialog({
     >
       <div className="bulk-header">
         <div>
-          <p className="eyebrow">{step === "paste" ? "Bulk import" : "Confirm matches"}</p>
           <SheetTitle>{step === "paste" ? "Paste your list" : "Review before adding"}</SheetTitle>
-          <p>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</p>
+          <SheetDescription>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</SheetDescription>
         </div>
         <IconButton disabled={matching || importing} label="Close" onClick={onClose}>
           <X aria-hidden="true" size={19} />
         </IconButton>
       </div>
 
-        {step === "paste" ? (
-          <div className="bulk-paste">
-            <label htmlFor="bulk-titles">Titles</label>
-            <textarea
-              id="bulk-titles"
-              onChange={(event) => {
-                setInput(event.target.value);
-                setError("");
-              }}
-              placeholder={"- Arrival\n- Attack on Titan\n- Severance"}
-              ref={textareaRef}
-              rows={11}
-              value={input}
-            />
-            <div className="bulk-count">
-              <span>{parsedTitles.length} {parsedTitles.length === 1 ? "title" : "titles"} found</span>
-              <span>Maximum {MAX_BULK_TITLES}</span>
-            </div>
+      {step === "paste" ? (
+        <div className="bulk-paste">
+          <TextareaField
+            id="bulk-titles"
+            label="Titles"
+            onChange={(event) => {
+              setInput(event.target.value);
+              setError("");
+            }}
+            placeholder={"- Arrival\n- Attack on Titan\n- Severance"}
+            ref={textareaRef}
+            rows={11}
+            value={input}
+          />
+          <div className="bulk-count">
+            <span className={parsedTitles.length > MAX_BULK_TITLES ? "over-limit" : undefined}>
+              {parsedTitles.length} {parsedTitles.length === 1 ? "title" : "titles"} found
+            </span>
+            <span>Maximum {MAX_BULK_TITLES}</span>
           </div>
-        ) : (
-          <div className="bulk-review">
-            <div className="bulk-review-summary">
-              <span><Check size={15} /> {readyDrafts.length} ready</span>
-              <span>{drafts.length - readyDrafts.length} skipped or unresolved</span>
-            </div>
-            <div className="bulk-rows">
-              {drafts.map((draft) => (
-                <BulkMatchRow draft={draft} key={draft.id} onChange={(patch) => updateDraft(draft.id, patch)} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {error ? <p className="bulk-error" role="alert">{error}</p> : null}
-
-        <div className="bulk-footer">
-          <Button
-            disabled={matching || importing}
-            onClick={() => (step === "review" ? setStep("paste") : onClose())}
-            variant="secondary"
-          >
-            {step === "review" ? "Back" : "Cancel"}
-          </Button>
-          {step === "paste" ? (
-            <Button
-              disabled={parsedTitles.length === 0}
-              loading={matching}
-              loadingLabel="Finding matches…"
-              onClick={findMatches}
-            >
-              <Search aria-hidden="true" size={17} /> Find matches
-            </Button>
-          ) : (
-            <Button
-              disabled={readyDrafts.length === 0}
-              loading={importing}
-              loadingLabel="Adding…"
-              onClick={importMatches}
-            >
-              <ListPlus aria-hidden="true" size={17} />
-              {`Add ${readyDrafts.length} ${readyDrafts.length === 1 ? "title" : "titles"}`}
-            </Button>
-          )}
         </div>
+      ) : (
+        <div className="bulk-review">
+          <div className="bulk-review-summary">
+            <span><Check size={15} /> {readyDrafts.length} ready</span>
+            <span>{drafts.length - readyDrafts.length} skipped or unresolved</span>
+          </div>
+          <div className="bulk-rows">
+            {drafts.map((draft) => (
+              <BulkMatchRow draft={draft} key={draft.id} onChange={(patch) => updateDraft(draft.id, patch)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error ? <p className="bulk-error" role="alert">{error}</p> : null}
+
+      <div className="bulk-footer">
+        <Button
+          disabled={matching || importing}
+          onClick={() => (step === "review" ? setStep("paste") : onClose())}
+          variant="secondary"
+        >
+          {step === "review" ? "Back" : "Cancel"}
+        </Button>
+        {step === "paste" ? (
+          <Button
+            disabled={parsedTitles.length === 0 || parsedTitles.length > MAX_BULK_TITLES}
+            loading={matching}
+            loadingLabel="Finding matches…"
+            onClick={findMatches}
+          >
+            <Search aria-hidden="true" size={17} /> Find matches
+          </Button>
+        ) : (
+          <Button
+            disabled={readyDrafts.length === 0}
+            loading={importing}
+            loadingLabel="Adding…"
+            onClick={importMatches}
+          >
+            <ListPlus aria-hidden="true" size={17} />
+            {`Add ${readyDrafts.length} ${readyDrafts.length === 1 ? "title" : "titles"}`}
+          </Button>
+        )}
+      </div>
     </Sheet>
   );
 }

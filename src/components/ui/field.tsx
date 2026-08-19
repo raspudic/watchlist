@@ -3,7 +3,7 @@
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Field } from "@base-ui/react/field";
 import { Check } from "lucide-react";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ComponentPropsWithRef, ReactNode } from "react";
 
 type Shared = {
   description?: ReactNode;
@@ -50,7 +50,7 @@ export function TextareaField({
   label,
   optional,
   ...control
-}: Shared & ComponentPropsWithoutRef<"textarea">) {
+}: Shared & ComponentPropsWithRef<"textarea">) {
   return (
     <Shell description={description} error={error} label={label} optional={optional}>
       <Field.Control className="field-control" render={<textarea {...control} />} />
