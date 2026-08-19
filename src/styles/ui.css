@@ -386,7 +386,11 @@ textarea.field-control {
   height: 24px;
   padding: 0;
   display: grid;
+  /* The base row is a flex-start flex item; as a grid these have to re-centre
+     both the track and the icon within it, or the glyph sits left of its pill. */
+  place-content: center;
   place-items: center;
+  gap: 0;
   border-radius: 6px;
   color: var(--text-faint);
 }

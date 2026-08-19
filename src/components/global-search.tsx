@@ -1,21 +1,20 @@
 "use client";
 
-/* TMDB poster URLs are already sized at the CDN; using a plain image avoids image-proxy overhead. */
-/* eslint-disable @next/next/no-img-element */
-
-import { CheckCircle2, Clapperboard, Search, Star, X } from "lucide-react";
+import { Autocomplete } from "@base-ui/react/autocomplete";
+import { CheckCircle2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { MediaResultContent } from "@/components/media/media-result-content";
 import { IconButton } from "@/components/ui/button";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { useAsyncSearch } from "@/hooks/use-async-search";
 import { readApiJson } from "@/lib/api-response";
 import type { MediaItem } from "@/lib/library-cache";
 import { mediaLabel, posterUrl } from "@/lib/media-display";
 
-
-
+type LibraryGroup = { items: MediaItem[]; value: "Watchlist" | "Watched" };
 
 function matchingNote(item: MediaItem, query: string) {
   const needle = query.toLocaleLowerCase();
@@ -26,6 +25,13 @@ function matchingNote(item: MediaItem, query: string) {
   return notes.find((note) => note.value?.toLocaleLowerCase().includes(needle)) ?? null;
 }
 
+async function searchLibrary(query: string, signal: AbortSignal) {
+  const data = await readApiJson<{ items: MediaItem[] }>(
+    await fetch(`/api/library-search?q=${encodeURIComponent(query)}`, { signal }),
+  );
+  return data.items;
+}
+
 export function GlobalSearch({
   onOpenChange,
   open,
@@ -33,11 +39,16 @@ export function GlobalSearch({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState("");
   const router = useRouter();
+  const onError = useCallback(
+    (caught: unknown) => (caught instanceof Error ? caught.message : "Could not search your library."),
+    [],
+  );
+  const { error, query, reset, results, searching, setQuery } = useAsyncSearch<MediaItem>({
+    enabled: open,
+    onError,
+    search: searchLibrary,
+  });
 
   useEffect(() => {
     function openFromKeyboard(event: KeyboardEvent) {
@@ -52,39 +63,18 @@ export function GlobalSearch({
     return () => document.removeEventListener("keydown", openFromKeyboard);
   }, [onOpenChange]);
 
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (!open || trimmed.length < 2) return;
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      setError("");
-      try {
-        const data = await readApiJson<{ items: MediaItem[] }>(
-          await fetch(`/api/library-search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal }),
-        );
-        setItems(data.items);
-      } catch (caught) {
-        if ((caught as Error).name !== "AbortError") {
-          setError(caught instanceof Error ? caught.message : "Could not search your library.");
-        }
-      } finally {
-        setSearching(false);
-      }
-    }, 220);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [open, query]);
+  const groups = useMemo<LibraryGroup[]>(() => {
+    const watchlist = results.filter((item) => item.status === "watchlist");
+    const watched = results.filter((item) => item.status === "watched");
+    return [
+      ...(watchlist.length > 0 ? [{ items: watchlist, value: "Watchlist" as const }] : []),
+      ...(watched.length > 0 ? [{ items: watched, value: "Watched" as const }] : []),
+    ];
+  }, [results]);
 
   function close() {
     onOpenChange(false);
-    setQuery("");
-    setItems([]);
-    setError("");
+    reset();
   }
 
   function openItem(item: MediaItem) {
@@ -92,77 +82,80 @@ export function GlobalSearch({
     router.push(`/${item.status}?item=${encodeURIComponent(item.id)}`);
   }
 
-  const watchlist = items.filter((item) => item.status === "watchlist");
-  const watched = items.filter((item) => item.status === "watched");
+  const tooShort = query.trim().length < 2;
 
   return (
     <Dialog className="library-search-dialog" onOpenChange={(next) => !next && close()} open={open}>
       <DialogTitle className="sr-only">Search your library</DialogTitle>
-      <div className="search-input-wrap">
-        {searching ? <Spinner size={20} /> : <Search aria-hidden="true" size={20} />}
-              <input
-                aria-label="Search your library"
-                autoComplete="off"
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setQuery(value);
-                  if (value.trim().length < 2) {
-                    setItems([]);
-                    setSearching(false);
-                    setError("");
-                  }
-                }}
-                placeholder="Search titles and notes..."
-                autoFocus
-                value={query}
-              />
-        <IconButton label="Close" onClick={close}><X aria-hidden="true" size={18} /></IconButton>
-      </div>
+      <Autocomplete.Root
+        autoHighlight="always"
+        filter={null}
+        items={groups}
+        onValueChange={setQuery}
+        value={query}
+      >
+        <Autocomplete.InputGroup className="search-input-wrap">
+          {searching ? <Spinner size={20} /> : <Search aria-hidden="true" size={20} />}
+          <Autocomplete.Input
+            aria-label="Search your library"
+            autoComplete="off"
+            autoFocus
+            placeholder="Search titles and notes..."
+          />
+          <IconButton label="Close" onClick={close}>
+            <X aria-hidden="true" size={18} />
+          </IconButton>
+        </Autocomplete.InputGroup>
 
-            <div className="library-search-results">
-              {error ? <p className="search-message error">{error}</p> : null}
-              {!error && query.trim().length < 2 ? <p className="search-message">Search everything you have saved, including notes.</p> : null}
-              {!error && query.trim().length >= 2 && !searching && items.length === 0 ? <p className="search-message">Nothing in your library matches that.</p> : null}
-              {watchlist.length > 0 ? <SearchGroup items={watchlist} label="Watchlist" onOpen={openItem} query={query} /> : null}
-              {watched.length > 0 ? <SearchGroup items={watched} label="Watched" onOpen={openItem} query={query} /> : null}
-            </div>
-      <div className="library-search-footer"><span>Titles and notes</span><span className="keyboard-hint">Esc to close</span></div>
+        <div className="library-search-results">
+          {error ? <p className="search-message error">{error}</p> : null}
+          {!error && tooShort ? (
+            <p className="search-message">Search everything you have saved, including notes.</p>
+          ) : null}
+          {!error && !tooShort && !searching && results.length === 0 ? (
+            <p className="search-message">Nothing in your library matches that.</p>
+          ) : null}
+          <Autocomplete.List>
+            {(group: LibraryGroup) => (
+              <Autocomplete.Group className="library-search-group" items={group.items} key={group.value}>
+                <Autocomplete.GroupLabel className="library-search-group-label">
+                  <span>
+                    {group.value === "Watched" ? <CheckCircle2 aria-hidden="true" size={13} /> : null}
+                    {group.value}
+                  </span>
+                  <span>{group.items.length}</span>
+                </Autocomplete.GroupLabel>
+                <Autocomplete.Collection>
+                  {(item: MediaItem) => {
+                    const note = matchingNote(item, query.trim());
+                    return (
+                      <Autocomplete.Item
+                        className="library-search-result"
+                        key={item.id}
+                        onClick={() => openItem(item)}
+                        value={item}
+                      >
+                        <MediaResultContent
+                          meta={[item.releaseYear, mediaLabel(item.mediaType)].filter(Boolean).join(" · ")}
+                          noteLabel={note?.label}
+                          noteValue={note?.value ?? undefined}
+                          posterUrl={posterUrl(item.posterPath)}
+                          rating={item.rating}
+                          title={item.title}
+                        />
+                      </Autocomplete.Item>
+                    );
+                  }}
+                </Autocomplete.Collection>
+              </Autocomplete.Group>
+            )}
+          </Autocomplete.List>
+        </div>
+      </Autocomplete.Root>
+      <div className="library-search-footer">
+        <span>Titles and notes</span>
+        <span className="keyboard-hint">Esc to close</span>
+      </div>
     </Dialog>
-  );
-}
-
-function SearchGroup({
-  items,
-  label,
-  onOpen,
-  query,
-}: {
-  items: MediaItem[];
-  label: "Watchlist" | "Watched";
-  onOpen: (item: MediaItem) => void;
-  query: string;
-}) {
-  return (
-    <section className="library-search-group" aria-label={label}>
-      <div className="library-search-group-label">
-        <span>{label === "Watched" ? <CheckCircle2 size={13} /> : null}{label}</span>
-        <span>{items.length}</span>
-      </div>
-      {items.map((item) => {
-        const poster = posterUrl(item.posterPath);
-        const note = matchingNote(item, query.trim());
-        return (
-          <button className="library-search-result" key={item.id} onClick={() => onOpen(item)} type="button">
-            {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
-            <span className="result-copy">
-              <strong>{item.title}</strong>
-              <span>{[item.releaseYear, mediaLabel(item.mediaType)].filter(Boolean).join(" \u00b7 ")}</span>
-              {note ? <span className="library-note-match"><b>{note.label}</b> {note.value}</span> : null}
-            </span>
-            {item.rating !== null ? <span className="search-rating"><Star size={12} fill="currentColor" />{item.rating}</span> : null}
-          </button>
-        );
-      })}
-    </section>
   );
 }

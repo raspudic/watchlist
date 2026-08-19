@@ -41,7 +41,7 @@ describe("AddTitleActions rate-limit experience", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
-    const input = screen.getByRole("textbox", { name: "Search movies and shows" });
+    const input = screen.getByRole("combobox", { name: "Search movies and shows" });
     fireEvent.change(input, { target: { value: "Arrival" } });
 
     await act(async () => {
@@ -76,7 +76,7 @@ describe("AddTitleActions add behavior", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Search movies and shows" }), { target: { value: "Arrival" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Search movies and shows" }), { target: { value: "Arrival" } });
     fireEvent.click(screen.getByRole("button", { name: /Add “Arrival” as a custom title/ }));
 
     await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
@@ -97,7 +97,7 @@ describe("AddTitleActions add behavior", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Quick add" }));
-    const input = screen.getByRole("textbox", { name: "Search movies and shows" });
+    const input = screen.getByRole("combobox", { name: "Search movies and shows" });
     fireEvent.change(input, { target: { value: "Arrival" } });
     fireEvent.click(screen.getByRole("button", { name: /Add “Arrival” as a custom title/ }));
 
