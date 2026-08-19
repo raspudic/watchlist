@@ -31,6 +31,7 @@ import { TextareaField } from "@/components/ui/field";
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { InlineMessage } from "@/components/ui/inline-message";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { WatchProviders } from "@/components/watch-providers";
 import { Sheet, SheetTitle } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { type LibraryViewStyle, useLibraryViewStyle } from "@/hooks/use-library-view-style";
@@ -496,6 +497,8 @@ function DetailSheet({
         </div>
 
         {item.overview ? <p className="overview">{item.overview}</p> : null}
+
+        <WatchProviders item={item} />
 
         {item.status === "watched" && item.watchlistNote ? (
           <details className="watchlist-note-history">

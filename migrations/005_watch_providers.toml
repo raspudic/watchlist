@@ -1,0 +1,39 @@
+# Both actions are purely additive: the region column is nullable with no
+# default, and the cache table is new, so old and new application versions can
+# run side by side without an up/down expression.
+[[actions]]
+type = "add_column"
+table = "user"
+
+  [actions.column]
+  name = "region"
+  type = "TEXT"
+  nullable = true
+
+[[actions]]
+type = "create_table"
+name = "tmdb_watch_provider_cache"
+primary_key = ["key"]
+
+  [[actions.columns]]
+  name = "key"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "payload"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "expires_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+
+[[actions]]
+type = "add_index"
+table = "tmdb_watch_provider_cache"
+
+  [actions.index]
+  name = "tmdb_watch_provider_cache_expires_at_idx"
+  columns = ["expires_at"]

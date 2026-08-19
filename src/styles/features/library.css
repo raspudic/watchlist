@@ -129,6 +129,37 @@
 .detail-year { margin-top: 7px; color: var(--text-faint); font-size: 13px; }
 .overview { margin-top: 25px; color: var(--text-soft); font-size: 13.5px; line-height: 1.65; }
 
+/* Provider marks are third-party logos with wildly different aspect ratios and
+   backgrounds, so each sits on a neutral chip that stays legible in both themes. */
+.watch-providers { margin-top: 29px; padding-top: 25px; border-top: 1px solid var(--line); }
+.watch-providers h3 { font-size: 13px; font-weight: 650; }
+.watch-providers-prompt p { margin-top: 8px; color: var(--text-faint); font-size: 12px; line-height: 1.5; }
+.watch-providers-note { margin-top: 13px; color: var(--text-faint); font-size: 12.5px; line-height: 1.5; }
+.watch-providers-secondary { margin-top: 12px; color: var(--text-faint); font-size: 12px; line-height: 1.5; }
+.watch-provider-list { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 9px; list-style: none; }
+.watch-provider-list li {
+  padding: 6px 11px 6px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+.watch-provider-logo { width: 24px; height: 24px; flex: 0 0 auto; border-radius: 7px; object-fit: cover; background: var(--surface-strong); }
+.watch-provider-skeleton { margin-top: 14px; display: flex; gap: 9px; }
+.watch-provider-skeleton span { width: 104px; height: 37px; border-radius: 999px; background: var(--surface-strong); }
+.watch-providers-attribution { margin-top: 14px; color: var(--text-faint); font-size: 11px; }
+.watch-providers-attribution a { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); text-decoration: underline; }
+.watch-providers-attribution a:hover { color: var(--text); }
+
+.region-select { margin-top: 13px; display: flex; align-items: flex-end; gap: 9px; }
+.region-select .field { flex: 1; min-width: 0; }
+.region-select .btn { flex: 0 0 auto; min-height: var(--field-height); }
+
 .watchlist-note-history { margin-top: 19px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .watchlist-note-history summary { padding: 11px 13px; color: var(--text-soft); cursor: pointer; font-size: 12px; font-weight: 620; }
 .watchlist-note-history p { padding: 0 13px 13px; color: var(--text-soft); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }

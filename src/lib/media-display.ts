@@ -6,6 +6,10 @@ export function posterUrl(path: string | null, size: "w92" | "w185" | "w342" = "
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }
 
+export function providerLogoUrl(path: string | null, size: "w45" | "w92" = "w92") {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
+}
+
 export function mediaLabel(type: MediaType, fallback = "Title") {
   if (type === "tv") return "Series";
   if (type === "movie") return "Movie";

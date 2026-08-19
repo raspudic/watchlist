@@ -6,6 +6,7 @@ import { count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
+import { isRegionCode } from "@/lib/region";
 
 const ONE_DAY = 60 * 60 * 24;
 const THIRTY_DAYS = ONE_DAY * 30;
@@ -87,6 +88,11 @@ export function createWatchlistAuth({
       updateAge: ONE_DAY,
     },
     user: {
+      additionalFields: {
+        // The country used to look up streaming availability. Nullable because
+        // "not chosen yet" is a state the UI prompts for rather than guesses.
+        region: { type: "string", required: false, input: true },
+      },
       deleteUser: {
         enabled: true,
         beforeDelete: async (account) => deleteAccountTransaction(account.id),
@@ -94,6 +100,19 @@ export function createWatchlistAuth({
     },
     hooks: {
       before: createAuthMiddleware(async (context) => {
+        if (context.path === "/update-user") {
+          // `region` is user input, so it is validated here rather than trusted
+          // into a column that later becomes part of a TMDB request path.
+          const region = (context.body as { region?: unknown } | undefined)?.region;
+          if (region !== undefined && region !== null && !isRegionCode(region as string)) {
+            throw new APIError("BAD_REQUEST", {
+              code: "INVALID_REGION",
+              message: "Choose a country from the list.",
+            });
+          }
+          return;
+        }
+
         if (context.path !== "/delete-user") return;
         const body = context.body as { password?: unknown } | undefined;
         if (typeof body?.password !== "string" || body.password.length === 0) {

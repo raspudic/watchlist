@@ -102,6 +102,7 @@ textarea.field-control {
   resize: vertical;
   line-height: 1.5;
 }
+select.field-control { padding-right: 34px; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-faint) 50%), linear-gradient(135deg, var(--text-faint) 50%, transparent 50%); background-position: calc(100% - 18px) calc(50% + 1px), calc(100% - 13px) calc(50% + 1px); background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer; }
 .field-control::placeholder { color: var(--text-faint); }
 .field-control:focus { border-color: var(--accent); box-shadow: var(--focus-ring-field); }
 .field-control:focus-visible { outline: none; }
