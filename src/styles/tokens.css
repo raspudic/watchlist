@@ -1,0 +1,102 @@
+/* Design tokens. Colour values are the app's existing palette, unchanged. */
+
+:root {
+  --canvas: #f5f5f2;
+  --sidebar: #eeeeea;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #f7f7f5;
+  --surface-strong: #e9e9e5;
+  --text: #202124;
+  --text-soft: #66686d;
+  --text-faint: #929499;
+  --line: rgba(28, 29, 33, 0.1);
+  --line-strong: rgba(28, 29, 33, 0.17);
+  --accent: #5d63d8;
+  --accent-soft: #e9e9fb;
+  --accent-text: #474cb5;
+  --danger: #d74949;
+  --danger-soft: #fae8e7;
+  --shadow-panel: 0 24px 80px rgba(23, 24, 27, 0.16), 0 2px 12px rgba(23, 24, 27, 0.08);
+  --shadow-raised: 0 12px 42px rgba(20, 21, 24, 0.08);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Control metrics shared by buttons, inputs and icon buttons. */
+  --control-height: 42px;
+  --control-height-sm: 36px;
+  --control-height-compact: 31px;
+  --field-height: 43px;
+
+  --overlay-backdrop: rgba(9, 10, 12, 0.34);
+  --overlay-backdrop-sheet: rgba(4, 5, 6, 0.48);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+  --focus-ring-field: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+
+  --duration-fast: 120ms;
+  --duration: 150ms;
+  --duration-overlay: 180ms;
+
+  --sidebar-width: 232px;
+}
+
+:root[data-theme="dark"],
+:root:not([data-theme="light"]) {
+  color-scheme: light;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --canvas: #111214;
+  --sidebar: #17181b;
+  --surface: #1c1d20;
+  --surface-raised: #222327;
+  --surface-hover: #24262a;
+  --surface-strong: #2b2d31;
+  --text: #f1f1f2;
+  --text-soft: #a8a9ae;
+  --text-faint: #777980;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --accent: #9a9df3;
+  --accent-soft: #2a2b4e;
+  --accent-text: #b9baf8;
+  --danger: #ed6a6a;
+  --danger-soft: #3b2325;
+  --shadow-panel: 0 28px 90px rgba(0, 0, 0, 0.48), 0 2px 14px rgba(0, 0, 0, 0.28);
+  --shadow-raised: 0 12px 42px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #111214;
+    --sidebar: #17181b;
+    --surface: #1c1d20;
+    --surface-raised: #222327;
+    --surface-hover: #24262a;
+    --surface-strong: #2b2d31;
+    --text: #f1f1f2;
+    --text-soft: #a8a9ae;
+    --text-faint: #777980;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --accent: #9a9df3;
+    --accent-soft: #2a2b4e;
+    --accent-text: #b9baf8;
+    --danger: #ed6a6a;
+    --danger-soft: #3b2325;
+    --shadow-panel: 0 28px 90px rgba(0, 0, 0, 0.48), 0 2px 14px rgba(0, 0, 0, 0.28);
+    --shadow-raised: 0 12px 42px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
