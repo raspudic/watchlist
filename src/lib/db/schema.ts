@@ -20,6 +20,7 @@ export const user = pgTable(
     username: text("username"),
     displayUsername: text("display_username"),
     role: text("role").default("user").notNull(),
+    region: text("region"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -138,6 +139,18 @@ export const tmdbSearchCache = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (table) => [index("tmdb_search_cache_expires_at_idx").on(table.expiresAt)],
+);
+
+export const tmdbWatchProviderCache = pgTable(
+  "tmdb_watch_provider_cache",
+  {
+    // Unlike the search cache the key is not hashed: a TMDB id and a country
+    // code are not user-authored text, and a readable key is worth more here.
+    key: text("key").primaryKey(),
+    payload: text("payload").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("tmdb_watch_provider_cache_expires_at_idx").on(table.expiresAt)],
 );
 
 export const mediaItems = pgTable(

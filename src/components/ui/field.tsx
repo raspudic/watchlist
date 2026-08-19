@@ -58,6 +58,20 @@ export function TextareaField({
   );
 }
 
+export function SelectField({
+  description,
+  error,
+  label,
+  optional,
+  ...control
+}: Shared & ComponentPropsWithoutRef<"select">) {
+  return (
+    <Shell description={description} error={error} label={label} optional={optional}>
+      <Field.Control className="field-control select-control" render={<select {...control} />} />
+    </Shell>
+  );
+}
+
 export function CheckboxField({
   checked,
   disabled,

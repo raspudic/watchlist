@@ -4,7 +4,9 @@ type OperationalEvent =
   | "api_rate_limited"
   | "tmdb_search_completed"
   | "tmdb_search_failed"
-  | "tmdb_upstream_limited";
+  | "tmdb_upstream_limited"
+  | "tmdb_watch_providers_completed"
+  | "tmdb_watch_providers_failed";
 
 type OperationalFields = {
   cacheHit?: boolean;

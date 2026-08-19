@@ -4,6 +4,7 @@ import { SessionManager } from "@/components/session-manager";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { PasswordCard } from "@/components/settings/password-card";
 import { ProfileCard } from "@/components/settings/profile-card";
+import { RegionCard } from "@/components/settings/region-card";
 import { SettingsFooter } from "@/components/settings/settings-footer";
 import { requireSession } from "@/lib/session";
 
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
       </header>
 
       <ProfileCard displayName={session.user.name} username={username} />
+      <RegionCard />
       <PasswordCard />
 
       <section className="settings-card">

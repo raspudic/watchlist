@@ -7,6 +7,7 @@ import {
   rateLimit,
   session,
   tmdbSearchCache,
+  tmdbWatchProviderCache,
   verification,
 } from "@/lib/db/schema";
 import { lifecycleCutoffs } from "@/lib/lifecycle-policy";
@@ -60,6 +61,10 @@ export async function runLifecycleCleanup(now = new Date()) {
       .delete(tmdbSearchCache)
       .where(lt(tmdbSearchCache.expiresAt, now))
       .returning({ key: tmdbSearchCache.key });
+    const deletedWatchProviderCacheEntries = await transaction
+      .delete(tmdbWatchProviderCache)
+      .where(lt(tmdbWatchProviderCache.expiresAt, now))
+      .returning({ key: tmdbWatchProviderCache.key });
 
     return {
       apiRateLimitBuckets: deletedApiRateLimitBuckets.length,
@@ -68,6 +73,7 @@ export async function runLifecycleCleanup(now = new Date()) {
       sessions: deletedSessions.length,
       tmdbCacheEntries: deletedTmdbCacheEntries.length,
       verifications: deletedVerifications.length,
+      watchProviderCacheEntries: deletedWatchProviderCacheEntries.length,
     };
   });
 }

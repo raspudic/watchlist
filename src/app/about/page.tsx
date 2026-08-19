@@ -31,7 +31,7 @@ export default function AboutPage() {
               <strong>Stored here.</strong> Your account email, library and notes, plus session security details such as IP address and browser or device information.
             </li>
             <li>
-              <strong>Sent to TMDB.</strong> When you search for a title, this server sends the search terms to TMDB to find matching movies and shows.
+              <strong>Sent to TMDB.</strong> When you search for a title, this server sends the search terms to TMDB to find matching movies and shows. When you open a title, it sends that title&rsquo;s TMDB identifier and the country you chose, to look up where it streams. Neither request identifies you to TMDB.
             </li>
             <li>
               <strong>Kept out of logs.</strong> Application code does not intentionally log passwords, authentication tokens, email addresses, search terms, notes, or other library content.
@@ -56,6 +56,7 @@ export default function AboutPage() {
             />
           </a>
           <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+          <p>Streaming availability is provided by JustWatch.</p>
         </section>
       </article>
     </main>
