@@ -103,11 +103,13 @@ export function AdminInvitations({ initialInvitations }: { initialInvitations: I
         {invitationUrl ? (
           <div className="invite-link-result" role="status">
             <div><strong>Invitation created</strong><p>This link is shown only now.</p></div>
-            <code>{invitationUrl}</code>
-            <button className="secondary-button" onClick={copyInvitation} type="button">
-              {copied ? <Check aria-hidden="true" size={16} /> : <Clipboard aria-hidden="true" size={16} />}
-              {copied ? "Copied" : "Copy link"}
-            </button>
+            <div className="invite-link-field">
+              <code>{invitationUrl}</code>
+              <button className="invite-copy-button" onClick={copyInvitation} type="button">
+                {copied ? <Check aria-hidden="true" size={16} /> : <Clipboard aria-hidden="true" size={16} />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
           </div>
         ) : null}
       </section>
