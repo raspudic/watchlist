@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/raspudic/watchlist/compare/v0.3.0...v0.4.0) (2026-08-19)
+
+
+### Features
+
+* move search onto Base UI Autocomplete and fix the theme toggle ([#31](https://github.com/raspudic/watchlist/issues/31)) ([1cf9aeb](https://github.com/raspudic/watchlist/commit/1cf9aeb5a92e6f15b7099223324601e72a9849aa))
+* show where a title streams in the detail sheet ([#33](https://github.com/raspudic/watchlist/issues/33)) ([06df31f](https://github.com/raspudic/watchlist/commit/06df31f9c129c1fded15be8c3239d0f7d7f8a393))
+
 ## [0.3.0](https://github.com/raspudic/watchlist/compare/v0.2.0...v0.3.0) (2026-08-19)
 
 
