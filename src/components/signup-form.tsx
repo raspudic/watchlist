@@ -1,11 +1,13 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { MIN_PASSWORD_LENGTH, validateNewPassword } from "@/lib/account-validation";
+import { Button } from "@/components/ui/button";
+import { PasswordField, TextField } from "@/components/ui/field";
+import { InlineMessage } from "@/components/ui/inline-message";
 
 export function SignupForm({
   email,
@@ -62,13 +64,13 @@ export function SignupForm({
 
   return (
     <form className="login-form" onSubmit={handleSubmit}>
-      <label className="field-label" htmlFor="new-username">Username</label>
-      <input
+      <TextField
         autoCapitalize="none"
         autoComplete="username"
         autoCorrect="off"
-        className="text-input"
+        description="Letters, numbers, dots, and underscores."
         id="new-username"
+        label="Username"
         maxLength={30}
         minLength={3}
         name="username"
@@ -77,27 +79,25 @@ export function SignupForm({
         required
         value={username}
       />
-      <p className="field-help">Letters, numbers, dots, and underscores.</p>
 
-      <label className="field-label" htmlFor="display-name">Display name <span className="label-optional">Optional</span></label>
-      <input
+      <TextField
         autoComplete="name"
-        className="text-input"
         id="display-name"
+        label="Display name"
         maxLength={50}
         name="name"
         onChange={(event) => setDisplayName(event.target.value)}
+        optional
         placeholder="Leave blank to use your username"
         value={displayName}
       />
 
-      <label className="field-label" htmlFor="new-email">Email</label>
-      <input
+      <TextField
         autoCapitalize="none"
         autoComplete="email"
         autoCorrect="off"
-        className="text-input"
         id="new-email"
+        label="Email"
         name="email"
         readOnly
         required
@@ -105,41 +105,36 @@ export function SignupForm({
         value={email}
       />
 
-      <label className="field-label" htmlFor="new-password">Password</label>
-      <input
+      <PasswordField
         autoComplete="new-password"
-        className="text-input"
+        description={`Use ${MIN_PASSWORD_LENGTH} or more characters. Passphrases and password managers work well.`}
         id="new-password"
+        label="Password"
         maxLength={128}
         minLength={MIN_PASSWORD_LENGTH}
         name="new-password"
         onChange={(event) => setPassword(event.target.value)}
         required
-        type="password"
         value={password}
       />
-      <p className="field-help">Use {MIN_PASSWORD_LENGTH} or more characters. Passphrases and password managers work well.</p>
 
-      <label className="field-label" htmlFor="confirm-password">Verify password</label>
-      <input
+      <PasswordField
         autoComplete="new-password"
-        className="text-input"
         id="confirm-password"
+        label="Verify password"
         maxLength={128}
         minLength={MIN_PASSWORD_LENGTH}
         name="confirm-password"
         onChange={(event) => setConfirmation(event.target.value)}
         required
-        type="password"
         value={confirmation}
       />
 
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {error ? <InlineMessage tone="error">{error}</InlineMessage> : null}
 
-      <button className="primary-button login-button" disabled={pending} type="submit">
-        {pending ? <LoaderCircle aria-hidden="true" className="spin" size={17} /> : null}
-        {pending ? "Creating account…" : "Create account"}
-      </button>
+      <Button className="login-button" fullWidth loading={pending} loadingLabel="Creating account…" type="submit">
+        Create account
+      </Button>
       <p className="auth-switch">Already have an account? <Link href="/login">Sign in</Link></p>
     </form>
   );

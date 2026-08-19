@@ -1,0 +1,157 @@
+/* Application shell: wordmark, sidebar, mobile header and bottom navigation. */
+
+.brand {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+}
+.brand span { color: var(--accent); }
+
+.app-frame { width: 100%; min-height: 100vh; overflow-x: clip; }
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: var(--sidebar-width);
+  padding: 27px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--sidebar);
+}
+.sidebar .brand { padding: 3px 10px 25px; }
+
+.nav-search-button {
+  width: 100%;
+  height: 38px;
+  margin-bottom: 11px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
+  color: var(--text-soft);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+.nav-search-button:hover { border-color: var(--line-strong); background: var(--surface); color: var(--text); }
+.nav-search-button span { flex: 1; }
+.nav-search-button kbd { color: var(--text-faint); font-family: var(--font-sans); font-size: 10px; }
+
+.side-nav { display: flex; flex-direction: column; gap: 3px; }
+.nav-link {
+  height: 42px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-radius: 9px;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 530;
+}
+.nav-link:hover { background: color-mix(in srgb, var(--surface) 56%, transparent); color: var(--text); }
+.nav-link.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(20, 21, 24, 0.04); }
+.nav-link.active svg { color: var(--accent); }
+.nav-sep { height: 1px; margin: 8px 11px; background: var(--line); }
+
+.sidebar-account {
+  margin-top: auto;
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--line);
+}
+.account-trigger {
+  width: 100%;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.account-trigger:hover,
+.account-trigger[data-popup-open] { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.account-trigger > svg { flex: 0 0 auto; color: var(--text-faint); }
+.account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 13px; font-weight: 560; }
+
+.avatar,
+.mobile-avatar {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Base UI portals the menu to the end of the body with no stacking rank of its
+   own, so it needs to outrank the shell's fixed sidebar and bottom bar. */
+.menu-positioner { z-index: 80; }
+
+.mobile-header,
+.bottom-nav,
+.mobile-search-button { display: none; }
+
+.app-main { min-height: 100vh; margin-left: var(--sidebar-width); }
+
+@media (max-width: 760px) {
+  body { padding-bottom: calc(67px + env(safe-area-inset-bottom)); }
+  body > div:has(> a[href^="https://specific.dev"]) { bottom: calc(75px + env(safe-area-inset-bottom)) !important; }
+
+  .sidebar { display: none; }
+  .nav-search-button { display: none; }
+  .app-main { margin-left: 0; }
+
+  .mobile-header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    height: calc(57px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 17px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--canvas) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+  .mobile-header-actions { display: flex; align-items: center; gap: 6px; }
+  .mobile-search-button {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+  }
+  .mobile-search-button:hover { background: var(--surface-strong); color: var(--text); }
+  .mobile-avatar { border: 0; cursor: pointer; }
+
+  .bottom-nav {
+    position: fixed;
+    z-index: 50;
+    inset: auto 0 0;
+    height: calc(63px + env(safe-area-inset-bottom));
+    padding: 5px 12px calc(5px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(22px) saturate(1.25);
+  }
+  .bottom-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-faint); font-size: 10px; font-weight: 600; }
+  .bottom-link.active { color: var(--accent-text); }
+}

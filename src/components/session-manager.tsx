@@ -1,10 +1,13 @@
 "use client";
 
-import { LoaderCircle, LogOut, MonitorSmartphone, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
-import Link from "next/link";
+import { LogOut, MonitorSmartphone, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { InlineMessage } from "@/components/ui/inline-message";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 import { describeSession, formatSessionDate, maskIpAddress } from "@/lib/session-display";
 
@@ -20,6 +23,10 @@ interface ActiveSession {
 
 type LoadError = "fresh" | "rate-limited" | "unknown" | null;
 
+type Message = { text: string; tone: "error" | "success" } | null;
+
+const RETURN_TO = "/login?returnTo=/settings";
+
 function isFreshSessionError(error: { code?: string; status?: number } | null) {
   return error?.code === "SESSION_NOT_FRESH" || error?.status === 403;
 }
@@ -32,7 +39,7 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [reauthenticating, setReauthenticating] = useState(false);
   const [revokingOthers, setRevokingOthers] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<Message>(null);
   const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
@@ -43,7 +50,7 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
 
       if (result.error) {
         if (result.error.status === 401) {
-          router.replace("/login?returnTo=/account/sessions");
+          router.replace(RETURN_TO);
           router.refresh();
           return;
         }
@@ -71,7 +78,7 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
   function retryLoad() {
     setLoading(true);
     setLoadError(null);
-    setMessage("");
+    setMessage(null);
     setReloadCount((count) => count + 1);
   }
 
@@ -94,66 +101,68 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
       return;
     }
 
-    router.replace("/login?returnTo=/account/sessions");
+    router.replace(RETURN_TO);
     router.refresh();
   }
 
   async function revokeSession(token: string) {
     setPendingToken(token);
-    setMessage("");
+    setMessage(null);
     const result = await authClient.revokeSession({ token });
 
     if (result.error) {
       if (result.error.status === 401) {
-        router.replace("/login?returnTo=/account/sessions");
+        router.replace(RETURN_TO);
         router.refresh();
         return;
       }
 
-      setMessage(
-        result.error.status === 429
+      setMessage({
+        text: result.error.status === 429
           ? "Too many requests. Wait a minute and try again."
           : "That session could not be signed out. Try again.",
-      );
+        tone: "error",
+      });
       setPendingToken(null);
       return;
     }
 
     setSessions((current) => current.filter((session) => session.token !== token));
     setPendingToken(null);
-    setMessage("The device was signed out.");
+    setMessage({ text: "The device was signed out.", tone: "success" });
   }
 
   async function revokeOtherSessions() {
     setRevokingOthers(true);
-    setMessage("");
+    setMessage(null);
     const result = await authClient.revokeOtherSessions();
 
     if (result.error) {
       if (result.error.status === 401) {
-        router.replace("/login?returnTo=/account/sessions");
+        router.replace(RETURN_TO);
         router.refresh();
         return;
       }
 
-      setMessage(
-        result.error.status === 429
+      setMessage({
+        text: result.error.status === 429
           ? "Too many requests. Wait a minute and try again."
           : "Your other sessions could not be signed out. Try again.",
-      );
+        tone: "error",
+      });
       setRevokingOthers(false);
       return;
     }
 
     setSessions((current) => current.filter((session) => session.id === currentSessionId));
     setRevokingOthers(false);
-    setMessage("All other devices were signed out.");
+    setMessage({ text: "All other devices were signed out.", tone: "success" });
   }
 
   if (loading) {
     return (
       <div className="sessions-state" role="status">
-        <LoaderCircle aria-hidden="true" className="spin" size={19} /> Loading active sessions…
+        <Spinner size={19} /> Loading your devices…
       </div>
     );
   }
@@ -163,21 +172,22 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
       <div className="sessions-state sessions-error">
         <ShieldCheck aria-hidden="true" size={22} />
         <div>
-          <h2>{loadError === "fresh" ? "Confirm it’s you" : "Sessions are temporarily unavailable"}</h2>
+          <h3>{loadError === "fresh" ? "Confirm it’s you" : "Devices are temporarily unavailable"}</h3>
           <p>
             {loadError === "fresh"
               ? "For your security, sign in again before viewing every device with access to your account."
               : loadError === "rate-limited"
                 ? "Too many requests were made. Wait a minute, then try again."
-                : "We couldn’t load your sessions. Your current session is unaffected."}
+                : "We couldn’t load your devices. Your current session is unaffected."}
           </p>
           {loadError === "fresh" ? (
-            <button className="primary-button" disabled={reauthenticating} onClick={signInAgain} type="button">
-              {reauthenticating ? <LoaderCircle aria-hidden="true" className="spin" size={15} /> : null}
-              {reauthenticating ? "Signing out…" : "Sign in again"}
-            </button>
+            <Button loading={reauthenticating} loadingLabel="Signing out…" onClick={signInAgain} size="sm">
+              Sign in again
+            </Button>
           ) : (
-            <button className="secondary-button" onClick={retryLoad} type="button"><RefreshCw size={15} /> Try again</button>
+            <Button onClick={retryLoad} size="sm" variant="secondary">
+              <RefreshCw aria-hidden="true" size={15} /> Try again
+            </Button>
           )}
         </div>
       </div>
@@ -197,8 +207,8 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
               </div>
               <div className="session-copy">
                 <div className="session-title">
-                  <h2>{describeSession(session.userAgent)}</h2>
-                  {current ? <span>Current device</span> : null}
+                  <h3>{describeSession(session.userAgent)}</h3>
+                  {current ? <Badge tone="accent" uppercase>This device</Badge> : null}
                 </div>
                 <dl>
                   <div><dt>Last active</dt><dd>{formatSessionDate(session.updatedAt)}</dd></div>
@@ -208,34 +218,35 @@ export function SessionManager({ currentSessionId }: { currentSessionId: string 
                 </dl>
               </div>
               {current ? null : (
-                <button
+                <Button
                   className="session-revoke"
-                  disabled={pendingToken === session.token || revokingOthers}
+                  disabled={revokingOthers}
+                  loading={pendingToken === session.token}
                   onClick={() => void revokeSession(session.token)}
-                  type="button"
+                  size="sm"
+                  variant="ghost"
                 >
-                  {pendingToken === session.token ? <LoaderCircle aria-hidden="true" className="spin" size={15} /> : <LogOut aria-hidden="true" size={15} />}
                   Sign out
-                </button>
+                </Button>
               )}
             </article>
           );
         })}
       </div>
 
-      {message ? <p className="sessions-message" role="status">{message}</p> : null}
+      {message ? <InlineMessage tone={message.tone}>{message.text}</InlineMessage> : null}
 
-      <div className="sessions-actions">
-        <button
-          className="secondary-button"
-          disabled={otherSessionCount === 0 || revokingOthers}
+      <div className="settings-actions">
+        <Button
+          disabled={otherSessionCount === 0}
+          loading={revokingOthers}
+          loadingLabel="Signing out…"
           onClick={() => void revokeOtherSessions()}
-          type="button"
+          variant="secondary"
         >
-          {revokingOthers ? <LoaderCircle aria-hidden="true" className="spin" size={16} /> : <LogOut aria-hidden="true" size={16} />}
-          {revokingOthers ? "Signing out…" : "Sign out everywhere else"}
-        </button>
-        <Link href="/watchlist">Back to watchlist</Link>
+          <LogOut aria-hidden="true" size={16} />
+          Sign out everywhere else
+        </Button>
       </div>
     </>
   );

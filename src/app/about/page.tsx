@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "About Watchlist, privacy, and data credits.",
+  description: "About Later, privacy, and data credits.",
 };
 
 export default function AboutPage() {
@@ -12,16 +12,16 @@ export default function AboutPage() {
     <main className="about-page">
       <article className="about-panel">
         <header className="about-header">
-          <Link className="login-brand" href="/" aria-label="Watchlist home">
-            <span aria-hidden="true">/</span> watchlist
+          <Link className="login-brand" href="/" aria-label="Later home">
+            <span aria-hidden="true">/</span> later
           </Link>
-          <Link className="about-return" href="/">Return to Watchlist</Link>
+          <Link className="about-return" href="/">Return to Later</Link>
         </header>
 
         <div className="about-intro">
           <p className="eyebrow">About</p>
           <h1>A quiet place for what you want to watch.</h1>
-          <p>Watchlist is a private, invitation-only app shared with friends.</p>
+          <p>Later is a private, invitation-only app shared with friends.</p>
         </div>
 
         <section className="about-section" aria-labelledby="privacy-heading">

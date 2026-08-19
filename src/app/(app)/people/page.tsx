@@ -1,6 +1,6 @@
 import { desc } from "drizzle-orm";
 
-import { AdminInvitations, type InvitationSummary } from "@/components/admin-invitations";
+import { PeopleInvitations, type InvitationSummary } from "@/components/people-invitations";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db/client";
 import { invitations } from "@/lib/db/schema";
@@ -8,7 +8,7 @@ import { invitationStatus } from "@/lib/invitations";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminInvitesPage() {
+export default async function PeoplePage() {
   await requireAdmin();
   const records = await db.select().from(invitations).orderBy(desc(invitations.createdAt)).limit(100);
   const initialInvitations: InvitationSummary[] = records.map((invitation) => ({
@@ -21,5 +21,5 @@ export default async function AdminInvitesPage() {
     status: invitationStatus(invitation),
   }));
 
-  return <AdminInvitations initialInvitations={initialInvitations} />;
+  return <PeopleInvitations initialInvitations={initialInvitations} />;
 }

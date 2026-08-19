@@ -3,10 +3,13 @@
 /* TMDB poster URLs are already sized at the CDN; using a plain image avoids image-proxy overhead. */
 /* eslint-disable @next/next/no-img-element */
 
-import { CheckCircle2, Clapperboard, LoaderCircle, Search, Star, X } from "lucide-react";
+import { CheckCircle2, Clapperboard, Search, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import type { MediaItem } from "@/lib/library-cache";
 
 function posterUrl(path: string | null) {
@@ -45,7 +48,6 @@ export function GlobalSearch({
   const [items, setItems] = useState<MediaItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -60,21 +62,6 @@ export function GlobalSearch({
     document.addEventListener("keydown", openFromKeyboard);
     return () => document.removeEventListener("keydown", openFromKeyboard);
   }, [onOpenChange]);
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => inputRef.current?.focus(), 40);
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onOpenChange(false);
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    document.body.classList.add("panel-open");
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("keydown", closeOnEscape);
-      document.body.classList.remove("panel-open");
-    };
-  }, [onOpenChange, open]);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -120,13 +107,10 @@ export function GlobalSearch({
   const watched = items.filter((item) => item.status === "watched");
 
   return (
-    <>
-      {open ? (
-        <div className="modal-layer global-search-layer" onMouseDown={(event) => event.target === event.currentTarget && close()} role="presentation">
-          <section aria-labelledby="library-search-title" aria-modal="true" className="library-search-dialog" role="dialog">
-            <h2 className="sr-only" id="library-search-title">Search your library</h2>
-            <div className="search-input-wrap">
-              {searching ? <LoaderCircle className="spin" size={20} /> : <Search size={20} />}
+    <Dialog className="library-search-dialog" onOpenChange={(next) => !next && close()} open={open}>
+      <DialogTitle className="sr-only">Search your library</DialogTitle>
+      <div className="search-input-wrap">
+        {searching ? <Spinner size={20} /> : <Search aria-hidden="true" size={20} />}
               <input
                 aria-label="Search your library"
                 autoComplete="off"
@@ -140,11 +124,11 @@ export function GlobalSearch({
                   }
                 }}
                 placeholder="Search titles and notes..."
-                ref={inputRef}
+                autoFocus
                 value={query}
               />
-              <button className="close-search" onClick={close} type="button"><X size={18} /><span className="sr-only">Close</span></button>
-            </div>
+        <IconButton label="Close" onClick={close}><X aria-hidden="true" size={18} /></IconButton>
+      </div>
 
             <div className="library-search-results">
               {error ? <p className="search-message error">{error}</p> : null}
@@ -153,11 +137,8 @@ export function GlobalSearch({
               {watchlist.length > 0 ? <SearchGroup items={watchlist} label="Watchlist" onOpen={openItem} query={query} /> : null}
               {watched.length > 0 ? <SearchGroup items={watched} label="Watched" onOpen={openItem} query={query} /> : null}
             </div>
-            <div className="library-search-footer"><span>Titles and notes</span><span className="keyboard-hint">Esc to close</span></div>
-          </section>
-        </div>
-      ) : null}
-    </>
+      <div className="library-search-footer"><span>Titles and notes</span><span className="keyboard-hint">Esc to close</span></div>
+    </Dialog>
   );
 }
 

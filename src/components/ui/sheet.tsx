@@ -47,7 +47,7 @@ export function Sheet({
           <Drawer.Backdrop className="backdrop" />
           <Drawer.Viewport className="overlay-viewport">
             <Drawer.Popup className={popupClass}>
-              <Drawer.Content>
+              <Drawer.Content className="sheet-content">
                 <div aria-hidden="true" className="sheet-handle" />
                 {children}
               </Drawer.Content>

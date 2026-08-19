@@ -8,14 +8,17 @@ import {
   Clapperboard,
   FileText,
   ListPlus,
-  LoaderCircle,
   Plus,
   Search,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { usePullToDismiss } from "@/hooks/use-pull-to-dismiss";
+import { Button, IconButton } from "@/components/ui/button";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetTitle } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
+import { useToast } from "@/components/ui/toast";
 import {
   friendlySearchLimitMessage,
   isRateLimitError,
@@ -92,11 +95,11 @@ async function mapWithConcurrency<T, R>(
 export function AddTitleActions({
   onAdd,
   onBulkAdd,
-  onNotice,
+  variant = "header",
 }: {
   onAdd: (item: AddableTitle) => Promise<void>;
   onBulkAdd: (items: AddableTitle[]) => Promise<BulkAddOutcome>;
-  onNotice: (message: string) => void;
+  variant?: "header" | "empty";
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -104,49 +107,40 @@ export function AddTitleActions({
   return (
     <>
       <div className="add-actions">
-        <button className="add-button" onClick={() => setSearchOpen(true)} type="button">
-          <Plus aria-hidden="true" size={18} /> Add a title
-        </button>
-        <button className="import-button" onClick={() => setImportOpen(true)} type="button">
-          <ListPlus aria-hidden="true" size={17} /> Import list
-        </button>
+        {variant === "header" ? (
+          <>
+            <IconButton label="Import a list" onClick={() => setImportOpen(true)} size="lg">
+              <ListPlus aria-hidden="true" size={18} />
+            </IconButton>
+            <Button onClick={() => setSearchOpen(true)}>
+              <Plus aria-hidden="true" size={18} /> Add a title
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setSearchOpen(true)} size="sm">
+              <Plus aria-hidden="true" size={16} /> Add a title
+            </Button>
+            <Button onClick={() => setImportOpen(true)} size="sm" variant="quiet">
+              <ListPlus aria-hidden="true" size={15} /> Import a list
+            </Button>
+          </>
+        )}
       </div>
-      {searchOpen ? <SearchDialog onAdd={onAdd} onClose={() => setSearchOpen(false)} onNotice={onNotice} /> : null}
-      {importOpen ? (
-        <BulkImportDialog
-          onClose={() => setImportOpen(false)}
-          onImport={onBulkAdd}
-          onNotice={onNotice}
-        />
-      ) : null}
+      {searchOpen ? <SearchDialog onAdd={onAdd} onClose={() => setSearchOpen(false)} /> : null}
+      {importOpen ? <BulkImportDialog onClose={() => setImportOpen(false)} onImport={onBulkAdd} /> : null}
     </>
   );
-}
-
-function useModalLifecycle(onClose: () => void) {
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    document.addEventListener("keydown", closeOnEscape);
-    document.body.classList.add("panel-open");
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      document.body.classList.remove("panel-open");
-    };
-  }, [onClose]);
 }
 
 function SearchDialog({
   onAdd,
   onClose,
-  onNotice,
 }: {
   onAdd: (item: AddableTitle) => Promise<void>;
   onClose: () => void;
-  onNotice: (message: string) => void;
 }) {
+  const toast = useToast();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -159,13 +153,6 @@ function SearchDialog({
   const [retryNonce, setRetryNonce] = useState(0);
   const [clock, setClock] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useModalLifecycle(onClose);
-
-  useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (!rateLimit) return;
@@ -218,7 +205,7 @@ function SearchDialog({
     setError("");
     try {
       await onAdd(item);
-      onNotice(`Added ${item.title}`);
+      toast.add({ title: `Added ${item.title}` });
       if (!quickAdd) {
         onClose();
         return;
@@ -262,15 +249,14 @@ function SearchDialog({
   }
 
   return (
-    <div className="modal-layer search-modal-layer" onMouseDown={(event) => event.target === event.currentTarget && onClose()} role="presentation">
-      <section aria-labelledby="search-dialog-title" aria-modal="true" className="search-dialog" role="dialog">
-        <div className="add-search-header">
-          <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
-          <div><p className="eyebrow">Add to watchlist</p><h2 id="search-dialog-title">Find a title</h2></div>
-          <button className="panel-close" onClick={onClose} type="button"><X size={18} /><span className="sr-only">Close</span></button>
-        </div>
+    <Dialog className="search-dialog" onOpenChange={(next) => !next && onClose()} open>
+      <div className="add-search-header">
+        <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
+        <div><p className="eyebrow">Add to watchlist</p><DialogTitle>Find a title</DialogTitle></div>
+        <IconButton label="Close" onClick={onClose}><X aria-hidden="true" size={18} /></IconButton>
+      </div>
         <div className="search-input-wrap add-search-input">
-          {searching ? <LoaderCircle className="spin" size={20} /> : <Search size={20} />}
+          {searching ? <Spinner size={20} /> : <Search aria-hidden="true" size={20} />}
           <input
             aria-label="Search movies and shows"
             autoComplete="off"
@@ -336,14 +322,14 @@ function SearchDialog({
           >
             <span className="mini-poster"><Plus size={17} /></span>
             <span className="result-copy">
-              <strong>{customTitle.length >= 2 ? `Add "${customTitle}"` : "Add a custom title"}</strong>
+              <strong>{customTitle.length >= 2 ? `Add \u201c${customTitle}\u201d as a custom title` : "Add a custom title"}</strong>
               <span>Custom title</span>
             </span>
-            {adding === "custom" ? <LoaderCircle className="spin" size={17} /> : null}
+            {adding === "custom" ? <Spinner size={17} /> : null}
           </button>
           <div className="search-footer-line">
             <p aria-live="polite" className="quick-add-status">
-              {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Enter adds the selected result" : "Enter adds and closes"}
+              {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Highlighted result adds on Enter" : "Enter adds and closes"}
             </p>
             <label className="quick-add-toggle">
               <input
@@ -356,8 +342,7 @@ function SearchDialog({
             </label>
           </div>
         </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }
 
@@ -380,9 +365,9 @@ function SearchResultButton({
       {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
       <span className="result-copy">
         <strong>{result.title}</strong>
-        <span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" / ")}</span>
+        <span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" \u00b7 ")}</span>
       </span>
-      {adding ? <LoaderCircle className="spin" size={17} /> : <Plus size={17} />}
+      {adding ? <Spinner size={17} /> : <Plus aria-hidden="true" size={17} />}
     </button>
   );
 }
@@ -390,12 +375,11 @@ function SearchResultButton({
 function BulkImportDialog({
   onClose,
   onImport,
-  onNotice,
 }: {
   onClose: () => void;
   onImport: (items: AddableTitle[]) => Promise<BulkAddOutcome>;
-  onNotice: (message: string) => void;
 }) {
+  const toast = useToast();
   const [step, setStep] = useState<"paste" | "review">("paste");
   const [input, setInput] = useState("");
   const [drafts, setDrafts] = useState<BulkDraft[]>([]);
@@ -403,9 +387,6 @@ function BulkImportDialog({
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const sheet = usePullToDismiss(onClose, matching || importing);
-
-  useModalLifecycle(onClose);
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 50);
@@ -480,7 +461,7 @@ function BulkImportDialog({
 
       const parts = [`Added ${outcome.added} ${outcome.added === 1 ? "title" : "titles"}`];
       if (outcome.duplicates > 0) parts.push(`${outcome.duplicates} already in your library`);
-      onNotice(parts.join("; "));
+      toast.add({ title: parts.join(" · ") });
       onClose();
     } finally {
       setImporting(false);
@@ -488,25 +469,22 @@ function BulkImportDialog({
   }
 
   return (
-    <div className="modal-layer bulk-modal-layer" onMouseDown={(event) => event.target === event.currentTarget && !matching && !importing && onClose()} role="presentation">
-      <section
-        aria-labelledby="bulk-dialog-title"
-        aria-modal="true"
-        className={sheet.dragging ? "bulk-dialog sheet-dragging" : "bulk-dialog"}
-        role="dialog"
-        style={sheet.style}
-      >
-        <div className="sheet-drag-region" {...sheet.dragProps}>
-          <div className="panel-handle" aria-hidden="true" />
-          <div className="bulk-header">
-            <div>
-              <p className="eyebrow">{step === "paste" ? "Bulk import" : "Confirm matches"}</p>
-              <h2 id="bulk-dialog-title">{step === "paste" ? "Paste your list" : "Review before adding"}</h2>
-              <p>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</p>
-            </div>
-            <button className="panel-close" disabled={matching || importing} onClick={onClose} type="button"><X size={19} /><span className="sr-only">Close</span></button>
-          </div>
+    <Sheet
+      className="bulk-dialog"
+      dismissible={!matching && !importing}
+      onOpenChange={(next) => !next && onClose()}
+      open
+    >
+      <div className="bulk-header">
+        <div>
+          <p className="eyebrow">{step === "paste" ? "Bulk import" : "Confirm matches"}</p>
+          <SheetTitle>{step === "paste" ? "Paste your list" : "Review before adding"}</SheetTitle>
+          <p>{step === "paste" ? "One title per line. Bullets and numbered lists are fine." : "We picked the closest result for each line. Change anything that looks wrong."}</p>
         </div>
+        <IconButton disabled={matching || importing} label="Close" onClick={onClose}>
+          <X aria-hidden="true" size={19} />
+        </IconButton>
+      </div>
 
         {step === "paste" ? (
           <div className="bulk-paste">
@@ -544,23 +522,35 @@ function BulkImportDialog({
         {error ? <p className="bulk-error" role="alert">{error}</p> : null}
 
         <div className="bulk-footer">
-          <button className="secondary-button" disabled={matching || importing} onClick={() => step === "review" ? setStep("paste") : onClose()} type="button">
+          <Button
+            disabled={matching || importing}
+            onClick={() => (step === "review" ? setStep("paste") : onClose())}
+            variant="secondary"
+          >
             {step === "review" ? "Back" : "Cancel"}
-          </button>
+          </Button>
           {step === "paste" ? (
-            <button className="primary-button" disabled={matching || parsedTitles.length === 0} onClick={findMatches} type="button">
-              {matching ? <LoaderCircle className="spin" size={17} /> : <Search size={17} />}
-              {matching ? "Finding matches..." : "Find matches"}
-            </button>
+            <Button
+              disabled={parsedTitles.length === 0}
+              loading={matching}
+              loadingLabel="Finding matches…"
+              onClick={findMatches}
+            >
+              <Search aria-hidden="true" size={17} /> Find matches
+            </Button>
           ) : (
-            <button className="primary-button" disabled={importing || readyDrafts.length === 0} onClick={importMatches} type="button">
-              {importing ? <LoaderCircle className="spin" size={17} /> : <ListPlus size={17} />}
-              {importing ? "Adding..." : `Add ${readyDrafts.length} ${readyDrafts.length === 1 ? "title" : "titles"}`}
-            </button>
+            <Button
+              disabled={readyDrafts.length === 0}
+              loading={importing}
+              loadingLabel="Adding…"
+              onClick={importMatches}
+            >
+              <ListPlus aria-hidden="true" size={17} />
+              {`Add ${readyDrafts.length} ${readyDrafts.length === 1 ? "title" : "titles"}`}
+            </Button>
           )}
         </div>
-      </section>
-    </div>
+    </Sheet>
   );
 }
 
@@ -626,7 +616,7 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
           {editing ? (
             <div className="match-picker">
               <div className="match-picker-input">
-                {searching ? <LoaderCircle className="spin" size={16} /> : <Search size={16} />}
+                {searching ? <Spinner size={16} /> : <Search aria-hidden="true" size={16} />}
                 <input aria-label={`Change match for ${draft.sourceTitle}`} onChange={(event) => setPickerQuery(event.target.value)} value={pickerQuery} />
               </div>
               <div className="match-picker-results">
@@ -645,7 +635,7 @@ function BulkMatchRow({ draft, onChange }: { draft: BulkDraft; onChange: (patch:
                       type="button"
                     >
                       {resultPoster ? <img alt="" src={resultPoster} /> : <span className="mini-poster"><Clapperboard size={14} /></span>}
-                      <span className="result-copy"><strong>{result.title}</strong><span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" / ")}</span></span>
+                      <span className="result-copy"><strong>{result.title}</strong><span>{[result.releaseYear, mediaLabel(result.mediaType)].filter(Boolean).join(" \u00b7 ")}</span></span>
                       {selected ? <Check size={16} /> : null}
                     </button>
                   );

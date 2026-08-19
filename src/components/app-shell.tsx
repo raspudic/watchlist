@@ -1,15 +1,14 @@
 "use client";
 
-import { Bookmark, CheckCircle2, LogOut, Search, Settings } from "lucide-react";
+import { Bookmark, CheckCircle2, ChevronsUpDown, Search, Users } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
-import { AccountDialog } from "@/components/account-dialog";
+import { AccountMenu, useSignOut } from "@/components/account-menu";
 import { GlobalSearch } from "@/components/global-search";
 import { LibraryCacheProvider } from "@/components/library-cache-provider";
-import { authClient } from "@/lib/auth-client";
-import { clearLibraryCache } from "@/lib/library-cache";
+import { ToastProvider } from "@/components/ui/toast";
 import type { KeyboardShortcut } from "@/lib/keyboard-shortcut";
 
 const links = [
@@ -33,90 +32,88 @@ export function AppShell({
   username: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [currentDisplayName, setCurrentDisplayName] = useState(displayName);
+  const signOut = useSignOut(userId);
   const [searchOpen, setSearchOpen] = useState(false);
-
-  async function signOut() {
-    await authClient.signOut();
-    clearLibraryCache(userId);
-    router.replace("/login");
-    router.refresh();
-  }
+  const initial = displayName.slice(0, 1).toUpperCase();
 
   return (
     <LibraryCacheProvider scope={userId}>
-      <div className="app-frame">
-        <aside className="sidebar">
-          <Link className="brand" href="/watchlist" aria-label="Watchlist home">
-            <span aria-hidden="true">/</span> watchlist
-          </Link>
-          <button className="nav-search-button" onClick={() => setSearchOpen(true)} type="button">
-            <Search aria-hidden="true" size={18} strokeWidth={1.8} />
-            <span>Search</span>
-            <kbd aria-label={searchShortcut.ariaLabel}>{searchShortcut.display}</kbd>
-          </button>
-          <nav className="side-nav" aria-label="Library">
+      <ToastProvider>
+        <div className="app-frame">
+          <aside className="sidebar">
+            <Link className="brand" href="/watchlist" aria-label="Later home">
+              <span aria-hidden="true">/</span> later
+            </Link>
+            <button className="nav-search-button" onClick={() => setSearchOpen(true)} type="button">
+              <Search aria-hidden="true" size={18} strokeWidth={1.8} />
+              <span>Search</span>
+              <kbd aria-label={searchShortcut.ariaLabel}>{searchShortcut.display}</kbd>
+            </button>
+            <nav className="side-nav" aria-label="Library">
+              {links.map(({ href, label, icon: Icon }) => (
+                <Link className={pathname === href ? "nav-link active" : "nav-link"} href={href} key={href}>
+                  <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </Link>
+              ))}
+              {isAdmin ? (
+                <>
+                  <div className="nav-sep" />
+                  <Link className={pathname === "/people" ? "nav-link active" : "nav-link"} href="/people">
+                    <Users aria-hidden="true" size={18} strokeWidth={1.8} />
+                    <span>People</span>
+                  </Link>
+                </>
+              ) : null}
+            </nav>
+            <div className="sidebar-account">
+              <AccountMenu
+                className="account-trigger"
+                displayName={displayName}
+                onSignOut={signOut}
+                username={username}
+              >
+                <span className="avatar" aria-hidden="true">{initial}</span>
+                <span className="account-name">{displayName}</span>
+                <ChevronsUpDown aria-hidden="true" size={15} />
+              </AccountMenu>
+            </div>
+          </aside>
+
+          <header className="mobile-header">
+            <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> later</Link>
+            <div className="mobile-header-actions">
+              <button aria-label="Search library" className="mobile-search-button" onClick={() => setSearchOpen(true)} type="button">
+                <Search aria-hidden="true" size={18} />
+              </button>
+              <AccountMenu
+                align="end"
+                className="mobile-avatar"
+                displayName={displayName}
+                label="Account"
+                onSignOut={signOut}
+                side="bottom"
+                username={username}
+              >
+                {initial}
+              </AccountMenu>
+            </div>
+          </header>
+
+          <GlobalSearch onOpenChange={setSearchOpen} open={searchOpen} />
+
+          <main className="app-main">{children}</main>
+
+          <nav className="bottom-nav" aria-label="Library">
             {links.map(({ href, label, icon: Icon }) => (
-              <Link className={pathname === href ? "nav-link active" : "nav-link"} href={href} key={href}>
-                <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+              <Link className={pathname === href ? "bottom-link active" : "bottom-link"} href={href} key={href}>
+                <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
                 <span>{label}</span>
               </Link>
             ))}
           </nav>
-          <div className="sidebar-account">
-            <button className="account-trigger" onClick={() => setAccountOpen(true)} type="button">
-              <span className="avatar" aria-hidden="true">{currentDisplayName.slice(0, 1).toUpperCase()}</span>
-              <span className="account-name">{currentDisplayName}</span>
-              <Settings aria-hidden="true" size={15} />
-            </button>
-            <button className="icon-button" onClick={signOut} title="Sign out" type="button">
-              <LogOut aria-hidden="true" size={17} />
-              <span className="sr-only">Sign out</span>
-            </button>
-          </div>
-        </aside>
-
-        <header className="mobile-header">
-          <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>
-          <div className="mobile-header-actions">
-            <button aria-label="Search library" className="mobile-search-button" onClick={() => setSearchOpen(true)} type="button">
-              <Search aria-hidden="true" size={18} />
-            </button>
-            <button className="mobile-avatar" onClick={() => setAccountOpen(true)} title="Account" type="button">
-              {currentDisplayName.slice(0, 1).toUpperCase()}
-            </button>
-          </div>
-        </header>
-
-        <GlobalSearch onOpenChange={setSearchOpen} open={searchOpen} />
-
-        <main className="app-main">{children}</main>
-
-        <nav className="bottom-nav" aria-label="Library">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link className={pathname === href ? "bottom-link active" : "bottom-link"} href={href} key={href}>
-              <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        {accountOpen ? (
-          <AccountDialog
-            displayName={currentDisplayName}
-            isAdmin={isAdmin}
-            onClose={() => setAccountOpen(false)}
-            onDisplayNameChange={(name) => {
-              setCurrentDisplayName(name);
-              router.refresh();
-            }}
-            onSignOut={signOut}
-            username={username}
-          />
-        ) : null}
-      </div>
+        </div>
+      </ToastProvider>
     </LibraryCacheProvider>
   );
 }
