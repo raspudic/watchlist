@@ -12,12 +12,16 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Autocomplete } from "@base-ui/react/autocomplete";
+
+import { MediaResultContent } from "@/components/media/media-result-content";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
+import { useAsyncSearch } from "@/hooks/use-async-search";
 import { mediaLabel, posterUrl } from "@/lib/media-display";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -134,18 +138,44 @@ function SearchDialog({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [addError, setAddError] = useState("");
   const [lastAdded, setLastAdded] = useState("");
   const [quickAdd, setQuickAdd] = useState(false);
   const [rateLimit, setRateLimit] = useState<{ message: string; retryAt: number } | null>(null);
-  const [retryNonce, setRetryNonce] = useState(0);
   const [clock, setClock] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* A rate-limit response is not a search error — it drives its own countdown,
+     so it is swallowed here and handled below. */
+  const onError = useCallback((caught: unknown) => {
+    if (isRateLimitError(caught)) {
+      const limitedAt = Date.now();
+      setClock(limitedAt);
+      setRateLimit({
+        message: friendlySearchLimitMessage(caught.reason),
+        retryAt: limitedAt + caught.retryAfter * 1000,
+      });
+      return null;
+    }
+    return caught instanceof Error ? caught.message : "Search is unavailable.";
+  }, []);
+
+  const cooling = rateLimit !== null && rateLimit.retryAt > clock;
+  const {
+    error: searchError,
+    query,
+    reset,
+    results,
+    retry,
+    searching,
+    setQuery,
+  } = useAsyncSearch<SearchResult>({
+    debounceMs: 280,
+    enabled: !cooling,
+    onError,
+    search: async (value, signal) => (await searchTitles(value, signal)).results,
+  });
 
   useEffect(() => {
     if (!rateLimit) return;
@@ -153,49 +183,9 @@ function SearchDialog({
     return () => window.clearInterval(timer);
   }, [rateLimit]);
 
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) return;
-    if (rateLimit && rateLimit.retryAt > Date.now()) return;
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      setError("");
-      try {
-        const data = await searchTitles(trimmed, controller.signal);
-        setResults(data.results);
-        setHighlightedIndex(0);
-        setRateLimit(null);
-      } catch (caught) {
-        if ((caught as Error).name !== "AbortError") {
-          if (isRateLimitError(caught)) {
-            const limitedAt = Date.now();
-            setClock(limitedAt);
-            setResults([]);
-            setHighlightedIndex(0);
-            setRateLimit({
-              message: friendlySearchLimitMessage(caught.reason),
-              retryAt: limitedAt + caught.retryAfter * 1000,
-            });
-          } else {
-            setError(caught instanceof Error ? caught.message : "Search is unavailable.");
-          }
-        }
-      } finally {
-        setSearching(false);
-      }
-    }, 280);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, rateLimit, retryNonce]);
-
   async function choose(item: AddableTitle, key: string) {
     setAdding(key);
-    setError("");
+    setAddError("");
     try {
       await onAdd(item);
       toast.add({ title: `Added ${item.title}` });
@@ -204,13 +194,11 @@ function SearchDialog({
         return;
       }
       setLastAdded(item.title);
-      setQuery("");
-      setResults([]);
+      reset();
       setRateLimit(null);
-      setHighlightedIndex(0);
       inputRef.current?.focus();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not add that title.");
+      setAddError(caught instanceof Error ? caught.message : "Could not add that title.");
     } finally {
       setAdding(null);
     }
@@ -218,28 +206,7 @@ function SearchDialog({
 
   const customTitle = query.trim();
   const retryIn = rateLimit ? Math.max(0, Math.ceil((rateLimit.retryAt - clock) / 1000)) : 0;
-
-  function handleSearchKeys(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown" && results.length > 0) {
-      event.preventDefault();
-      setHighlightedIndex((current) => Math.min(current + 1, results.length - 1));
-      return;
-    }
-    if (event.key === "ArrowUp" && results.length > 0) {
-      event.preventDefault();
-      setHighlightedIndex((current) => Math.max(current - 1, 0));
-      return;
-    }
-    if (event.key !== "Enter" || adding !== null || searching || customTitle.length < 2) return;
-
-    event.preventDefault();
-    const highlighted = results[highlightedIndex];
-    if (highlighted) {
-      void choose(highlighted, `${highlighted.mediaType}-${highlighted.externalId}`);
-    } else {
-      void choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom");
-    }
-  }
+  const error = addError || searchError;
 
   return (
     <Dialog className="search-dialog" onOpenChange={(next) => !next && onClose()} open>
@@ -248,29 +215,36 @@ function SearchDialog({
         <div><p className="eyebrow">Add to watchlist</p><DialogTitle>Find a title</DialogTitle></div>
         <IconButton label="Close" onClick={onClose}><X aria-hidden="true" size={18} /></IconButton>
       </div>
-        <div className="search-input-wrap add-search-input">
+
+      <Autocomplete.Root
+        autoHighlight="always"
+        filter={null}
+        items={results}
+        onValueChange={(value) => {
+          setQuery(value);
+          setLastAdded("");
+          if (value.trim().length < 2) setRateLimit(null);
+        }}
+        value={query}
+      >
+        <Autocomplete.InputGroup className="search-input-wrap add-search-input">
           {searching ? <Spinner size={20} /> : <Search aria-hidden="true" size={20} />}
-          <input
+          <Autocomplete.Input
             aria-label="Search movies and shows"
             autoComplete="off"
-            onChange={(event) => {
-              const value = event.target.value;
-              setQuery(value);
-              setLastAdded("");
-              if (value.trim().length >= 2 && !rateLimit) setSearching(true);
-              if (value.trim().length < 2) {
-                setResults([]);
-                setSearching(false);
-                setError("");
-                setRateLimit(null);
-              }
+            autoFocus
+            onKeyDown={(event) => {
+              /* With no results to highlight, Enter falls through to the
+                 custom title rather than doing nothing. */
+              if (event.key !== "Enter" || results.length > 0) return;
+              if (adding !== null || searching || customTitle.length < 2) return;
+              event.preventDefault();
+              void choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom");
             }}
-            onKeyDown={handleSearchKeys}
             placeholder="Search movies and shows..."
             ref={inputRef}
-            value={query}
           />
-        </div>
+        </Autocomplete.InputGroup>
 
         <div className="search-results">
           {rateLimit ? (
@@ -280,7 +254,7 @@ function SearchDialog({
                 disabled={retryIn > 0}
                 onClick={() => {
                   setRateLimit(null);
-                  setRetryNonce((current) => current + 1);
+                  retry();
                 }}
                 type="button"
               >
@@ -291,77 +265,62 @@ function SearchDialog({
           {error ? <p className="search-message error">{error}</p> : null}
           {!error && !rateLimit && customTitle.length < 2 ? <p className="search-message">Start typing to search TMDB.</p> : null}
           {!error && !rateLimit && customTitle.length >= 2 && !searching && results.length === 0 ? <p className="search-message">No close matches found.</p> : null}
-          {!rateLimit ? results.map((result) => {
-            const key = `${result.mediaType}-${result.externalId}`;
-            return (
-              <SearchResultButton
-                adding={adding === key}
-                disabled={adding !== null}
-                key={key}
-                onClick={() => choose(result, key)}
-                result={result}
-                selected={highlightedIndex === results.indexOf(result)}
-              />
-            );
-          }) : null}
+          {!rateLimit ? (
+            <Autocomplete.List>
+              {(result: SearchResult) => {
+                const key = `${result.mediaType}-${result.externalId}`;
+                return (
+                  <Autocomplete.Item
+                    className="search-result"
+                    disabled={adding !== null}
+                    key={key}
+                    onClick={() => choose(result, key)}
+                    value={result}
+                  >
+                    <MediaResultContent
+                      meta={[result.releaseYear, mediaLabel(result.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ")}
+                      posterUrl={posterUrl(result.posterPath)}
+                      title={result.title}
+                      trailing={adding === key ? <Spinner size={17} /> : <Plus aria-hidden="true" size={17} />}
+                    />
+                  </Autocomplete.Item>
+                );
+              }}
+            </Autocomplete.List>
+          ) : null}
         </div>
+      </Autocomplete.Root>
 
-        <div className="search-footer">
-          <button
-            className="custom-result"
-            disabled={customTitle.length < 2 || adding !== null}
-            onClick={() => choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom")}
-            type="button"
-          >
-            <span className="mini-poster"><Plus size={17} /></span>
-            <span className="result-copy">
-              <strong>{customTitle.length >= 2 ? `Add \u201c${customTitle}\u201d as a custom title` : "Add a custom title"}</strong>
-              <span>Custom title</span>
-            </span>
-            {adding === "custom" ? <Spinner size={17} /> : null}
-          </button>
-          <div className="search-footer-line">
-            <p aria-live="polite" className="quick-add-status">
-              {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Highlighted result adds on Enter" : "Enter adds and closes"}
-            </p>
-            <label className="quick-add-toggle">
-              <input
-                checked={quickAdd}
-                disabled={adding !== null}
-                onChange={(event) => setQuickAdd(event.target.checked)}
-                type="checkbox"
-              />
-              <span>Quick add</span>
-            </label>
-          </div>
+      <div className="search-footer">
+        <button
+          className="custom-result"
+          disabled={customTitle.length < 2 || adding !== null}
+          onClick={() => choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom")}
+          type="button"
+        >
+          <span className="mini-poster"><Plus size={17} /></span>
+          <span className="result-copy">
+            <strong>{customTitle.length >= 2 ? `Add \u201c${customTitle}\u201d as a custom title` : "Add a custom title"}</strong>
+            <span>Custom title</span>
+          </span>
+          {adding === "custom" ? <Spinner size={17} /> : null}
+        </button>
+        <div className="search-footer-line">
+          <p aria-live="polite" className="quick-add-status">
+            {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Highlighted result adds on Enter" : "Enter adds and closes"}
+          </p>
+          <label className="quick-add-toggle">
+            <input
+              checked={quickAdd}
+              disabled={adding !== null}
+              onChange={(event) => setQuickAdd(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Quick add</span>
+          </label>
         </div>
+      </div>
     </Dialog>
-  );
-}
-
-function SearchResultButton({
-  adding,
-  disabled,
-  onClick,
-  result,
-  selected,
-}: {
-  adding: boolean;
-  disabled: boolean;
-  onClick: () => void;
-  result: SearchResult;
-  selected: boolean;
-}) {
-  const poster = posterUrl(result.posterPath);
-  return (
-    <button aria-current={selected ? "true" : undefined} className={selected ? "search-result selected" : "search-result"} disabled={disabled} onClick={onClick} type="button">
-      {poster ? <img alt="" src={poster} /> : <span className="mini-poster"><Clapperboard size={16} /></span>}
-      <span className="result-copy">
-        <strong>{result.title}</strong>
-        <span>{[result.releaseYear, mediaLabel(result.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ")}</span>
-      </span>
-      {adding ? <Spinner size={17} /> : <Plus aria-hidden="true" size={17} />}
-    </button>
   );
 }
 

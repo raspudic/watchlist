@@ -10,5 +10,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    /* Scope discovery to this checkout's own sources. Sibling git worktrees
+       live under .worktrees and carry their own copies of these tests. */
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
 });
