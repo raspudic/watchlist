@@ -1,4 +1,5 @@
 import { desc } from "drizzle-orm";
+import type { Metadata } from "next";
 
 import { PeopleInvitations, type InvitationSummary } from "@/components/people-invitations";
 import { requireAdmin } from "@/lib/admin";
@@ -7,6 +8,8 @@ import { invitations } from "@/lib/db/schema";
 import { invitationStatus } from "@/lib/invitations";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "People" };
 
 export default async function PeoplePage() {
   await requireAdmin();
