@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/raspudic/watchlist/compare/v0.4.1...v0.5.0) (2026-08-23)
+
+
+### Features
+
+* finish and rate a title in one sheet ([#36](https://github.com/raspudic/watchlist/issues/36)) ([41a0662](https://github.com/raspudic/watchlist/commit/41a0662949ebeb708b66ff0f32a1b5d8e2447285))
+
+
+### Bug Fixes
+
+* prefetch the library tabs so switching is instant ([#38](https://github.com/raspudic/watchlist/issues/38)) ([3625d48](https://github.com/raspudic/watchlist/commit/3625d480d4c1b3378f3cb7e4e1b727b2dd3cecdc))
+
 ## [0.4.1](https://github.com/raspudic/watchlist/compare/v0.4.0...v0.4.1) (2026-08-19)
 
 
