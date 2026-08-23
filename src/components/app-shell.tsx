@@ -11,6 +11,12 @@ import { LibraryCacheProvider } from "@/components/library-cache-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import type { KeyboardShortcut } from "@/lib/keyboard-shortcut";
 
+/*
+ * Both library routes are dynamic and have no loading boundary, so the default
+ * `auto` prefetch stores nothing and each tab switch waits on a server round
+ * trip. Their payload carries no server data, the lists come from the client
+ * library cache, so the links below opt into a full `prefetch`.
+ */
 const links = [
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
   { href: "/watched", label: "Watched", icon: CheckCircle2 },
@@ -51,7 +57,7 @@ export function AppShell({
             </button>
             <nav className="side-nav" aria-label="Library">
               {links.map(({ href, label, icon: Icon }) => (
-                <Link className={pathname === href ? "nav-link active" : "nav-link"} href={href} key={href}>
+                <Link className={pathname === href ? "nav-link active" : "nav-link"} href={href} key={href} prefetch>
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                   <span>{label}</span>
                 </Link>
@@ -106,7 +112,7 @@ export function AppShell({
 
           <nav className="bottom-nav" aria-label="Library">
             {links.map(({ href, label, icon: Icon }) => (
-              <Link className={pathname === href ? "bottom-link active" : "bottom-link"} href={href} key={href}>
+              <Link className={pathname === href ? "bottom-link active" : "bottom-link"} href={href} key={href} prefetch>
                 <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
                 <span>{label}</span>
               </Link>
