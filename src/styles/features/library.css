@@ -41,7 +41,8 @@
 .media-grid .row-note { max-width: 100%; }
 .media-grid .row-chevron { display: none; }
 .media-grid .rate-prompt { position: absolute; top: 9px; right: 9px; padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface-raised) 90%, transparent); box-shadow: 0 2px 10px rgba(0, 0, 0, .16); }
-.media-grid .swipe-delete { width: 100%; }
+.media-grid .swipe-delete,
+.media-grid .swipe-watched { width: 100%; }
 
 /* Rows and swipe-to-remove -------------------------------------------- */
 .swipe-row {
@@ -52,22 +53,25 @@
   background: var(--surface);
   isolation: isolate;
 }
-.swipe-delete {
+/* Both trays fill the row and sit under it; only the one the swipe revealed is
+   visible, and a hidden tray must not swallow taps meant for its opposite. */
+.swipe-delete,
+.swipe-watched {
   position: absolute;
   z-index: 0;
-  inset: 0 0 0 auto;
-  width: 100%;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  background: var(--danger);
   color: white;
   cursor: pointer;
   font-size: 11px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 100ms;
 }
-.swipe-delete-content {
+.swipe-delete { justify-content: flex-end; background: var(--danger); }
+.swipe-watched { justify-content: flex-start; background: var(--accent); }
+.swipe-action-content {
   width: 92px;
   height: 100%;
   display: flex;
@@ -76,7 +80,8 @@
   justify-content: center;
   gap: 4px;
 }
-.swipe-row.revealed .swipe-delete { opacity: 1; }
+.swipe-row.revealed-remove .swipe-delete,
+.swipe-row.revealed-watched .swipe-watched { opacity: 1; pointer-events: auto; }
 
 .media-row {
   position: relative;
@@ -160,9 +165,57 @@
 .region-select .field { flex: 1; min-width: 0; }
 .region-select .btn { flex: 0 0 auto; min-height: var(--field-height); }
 
-.watchlist-note-history { margin-top: 19px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.watchlist-note-history summary { padding: 11px 13px; color: var(--text-soft); cursor: pointer; font-size: 12px; font-weight: 620; }
-.watchlist-note-history p { padding: 0 13px 13px; color: var(--text-soft); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+/* What you wrote when you added it, kept in view while you rate: the question
+   the review note is answering. */
+.note-recall {
+  margin-top: 22px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+}
+.note-recall span { display: block; color: var(--text-faint); font-size: 11.5px; font-weight: 620; }
+.note-recall p { margin-top: 5px; color: var(--text-soft); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+
+/* Watched date: a chip that swaps for the native picker in place. */
+.date-chip {
+  margin-top: 9px;
+  padding: 5px 10px 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color var(--duration), color var(--duration);
+}
+.date-chip:hover { border-color: var(--text-faint); color: var(--text); }
+.date-chip svg { color: var(--text-faint); }
+.watched-date-input {
+  margin-top: 9px;
+  height: var(--control-height-compact);
+  padding: 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  outline: none;
+  background: var(--surface);
+  box-shadow: var(--focus-ring-field);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.note-status {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
 
 .rating-block,
 .note-block { margin-top: 29px; padding-top: 25px; border-top: 1px solid var(--line); }
@@ -201,7 +254,8 @@
 
 .panel-actions { margin-top: 20px; display: flex; gap: 8px; }
 .panel-actions .btn-primary { flex: 1; }
-.detail-remove { margin-top: 28px; }
+/* One group, one control height: placement and variant carry the difference. */
+.detail-footer-actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (max-width: 760px) {
   .library-page { padding: 31px 15px 42px; }
@@ -225,4 +279,5 @@
   .rating-control button { min-height: 38px; aspect-ratio: auto; }
   .panel-actions { flex-direction: column; }
   .panel-actions .btn { width: 100%; }
+  .detail-footer-actions .btn { flex: 1; }
 }

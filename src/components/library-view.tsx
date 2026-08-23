@@ -4,8 +4,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import {
+  Bookmark,
   BookmarkPlus,
+  CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   Clapperboard,
   LayoutGrid,
@@ -45,8 +48,15 @@ import {
   upsertCachedLibraryItem,
 } from "@/lib/library-cache";
 import { readApiJson } from "@/lib/api-response";
-import { mediaLabel, mediaMeta, posterUrl } from "@/lib/media-display";
-import { getSwipeRelease } from "@/lib/swipe";
+import {
+  mediaLabel,
+  mediaMeta,
+  posterUrl,
+  watchedChipLabel,
+  watchedDateStamp,
+  watchedDateValue,
+} from "@/lib/media-display";
+import { SWIPE_TRAY_WIDTH, getSwipeRelease } from "@/lib/swipe";
 
 export type { MediaItem } from "@/lib/library-cache";
 
@@ -123,6 +133,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     const data = await readApiJson<{ item: MediaItem }>(await postItem(result));
     upsertCachedLibraryItem(cacheScope, data.item);
     setItems((current) => [data.item, ...current.filter((item) => item.id !== data.item.id)]);
+    return data.item;
   }
 
   async function addItems(results: AddableTitle[]): Promise<BulkAddOutcome> {
@@ -160,14 +171,48 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     return { added: addedItems.length, duplicates, failedTitles };
   }
 
-  function replaceItem(item: MediaItem) {
+  function syncItem(item: MediaItem) {
     upsertCachedLibraryItem(cacheScope, item);
-    if (item.status !== mode) {
-      setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
-      closeDetail();
-    } else {
-      setItems((current) => current.map((currentItem) => currentItem.id === item.id ? item : currentItem));
-      setSelected(item);
+    setItems((current) => item.status === mode
+      ? current.map((currentItem) => currentItem.id === item.id ? item : currentItem)
+      : current.filter((currentItem) => currentItem.id !== item.id));
+  }
+
+  /* Saving from the sheet leaves it open, even when the change moves the title
+     off this list: finishing something and rating it is one visit. */
+  function replaceItem(item: MediaItem) {
+    syncItem(item);
+    setSelected(item);
+  }
+
+  /* The row shortcut commits on its own and offers the rating in the toast,
+     so a quick swipe never turns into a trip through the sheet. */
+  async function markWatched(item: MediaItem) {
+    try {
+      const data = await readApiJson<{ item: MediaItem }>(
+        await fetch(`/api/items/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "watched" }),
+        }),
+      );
+      syncItem(data.item);
+
+      const toastId = `watched-${item.id}`;
+      toast.add({
+        actionProps: {
+          children: "Rate it",
+          onClick: () => {
+            toast.close(toastId);
+            setSelected(data.item);
+          },
+        },
+        id: toastId,
+        timeout: UNDO_WINDOW_MS,
+        title: `${item.title} — watched today`,
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not mark that title watched.");
     }
   }
 
@@ -223,7 +268,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const rated = mode === "watched" ? visibleItems.filter((item) => item.rating !== null) : [];
   const linkedItemId = searchParams.get("item");
   const linkedItem = linkedItemId ? items.find((item) => item.id === linkedItemId) ?? null : null;
-  const detailItem = linkedItem ?? selected;
+  const detailItem = selected ?? linkedItem;
   const listClass = viewStyle === "grid" ? "media-grid" : "media-list";
 
   const filters: Array<{ count: number; label: string; value: MediaFilter }> = [
@@ -239,7 +284,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           <h1>{mode === "watchlist" ? "Watchlist" : "Watched"}</h1>
           {mode === "watchlist" ? <p className="library-subtitle">Movies and shows saved for later.</p> : null}
         </div>
-        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} /> : null}
+        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onAddNote={setSelected} onBulkAdd={addItems} /> : null}
       </header>
 
       {error ? <InlineMessage onDismiss={() => setError("")}>{error}</InlineMessage> : null}
@@ -248,7 +293,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
       {!loading && items.length === 0 ? (
         <EmptyState
-          actions={mode === "watchlist" ? <AddTitleActions onAdd={addItem} onBulkAdd={addItems} variant="empty" /> : undefined}
+          actions={mode === "watchlist" ? <AddTitleActions onAdd={addItem} onAddNote={setSelected} onBulkAdd={addItems} variant="empty" /> : undefined}
           description={mode === "watchlist" ? "Add a movie or show to get started." : "Titles you finish will move here."}
           icon={mode === "watchlist" ? <BookmarkPlus size={24} /> : <Check size={25} />}
           title={mode === "watchlist" ? "Nothing waiting yet" : "Nothing watched yet"}
@@ -282,7 +327,13 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
             <section aria-label="Watchlist titles" className="media-section">
               <div className={listClass}>
                 {visibleItems.map((item) => (
-                  <MediaRow item={item} key={item.id} onOpen={setSelected} onRemove={removeItem} />
+                  <MediaRow
+                    item={item}
+                    key={item.id}
+                    onMarkWatched={markWatched}
+                    onOpen={setSelected}
+                    onRemove={removeItem}
+                  />
                 ))}
               </div>
             </section>
@@ -333,11 +384,15 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
 function MediaRow({
   item,
+  onMarkWatched,
   onOpen,
   onRemove,
   promptRating = false,
 }: {
   item: MediaItem;
+  /* Present only where marking watched is meaningful, which is what enables
+     the right-hand tray at all. */
+  onMarkWatched?: (item: MediaItem) => void;
   onOpen: (item: MediaItem) => void;
   onRemove: (item: MediaItem) => void;
   promptRating?: boolean;
@@ -349,6 +404,12 @@ function MediaRow({
   const rowWidth = useRef(0);
   const didSwipe = useRef(false);
   const poster = posterUrl(item.posterPath);
+  const canMarkWatched = Boolean(onMarkWatched);
+
+  function settle(next: number) {
+    offsetRef.current = next;
+    setOffset(next);
+  }
 
   function pointerDown(event: ReactPointerEvent) {
     startX.current = event.clientX;
@@ -362,37 +423,67 @@ function MediaRow({
     if (startX.current === null) return;
     const delta = event.clientX - startX.current;
     if (Math.abs(delta) > 7) didSwipe.current = true;
-    const nextOffset = Math.max(-rowWidth.current, Math.min(0, delta + startOffset.current));
-    offsetRef.current = nextOffset;
-    setOffset(nextOffset);
+    settle(Math.max(
+      -rowWidth.current,
+      Math.min(canMarkWatched ? rowWidth.current : 0, delta + startOffset.current),
+    ));
   }
 
   function pointerUp() {
     startX.current = null;
     const release = getSwipeRelease(offsetRef.current, rowWidth.current);
+
     if (release === "remove") {
-      offsetRef.current = -rowWidth.current;
-      setOffset(-rowWidth.current);
+      settle(-rowWidth.current);
       window.setTimeout(() => onRemove(item), 120);
       return;
     }
 
-    const nextOffset = release === "reveal" ? -92 : 0;
-    offsetRef.current = nextOffset;
-    setOffset(nextOffset);
+    if (release === "watched" && onMarkWatched) {
+      settle(rowWidth.current);
+      window.setTimeout(() => onMarkWatched(item), 120);
+      return;
+    }
+
+    if (release === "reveal-remove") {
+      settle(-SWIPE_TRAY_WIDTH);
+      return;
+    }
+
+    if (release === "reveal-watched" && onMarkWatched) {
+      settle(SWIPE_TRAY_WIDTH);
+      return;
+    }
+
+    settle(0);
   }
 
   function pointerCancel() {
     startX.current = null;
-    const nextOffset = offsetRef.current < -44 ? -92 : 0;
-    offsetRef.current = nextOffset;
-    setOffset(nextOffset);
+    if (offsetRef.current < -44) {
+      settle(-SWIPE_TRAY_WIDTH);
+      return;
+    }
+    if (offsetRef.current > 44 && canMarkWatched) {
+      settle(SWIPE_TRAY_WIDTH);
+      return;
+    }
+    settle(0);
   }
 
+  const rowClasses = ["swipe-row"];
+  if (offset < 0) rowClasses.push("revealed-remove");
+  if (offset > 0) rowClasses.push("revealed-watched");
+
   return (
-    <div className={offset < 0 ? "swipe-row revealed" : "swipe-row"}>
+    <div className={rowClasses.join(" ")}>
+      {onMarkWatched ? (
+        <button className="swipe-watched" onClick={() => onMarkWatched(item)} tabIndex={offset > 0 ? 0 : -1} type="button">
+          <span className="swipe-action-content"><Check size={19} /><span>Watched</span></span>
+        </button>
+      ) : null}
       <button className="swipe-delete" onClick={() => onRemove(item)} tabIndex={offset < 0 ? 0 : -1} type="button">
-        <span className="swipe-delete-content"><Trash2 size={19} /><span>Remove</span></span>
+        <span className="swipe-action-content"><Trash2 size={19} /><span>Remove</span></span>
       </button>
       <button
         className="media-row"
@@ -401,9 +492,8 @@ function MediaRow({
             didSwipe.current = false;
             return;
           }
-          if (offset < 0) {
-            offsetRef.current = 0;
-            setOffset(0);
+          if (offset !== 0) {
+            settle(0);
             return;
           }
           onOpen(item);
@@ -421,7 +511,9 @@ function MediaRow({
             <strong>{item.title}</strong>
             {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
           </span>
-          <span className="row-meta">{mediaMeta(item.releaseYear, item.mediaType)}</span>
+          <span className="row-meta">
+            {mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
+          </span>
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
         </span>
@@ -433,6 +525,11 @@ function MediaRow({
 
 const RATINGS = Array.from({ length: 10 }, (_, index) => String(index + 1));
 
+type NoteField = "watchlistNote" | "reviewNote";
+
+/* One sheet for the whole life of a title. Marking something watched keeps it
+   open and turns it into the logging step, because deciding you have finished
+   a film and deciding what you made of it are the same moment. */
 function DetailSheet({
   item,
   onClose,
@@ -447,12 +544,29 @@ function DetailSheet({
   const [rating, setRating] = useState<number | null>(item.rating);
   const [watchlistNote, setWatchlistNote] = useState(item.watchlistNote ?? "");
   const [reviewNote, setReviewNote] = useState(item.reviewNote ?? "");
+  const [dateDraft, setDateDraft] = useState("");
+  const [editingDate, setEditingDate] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  /* What the server already holds, so a blur that changed nothing stays quiet
+     and a failed save is retried on the next one. */
+  const storedNotes = useRef({
+    watchlistNote: item.watchlistNote ?? "",
+    reviewNote: item.reviewNote ?? "",
+  });
+  const pendingNote = useRef<Promise<boolean> | null>(null);
   const poster = posterUrl(item.posterPath, "w342");
 
-  async function save(patch: Record<string, unknown>, closeAfterSave = false) {
-    setSaving(true);
+  const watched = item.status === "watched";
+  const noteField: NoteField = watched ? "reviewNote" : "watchlistNote";
+  const noteValue = watched ? reviewNote : watchlistNote;
+  const today = watchedDateValue(new Date().toISOString());
+
+  /* `block` holds the sheet open behind a spinner. Notes and ratings save
+     without it: they must never disable the button being clicked next. */
+  async function persist(patch: Record<string, unknown>, block = true) {
+    if (block) setSaving(true);
     setError("");
     try {
       const data = await readApiJson<{ item: MediaItem }>(
@@ -463,25 +577,59 @@ function DetailSheet({
         }),
       );
       onUpdate(data.item);
-      if (closeAfterSave) onClose();
+      return data.item;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save your changes.");
+      return null;
     } finally {
-      setSaving(false);
+      if (block) setSaving(false);
     }
   }
 
-  const note = item.status === "watchlist" ? watchlistNote : reviewNote;
+  function commitNote(): Promise<boolean> {
+    const next = noteValue.trim() ? noteValue : "";
+    if (storedNotes.current[noteField] === next) return pendingNote.current ?? Promise.resolve(true);
+
+    const previous = storedNotes.current[noteField];
+    storedNotes.current[noteField] = next;
+
+    const pending = persist({ [noteField]: next || null }, false).then((saved) => {
+      if (saved) {
+        setNoteSaved(true);
+        return true;
+      }
+      storedNotes.current[noteField] = previous;
+      return false;
+    });
+
+    pendingNote.current = pending;
+    return pending;
+  }
+
+  async function markWatched() {
+    const note = watchlistNote.trim() ? watchlistNote : "";
+    storedNotes.current.watchlistNote = note;
+    setNoteSaved(false);
+    await persist({ status: "watched", watchlistNote: note || null });
+  }
+
+  async function done() {
+    if (await commitNote()) onClose();
+  }
 
   return (
     <Sheet
       className="detail-sheet"
       dismissible={!saving}
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      onOpenChange={(open) => {
+        if (open) return;
+        void commitNote();
+        onClose();
+      }}
       open
     >
       <div className="sheet-topbar">
-        <IconButton disabled={saving} label="Close" onClick={onClose}>
+        <IconButton disabled={saving} label="Close" onClick={() => void done()}>
           <X aria-hidden="true" size={19} />
         </IconButton>
       </div>
@@ -493,6 +641,36 @@ function DetailSheet({
             <TypeBadge>{mediaLabel(item.mediaType)}</TypeBadge>
             <SheetTitle className="detail-title">{item.title}</SheetTitle>
             {item.releaseYear ? <p className="detail-year">{item.releaseYear}</p> : null}
+            {watched && editingDate ? (
+              <input
+                aria-label="Date watched"
+                autoFocus
+                className="watched-date-input"
+                max={today}
+                onBlur={() => setEditingDate(false)}
+                onChange={(event) => {
+                  setDateDraft(event.target.value);
+                  const stamp = watchedDateStamp(event.target.value);
+                  if (stamp) void persist({ watchedAt: stamp }, false);
+                }}
+                type="date"
+                value={dateDraft}
+              />
+            ) : null}
+            {watched && !editingDate ? (
+              <button
+                className="date-chip"
+                onClick={() => {
+                  setDateDraft(watchedDateValue(item.watchedAt) || today);
+                  setEditingDate(true);
+                }}
+                type="button"
+              >
+                <CalendarDays aria-hidden="true" size={13} />
+                {watchedChipLabel(item.watchedAt)}
+                <ChevronDown aria-hidden="true" size={12} />
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -500,14 +678,14 @@ function DetailSheet({
 
         <WatchProviders item={item} />
 
-        {item.status === "watched" && item.watchlistNote ? (
-          <details className="watchlist-note-history">
-            <summary>Watchlist note</summary>
+        {watched && item.watchlistNote ? (
+          <div className="note-recall">
+            <span>Notes</span>
             <p>{item.watchlistNote}</p>
-          </details>
+          </div>
         ) : null}
 
-        {item.status === "watched" ? (
+        {watched ? (
           <div className="rating-block">
             <div className="detail-section-title">
               <div><h3>Your rating</h3>{rating === null ? <p>Pick the number that feels right.</p> : null}</div>
@@ -517,7 +695,11 @@ function DetailSheet({
               className="rating-control"
               items={RATINGS.map((value) => ({ label: value, value }))}
               label="Rating out of 10"
-              onValueChange={(next) => setRating(next === null ? null : Number(next))}
+              onValueChange={(next) => {
+                const value = next === null ? null : Number(next);
+                setRating(value);
+                void persist({ rating: value }, false);
+              }}
               value={rating === null ? null : String(rating)}
             />
           </div>
@@ -526,54 +708,50 @@ function DetailSheet({
         <div className="note-block">
           <TextareaField
             id="item-note"
-            label="Notes"
-            onChange={(event) => item.status === "watchlist" ? setWatchlistNote(event.target.value) : setReviewNote(event.target.value)}
-            placeholder="Add anything you want to remember."
+            label={watched ? "What you thought" : "Notes"}
+            onBlur={() => void commitNote()}
+            onChange={(event) => {
+              setNoteSaved(false);
+              if (watched) setReviewNote(event.target.value);
+              else setWatchlistNote(event.target.value);
+            }}
+            placeholder={watched ? "What did you make of it?" : "Anything you want to remember."}
             rows={4}
-            value={note}
+            value={noteValue}
           />
+          {noteSaved ? (
+            <p className="note-status"><Check aria-hidden="true" size={13} /> Saved</p>
+          ) : null}
         </div>
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
 
         <div className="panel-actions">
-          {item.status === "watchlist" ? (
-            <Button
-              loading={saving}
-              onClick={() => save({ watchlistNote: watchlistNote || null }, true)}
-            >
-              {saving ? null : <Check aria-hidden="true" size={18} />}
-              Save notes
-            </Button>
+          {watched ? (
+            <Button fullWidth loading={saving} onClick={() => void done()}>Done</Button>
           ) : (
-            <Button
-              loading={saving}
-              onClick={() => save({ rating, reviewNote: reviewNote || null }, true)}
-            >
+            <Button fullWidth loading={saving} onClick={() => void markWatched()}>
               {saving ? null : <Check aria-hidden="true" size={18} />}
-              Save review
+              I watched it
             </Button>
           )}
-          {item.status === "watchlist" ? (
-            <Button
-              disabled={saving}
-              onClick={() => save({ status: "watched", watchlistNote: watchlistNote || null })}
-              variant="secondary"
-            >
-              <Check aria-hidden="true" size={17} /> Move to watched
-            </Button>
-          ) : null}
         </div>
 
-        <Button
-          className="detail-remove"
-          disabled={saving}
-          onClick={() => onRemove(item)}
-          size="sm"
-          variant="danger"
-        >
-          <Trash2 aria-hidden="true" size={16} /> Remove from library
-        </Button>
+        <div className="detail-footer-actions">
+          {watched ? (
+            <Button
+              disabled={saving}
+              onClick={() => void persist({ status: "watchlist" })}
+              size="sm"
+              variant="quiet"
+            >
+              <Bookmark aria-hidden="true" size={15} /> Move back to watchlist
+            </Button>
+          ) : null}
+          <Button disabled={saving} onClick={() => onRemove(item)} size="sm" variant="danger">
+            <Trash2 aria-hidden="true" size={16} /> Remove from library
+          </Button>
+        </div>
       </div>
     </Sheet>
   );

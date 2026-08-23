@@ -19,8 +19,8 @@ type LibraryGroup = { items: MediaItem[]; value: "Watchlist" | "Watched" };
 function matchingNote(item: MediaItem, query: string) {
   const needle = query.toLocaleLowerCase();
   const notes = [
-    { label: "Watchlist note", value: item.watchlistNote },
-    { label: "Review note", value: item.reviewNote },
+    { label: "Notes", value: item.watchlistNote },
+    { label: "What you thought", value: item.reviewNote },
   ];
   return notes.find((note) => note.value?.toLocaleLowerCase().includes(needle)) ?? null;
 }

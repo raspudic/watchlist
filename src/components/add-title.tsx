@@ -23,6 +23,7 @@ import { TextareaField } from "@/components/ui/field";
 import { Sheet, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useAsyncSearch } from "@/hooks/use-async-search";
+import type { MediaItem } from "@/lib/library-cache";
 import { mediaLabel, posterUrl } from "@/lib/media-display";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -94,10 +95,13 @@ async function mapWithConcurrency<T, R>(
 
 export function AddTitleActions({
   onAdd,
+  onAddNote,
   onBulkAdd,
   variant = "header",
 }: {
-  onAdd: (item: AddableTitle) => Promise<void>;
+  onAdd: (item: AddableTitle) => Promise<MediaItem | void>;
+  /* Adding stays one tap; the note is offered afterwards, from the toast. */
+  onAddNote?: (item: MediaItem) => void;
   onBulkAdd: (items: AddableTitle[]) => Promise<BulkAddOutcome>;
   variant?: "header" | "empty";
 }) {
@@ -127,7 +131,7 @@ export function AddTitleActions({
           </>
         )}
       </div>
-      {searchOpen ? <SearchDialog onAdd={onAdd} onClose={() => setSearchOpen(false)} /> : null}
+      {searchOpen ? <SearchDialog onAdd={onAdd} onAddNote={onAddNote} onClose={() => setSearchOpen(false)} /> : null}
       {importOpen ? <BulkImportDialog onClose={() => setImportOpen(false)} onImport={onBulkAdd} /> : null}
     </>
   );
@@ -135,9 +139,11 @@ export function AddTitleActions({
 
 function SearchDialog({
   onAdd,
+  onAddNote,
   onClose,
 }: {
-  onAdd: (item: AddableTitle) => Promise<void>;
+  onAdd: (item: AddableTitle) => Promise<MediaItem | void>;
+  onAddNote?: (item: MediaItem) => void;
   onClose: () => void;
 }) {
   const toast = useToast();
@@ -190,8 +196,13 @@ function SearchDialog({
     setAdding(key);
     setAddError("");
     try {
-      await onAdd(item);
-      toast.add({ title: `Added ${item.title}` });
+      const added = await onAdd(item);
+      toast.add({
+        actionProps: added && onAddNote
+          ? { children: "Add a note", onClick: () => onAddNote(added) }
+          : undefined,
+        title: `Added ${item.title}`,
+      });
       if (!quickAdd) {
         onClose();
         return;
