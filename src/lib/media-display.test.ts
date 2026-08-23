@@ -69,7 +69,9 @@ describe("mediaMeta", () => {
     expect(mediaMeta(2023, "movie")).toBe("2023 · Movie");
   });
 
+  /* mediaMeta reads the clock itself, so this one has to be relative to now
+     rather than to a fixed day the runner may not be having. */
   it("adds when you saw it once there is a watched date", () => {
-    expect(mediaMeta(2023, "movie", isoOn(2026, 7, 24))).toBe("2023 · Movie · Today");
+    expect(mediaMeta(2023, "movie", new Date().toISOString())).toBe("2023 · Movie · Today");
   });
 });
