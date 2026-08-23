@@ -57,6 +57,11 @@ export async function PATCH(request: Request, context: ItemRouteContext) {
     if (input.status === "watched" && existing.status !== "watched") values.watchedAt = new Date();
     if (input.status === "watchlist") values.watchedAt = null;
   }
+  /* An explicit date wins over the one the status change would have stamped,
+     but only while the title is actually watched. */
+  if ("watchedAt" in input && (input.status ?? existing.status) === "watched") {
+    values.watchedAt = input.watchedAt ? new Date(input.watchedAt) : null;
+  }
   if ("watchlistNote" in input) values.watchlistNote = input.watchlistNote ?? null;
   if ("reviewNote" in input) values.reviewNote = input.reviewNote ?? null;
   if ("rating" in input) values.rating = input.rating ?? null;

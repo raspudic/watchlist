@@ -51,4 +51,16 @@ describe("updateMediaItemSchema", () => {
     expect(updateMediaItemSchema.safeParse({ rating: 11 }).success).toBe(false);
     expect(updateMediaItemSchema.safeParse({}).success).toBe(false);
   });
+
+  it("accepts a past watched date and clearing it", () => {
+    const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    expect(updateMediaItemSchema.safeParse({ watchedAt: lastWeek }).success).toBe(true);
+    expect(updateMediaItemSchema.safeParse({ watchedAt: null }).success).toBe(true);
+  });
+
+  it("rejects a watched date in the future or without a time", () => {
+    const nextYear = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    expect(updateMediaItemSchema.safeParse({ watchedAt: nextYear }).success).toBe(false);
+    expect(updateMediaItemSchema.safeParse({ watchedAt: "2026-08-24" }).success).toBe(false);
+  });
 });
