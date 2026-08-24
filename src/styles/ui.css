@@ -481,5 +481,21 @@ select.field-control { padding-right: 34px; appearance: none; background-image: 
     background: var(--line-strong);
   }
 
-  .toast-viewport { left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); }
+  /*
+   * Clears the bottom nav and the badge the deployment floats in the corner,
+   * and stays narrow enough not to reach the corners itself. Narrower leaves
+   * less room on one line, so the title wraps rather than losing its tail to
+   * an ellipsis — it names the title you just acted on.
+   */
+  .toast-viewport {
+    left: 50%;
+    bottom: calc(132px + env(safe-area-inset-bottom));
+    max-width: min(78vw, 360px);
+  }
+  .toast-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+  }
 }
