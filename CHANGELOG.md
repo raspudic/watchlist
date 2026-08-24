@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/raspudic/watchlist/compare/v0.5.0...v0.5.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* keep the library prefetch warm past five minutes ([#39](https://github.com/raspudic/watchlist/issues/39)) ([27c52a7](https://github.com/raspudic/watchlist/commit/27c52a7d95936328a72b838c07db0d156824b176))
+* rework the watchlist note placement and the toast ([#40](https://github.com/raspudic/watchlist/issues/40)) ([c4cd2e8](https://github.com/raspudic/watchlist/commit/c4cd2e86a153f636e6f12cc442ed1aaa8c63d4bf))
+
 ## [0.5.0](https://github.com/raspudic/watchlist/compare/v0.4.1...v0.5.0) (2026-08-23)
 
 
