@@ -427,7 +427,17 @@ select.field-control { padding-right: 34px; appearance: none; background-image: 
 }
 .toast-root[data-starting-style],
 .toast-root[data-ending-style] { opacity: 0; transform: translateY(12px); }
-.toast-title { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Base UI renders the title as an <h2>, which the reset leaves at the UA
+   heading size — bigger and heavier than the action beside it. */
+.toast-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: inherit;
+  font-weight: 560;
+}
 .toast-action,
 .toast-close {
   flex: 0 0 auto;
