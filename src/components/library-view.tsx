@@ -617,6 +617,27 @@ function DetailSheet({
     if (await commitNote()) onClose();
   }
 
+  const noteEditor = (
+    <div className="note-block">
+      <TextareaField
+        id="item-note"
+        label={watched ? "What you thought" : "Notes"}
+        onBlur={() => void commitNote()}
+        onChange={(event) => {
+          setNoteSaved(false);
+          if (watched) setReviewNote(event.target.value);
+          else setWatchlistNote(event.target.value);
+        }}
+        placeholder={watched ? "What did you make of it?" : "Why you saved it."}
+        rows={4}
+        value={noteValue}
+      />
+      {noteSaved ? (
+        <p className="note-status"><Check aria-hidden="true" size={13} /> Saved</p>
+      ) : null}
+    </div>
+  );
+
   return (
     <Sheet
       className="detail-sheet"
@@ -676,14 +697,20 @@ function DetailSheet({
 
         {item.overview ? <p className="overview">{item.overview}</p> : null}
 
-        <WatchProviders item={item} />
-
         {watched && item.watchlistNote ? (
           <div className="note-recall">
             <span>Notes</span>
             <p>{item.watchlistNote}</p>
           </div>
         ) : null}
+
+        {/* Unwatched, the note belongs with the description: it says why the
+            title is here, and the add flow drops you straight into it. Once
+            watched it becomes the review and moves down beside the rating,
+            because settling on a score and saying why are one thought. */}
+        {watched ? null : noteEditor}
+
+        <WatchProviders item={item} />
 
         {watched ? (
           <div className="rating-block">
@@ -705,24 +732,7 @@ function DetailSheet({
           </div>
         ) : null}
 
-        <div className="note-block">
-          <TextareaField
-            id="item-note"
-            label={watched ? "What you thought" : "Notes"}
-            onBlur={() => void commitNote()}
-            onChange={(event) => {
-              setNoteSaved(false);
-              if (watched) setReviewNote(event.target.value);
-              else setWatchlistNote(event.target.value);
-            }}
-            placeholder={watched ? "What did you make of it?" : "Anything you want to remember."}
-            rows={4}
-            value={noteValue}
-          />
-          {noteSaved ? (
-            <p className="note-status"><Check aria-hidden="true" size={13} /> Saved</p>
-          ) : null}
-        </div>
+        {watched ? noteEditor : null}
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
 
