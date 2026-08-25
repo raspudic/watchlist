@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import {
+  BookmarkPlus,
   Check,
   Clapperboard,
   FileText,
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Autocomplete } from "@base-ui/react/autocomplete";
 
+import { MediaDetailOverview } from "@/components/media/media-detail-overview";
 import { MediaResultContent } from "@/components/media/media-result-content";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +25,7 @@ import { TextareaField } from "@/components/ui/field";
 import { Sheet, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useAsyncSearch } from "@/hooks/use-async-search";
+import { usePreviewShortcut } from "@/hooks/use-preview-shortcut";
 import type { MediaItem } from "@/lib/library-cache";
 import { mediaLabel, posterUrl } from "@/lib/media-display";
 import { useToast } from "@/components/ui/toast";
@@ -151,9 +154,13 @@ function SearchDialog({
   const [addError, setAddError] = useState("");
   const [lastAdded, setLastAdded] = useState("");
   const [quickAdd, setQuickAdd] = useState(false);
+  const [preview, setPreview] = useState<SearchResult | null>(null);
+  const [highlighted, setHighlighted] = useState<SearchResult | undefined>();
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(() => new Set());
   const [rateLimit, setRateLimit] = useState<{ message: string; retryAt: number } | null>(null);
   const [clock, setClock] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewShortcut = usePreviewShortcut();
 
   /* A rate-limit response is not a search error — it drives its own countdown,
      so it is swallowed here and handled below. */
@@ -192,30 +199,41 @@ function SearchDialog({
     return () => window.clearInterval(timer);
   }, [rateLimit]);
 
-  async function choose(item: AddableTitle, key: string) {
+  async function choose(item: AddableTitle, key: string, stayOpen = false) {
+    if (addedKeys.has(key)) return true;
     setAdding(key);
     setAddError("");
     try {
       const added = await onAdd(item);
+      setAddedKeys((current) => new Set(current).add(key));
       toast.add({
-        actionProps: added && onAddNote
+        actionProps: !stayOpen && added && onAddNote
           ? { children: "Add a note", onClick: () => onAddNote(added) }
           : undefined,
         title: `Added ${item.title}`,
       });
-      if (!quickAdd) {
+      if (!stayOpen && !quickAdd) {
         onClose();
-        return;
+        return true;
       }
-      setLastAdded(item.title);
-      reset();
-      setRateLimit(null);
-      inputRef.current?.focus();
+      if (!stayOpen) {
+        setLastAdded(item.title);
+        reset();
+        setRateLimit(null);
+        inputRef.current?.focus();
+      }
+      return true;
     } catch (caught) {
       setAddError(caught instanceof Error ? caught.message : "Could not add that title.");
+      return false;
     } finally {
       setAdding(null);
     }
+  }
+
+  function openPreview(item: SearchResult) {
+    setAddError("");
+    setPreview(item);
   }
 
   const customTitle = query.trim();
@@ -223,19 +241,22 @@ function SearchDialog({
   const error = addError || searchError;
 
   return (
-    <Dialog className="search-dialog" onOpenChange={(next) => !next && onClose()} open>
-      <div className="add-search-header">
-        <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
-        <div><DialogTitle>Find a title</DialogTitle></div>
-        <IconButton label="Close" onClick={onClose}><X aria-hidden="true" size={18} /></IconButton>
-      </div>
+    <>
+      <Dialog className="search-dialog" onOpenChange={(next) => !next && onClose()} open>
+        <div className="add-search-header">
+          <span className="add-search-icon" aria-hidden="true"><Plus size={18} /></span>
+          <div><DialogTitle>Find a title</DialogTitle></div>
+          <IconButton label="Close" onClick={onClose}><X aria-hidden="true" size={18} /></IconButton>
+        </div>
 
-      <Autocomplete.Root
+        <Autocomplete.Root
         autoHighlight="always"
         filter={null}
         items={results}
+        onItemHighlighted={setHighlighted}
         onValueChange={(value) => {
           setQuery(value);
+          setHighlighted(undefined);
           setLastAdded("");
           if (value.trim().length < 2) setRateLimit(null);
         }}
@@ -247,12 +268,32 @@ function SearchDialog({
             aria-label="Search movies and shows"
             autoComplete="off"
             autoFocus
-            onKeyDown={(event) => {
-              /* With no results to highlight, Enter falls through to the
+            onKeyDownCapture={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+
+              const selectedResult = highlighted ?? results[0];
+              const wantsPreview = event.metaKey || event.ctrlKey;
+              if (wantsPreview && selectedResult) {
+                event.preventDefault();
+                event.stopPropagation();
+                openPreview(selectedResult);
+                return;
+              }
+
+              if (wantsPreview) return;
+              if (selectedResult) {
+                event.preventDefault();
+                event.stopPropagation();
+                const key = `${selectedResult.mediaType}-${selectedResult.externalId}`;
+                if (adding === null && !addedKeys.has(key)) void choose(selectedResult, key);
+                return;
+              }
+
+              /* With no result to highlight, Enter falls through to the
                  custom title rather than doing nothing. */
-              if (event.key !== "Enter" || results.length > 0) return;
               if (adding !== null || searching || customTitle.length < 2) return;
               event.preventDefault();
+              event.stopPropagation();
               void choose({ provider: "custom", title: customTitle, mediaType: "other" }, "custom");
             }}
             placeholder="Search movies and shows..."
@@ -283,19 +324,36 @@ function SearchDialog({
             <Autocomplete.List>
               {(result: SearchResult) => {
                 const key = `${result.mediaType}-${result.externalId}`;
+                const added = addedKeys.has(key);
                 return (
                   <Autocomplete.Item
+                    aria-label={`Preview ${result.title}`}
                     className="search-result"
                     disabled={adding !== null}
                     key={key}
-                    onClick={() => choose(result, key)}
+                    onClick={() => openPreview(result)}
                     value={result}
                   >
                     <MediaResultContent
                       meta={[result.releaseYear, mediaLabel(result.mediaType, "Custom title")].filter(Boolean).join(" \u00b7 ")}
                       posterUrl={posterUrl(result.posterPath)}
                       title={result.title}
-                      trailing={adding === key ? <Spinner size={17} /> : <Plus aria-hidden="true" size={17} />}
+                      trailing={(
+                        <button
+                          aria-label={added ? `${result.title} is in your watchlist` : `Add ${result.title} to watchlist`}
+                          className="result-add-button"
+                          disabled={added || adding !== null}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void choose(result, key);
+                          }}
+                          type="button"
+                        >
+                          {adding === key ? <Spinner size={15} /> : added ? <Check aria-hidden="true" size={14} /> : null}
+                          <span>{added ? "Added" : "Add"}</span>
+                          {!added && adding !== key ? <span aria-hidden="true" className="return-key-glyph">↵</span> : null}
+                        </button>
+                      )}
                     />
                   </Autocomplete.Item>
                 );
@@ -303,9 +361,9 @@ function SearchDialog({
             </Autocomplete.List>
           ) : null}
         </div>
-      </Autocomplete.Root>
+        </Autocomplete.Root>
 
-      <div className="search-footer">
+        <div className="search-footer">
         <button
           className="custom-result"
           disabled={customTitle.length < 2 || adding !== null}
@@ -321,8 +379,11 @@ function SearchDialog({
         </button>
         <div className="search-footer-line">
           <p aria-live="polite" className="quick-add-status">
-            {lastAdded ? `Added ${lastAdded}. Ready for another.` : quickAdd ? "Highlighted result adds on Enter" : "Enter adds and closes"}
+            {lastAdded ? `Added ${lastAdded}. Ready for another.` : null}
           </p>
+          {!lastAdded && previewShortcut ? (
+            <span aria-hidden="true" className="preview-shortcut-hint">{previewShortcut.display}</span>
+          ) : null}
           <label className="quick-add-toggle">
             <input
               checked={quickAdd}
@@ -333,8 +394,61 @@ function SearchDialog({
             <span>Quick add</span>
           </label>
         </div>
+        </div>
+      </Dialog>
+
+      {preview ? (
+        <SearchPreviewSheet
+          added={addedKeys.has(`${preview.mediaType}-${preview.externalId}`)}
+          adding={adding === `${preview.mediaType}-${preview.externalId}`}
+          error={addError}
+          item={preview}
+          onAdd={() => choose(preview, `${preview.mediaType}-${preview.externalId}`, true)}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function SearchPreviewSheet({
+  added,
+  adding,
+  error,
+  item,
+  onAdd,
+  onClose,
+}: {
+  added: boolean;
+  adding: boolean;
+  error: string;
+  item: SearchResult;
+  onAdd: () => Promise<boolean>;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet
+      className="detail-sheet preview-sheet"
+      dismissible={!adding}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      open
+    >
+      <div className="sheet-topbar">
+        <IconButton disabled={adding} label="Close preview" onClick={onClose}>
+          <X aria-hidden="true" size={19} />
+        </IconButton>
       </div>
-    </Dialog>
+      <div className="sheet-body">
+        <MediaDetailOverview item={item} />
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <div className="panel-actions preview-actions" aria-live="polite">
+          <Button disabled={added} fullWidth loading={adding} onClick={() => void onAdd()}>
+            {added ? <Check aria-hidden="true" size={18} /> : <BookmarkPlus aria-hidden="true" size={18} />}
+            {added ? "Added to Watchlist" : "Add to Watchlist"}
+          </Button>
+        </div>
+      </div>
+    </Sheet>
   );
 }
 

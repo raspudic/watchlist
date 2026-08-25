@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { RegionSelect, loadWatchRegions, regionName } from "@/components/region-select";
 import { useRegion } from "@/components/region-provider";
 import { friendlySearchLimitMessage, isRateLimitError, readApiJson } from "@/lib/api-response";
-import type { MediaItem } from "@/lib/library-cache";
 import { providerLogoUrl } from "@/lib/media-display";
 
 type WatchProvider = { id: number; name: string; logoPath: string | null };
@@ -27,11 +26,17 @@ type Result = { key: string; providers?: TitleWatchProviders; error?: string };
 // lifetime. The server holds the durable 12-hour cache.
 const cache = new Map<string, TitleWatchProviders>();
 
+export type WatchProviderItem = {
+  externalId: number | null;
+  mediaType: "movie" | "tv" | "other";
+  provider: string;
+};
+
 function cacheKey(mediaType: string, tmdbId: number, region: string) {
   return `${mediaType}:${tmdbId}:${region}`;
 }
 
-export function WatchProviders({ item }: { item: MediaItem }) {
+export function WatchProviders({ item }: { item: WatchProviderItem }) {
   const { region } = useRegion();
   const tmdbId = item.externalId;
   const mediaType = item.mediaType;

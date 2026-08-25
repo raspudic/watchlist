@@ -254,6 +254,7 @@
 
 .panel-actions { margin-top: 20px; display: flex; gap: 8px; }
 .panel-actions .btn-primary { flex: 1; }
+.preview-actions { margin-top: 29px; }
 /* One group, one control height: placement and variant carry the difference. */
 .detail-footer-actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
 

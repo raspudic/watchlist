@@ -3,8 +3,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { RegionProvider } from "@/components/region-provider";
 import { ToastProvider } from "@/components/ui/toast";
 
 import { AddTitleActions, type SearchResult } from "./add-title";
@@ -40,6 +42,35 @@ function stubSearchFetch(handler: (query: string) => SearchResult[] | { retryAft
       );
     }
     return Response.json({ results: outcome });
+  }));
+}
+
+function SearchProviders({ children }: { children: ReactNode }) {
+  return (
+    <RegionProvider region="US" suggestedRegion="US">
+      <ToastProvider>{children}</ToastProvider>
+    </RegionProvider>
+  );
+}
+
+function stubPreviewFetch(results: SearchResult[]) {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input), "http://watchlist.test");
+    if (url.pathname === "/api/search") return Response.json({ results });
+    if (url.pathname === "/api/watch-regions") {
+      return Response.json({ regions: [{ code: "US", name: "United States of America" }] });
+    }
+    if (url.pathname === "/api/watch-providers") {
+      return Response.json({
+        providers: {
+          region: "US",
+          link: "https://tmdb.test/watch",
+          streaming: [{ id: 8, name: "Netflix", logoPath: null }],
+          rentOrBuy: [],
+        },
+      });
+    }
+    throw new Error(`Unexpected request: ${url.pathname}`);
   }));
 }
 
@@ -137,6 +168,88 @@ describe("AddTitleActions add behavior", () => {
     expect(screen.getByRole("dialog", { name: "Find a title" })).toBeInTheDocument();
     expect(input).toHaveValue("");
     expect(screen.getByText("Added Arrival. Ready for another.")).toBeInTheDocument();
+  });
+});
+
+describe("AddTitleActions preview behavior", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("opens the shared detail presentation from the row and updates the preview action after adding", async () => {
+    const result = makeResult("Arrival", {
+      externalId: 329865,
+      overview: "A linguist works with the military to communicate with alien lifeforms.",
+      releaseYear: 2016,
+    });
+    stubPreviewFetch([result]);
+    const onAdd = vi.fn().mockResolvedValue(undefined);
+
+    render(<AddTitleActions onAdd={onAdd} onBulkAdd={vi.fn()} />, { wrapper: SearchProviders });
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Search movies and shows" }),
+      { target: { value: "Arrival" } },
+    );
+
+    fireEvent.click(await screen.findByRole("option", { name: "Preview Arrival" }));
+
+    expect(screen.getByRole("dialog", { name: "Arrival" })).toBeInTheDocument();
+    expect(screen.getByText(result.overview as string)).toBeInTheDocument();
+    expect(screen.getByText("Where to watch")).toBeInTheDocument();
+    expect(await screen.findByText("Netflix")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "I watched it" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add to Watchlist" }));
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(result));
+    expect(await screen.findByRole("button", { name: "Added to Watchlist" })).toBeDisabled();
+    expect(screen.getByRole("dialog", { name: "Arrival" })).toBeInTheDocument();
+  });
+
+  it("adds directly without opening preview when the row's Add button is clicked", async () => {
+    const result = makeResult("Moon", { externalId: 17431 });
+    stubPreviewFetch([result]);
+    const onAdd = vi.fn(() => new Promise<void>(() => undefined));
+
+    render(<AddTitleActions onAdd={onAdd} onBulkAdd={vi.fn()} />, { wrapper: SearchProviders });
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Search movies and shows" }),
+      { target: { value: "Moon" } },
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add Moon to watchlist" }));
+    expect(onAdd).toHaveBeenCalledWith(result);
+    expect(screen.queryByRole("dialog", { name: "Moon" })).not.toBeInTheDocument();
+  });
+
+  it("uses modified Enter for preview and plain Enter for adding the highlighted result", async () => {
+    const first = makeResult("Alien", { externalId: 348 });
+    const second = makeResult("Aliens", { externalId: 679 });
+    stubPreviewFetch([first, second]);
+    const onAdd = vi.fn().mockResolvedValue(undefined);
+
+    render(<AddTitleActions onAdd={onAdd} onBulkAdd={vi.fn()} />, { wrapper: SearchProviders });
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    const input = screen.getByRole("combobox", { name: "Search movies and shows" });
+    fireEvent.change(input, { target: { value: "Alien" } });
+    await screen.findByRole("option", { name: "Preview Alien" });
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+    expect(screen.getByRole("dialog", { name: "Aliens" })).toBeInTheDocument();
+    expect(onAdd).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(screen.getByRole("dialog", { name: "Aliens" })).toBeInTheDocument();
+    expect(onAdd).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(second));
   });
 });
 

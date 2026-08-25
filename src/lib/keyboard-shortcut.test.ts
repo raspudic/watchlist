@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getSearchShortcut } from "@/lib/keyboard-shortcut";
+import { getPreviewShortcut, getSearchShortcut } from "@/lib/keyboard-shortcut";
 
 describe("getSearchShortcut", () => {
   it.each([
@@ -16,5 +16,20 @@ describe("getSearchShortcut", () => {
     [null, null, "Ctrl K", "Control K"],
   ])("maps %s / %s to the correct modifier", (platform, userAgent, display, ariaLabel) => {
     expect(getSearchShortcut(platform, userAgent)).toEqual({ ariaLabel, display });
+  });
+});
+
+describe("getPreviewShortcut", () => {
+  it.each([
+    ["macOS", "Mozilla/5.0 (Macintosh; Intel Mac OS X)", 0, true, "⌘↵ Preview"],
+    ["Windows", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", 10, true, "Ctrl↵ Preview"],
+    ["Linux", "Mozilla/5.0 (X11; Linux x86_64)", 0, true, "Ctrl↵ Preview"],
+    ["macOS", "Mozilla/5.0 (Macintosh) Mobile/15E148 Safari/604.1", 5, true, null],
+    ["iPadOS", "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)", 5, true, null],
+    ["iOS", "Mozilla/5.0 (iPhone)", 5, false, null],
+    ["Android", "Mozilla/5.0 (Linux; Android 15)", 5, true, null],
+    ["macOS", "Mozilla/5.0 (Macintosh; Intel Mac OS X)", 0, false, null],
+  ])("maps device capabilities to a truthful preview hint", (platform, userAgent, touches, finePointer, display) => {
+    expect(getPreviewShortcut(platform, userAgent, touches, finePointer)?.display ?? null).toBe(display);
   });
 });
