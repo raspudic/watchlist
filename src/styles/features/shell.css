@@ -99,6 +99,8 @@
    own, so it needs to outrank the shell's fixed sidebar and bottom bar. */
 .menu-positioner { z-index: 80; }
 
+body > div:has(> a[href^="https://specific.dev"]) { z-index: 40 !important; }
+
 .mobile-header,
 .bottom-nav,
 .mobile-search-button { display: none; }
