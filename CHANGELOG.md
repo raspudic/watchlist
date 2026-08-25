@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/raspudic/watchlist/compare/v0.5.1...v0.6.0) (2026-08-25)
+
+
+### Features
+
+* add title previews to search ([#43](https://github.com/raspudic/watchlist/issues/43)) ([d438f96](https://github.com/raspudic/watchlist/commit/d438f965af18b7de0ed758bc56c87fa749f083d0))
+
+
+### Bug Fixes
+
+* Fix toast and badge ranking ([#42](https://github.com/raspudic/watchlist/issues/42)) ([0f1b2a0](https://github.com/raspudic/watchlist/commit/0f1b2a0fadf13ced1b00ecbd6288797f45360b77))
+
 ## [0.5.1](https://github.com/raspudic/watchlist/compare/v0.5.0...v0.5.1) (2026-08-24)
 
 
