@@ -27,15 +27,15 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
-import { Badge, TypeBadge } from "@/components/ui/badge";
+import { MediaDetailOverview } from "@/components/media/media-detail-overview";
+import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyInline, EmptyState } from "@/components/ui/empty-state";
 import { TextareaField } from "@/components/ui/field";
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { InlineMessage } from "@/components/ui/inline-message";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { WatchProviders } from "@/components/watch-providers";
-import { Sheet, SheetTitle } from "@/components/ui/sheet";
+import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { type LibraryViewStyle, useLibraryViewStyle } from "@/hooks/use-library-view-style";
 import {
@@ -49,7 +49,6 @@ import {
 } from "@/lib/library-cache";
 import { readApiJson } from "@/lib/api-response";
 import {
-  mediaLabel,
   mediaMeta,
   posterUrl,
   watchedChipLabel,
@@ -556,8 +555,6 @@ function DetailSheet({
     reviewNote: item.reviewNote ?? "",
   });
   const pendingNote = useRef<Promise<boolean> | null>(null);
-  const poster = posterUrl(item.posterPath, "w342");
-
   const watched = item.status === "watched";
   const noteField: NoteField = watched ? "reviewNote" : "watchlistNote";
   const noteValue = watched ? reviewNote : watchlistNote;
@@ -656,61 +653,55 @@ function DetailSheet({
       </div>
 
       <div className="sheet-body">
-        <div className="detail-hero">
-          {poster ? <img className="detail-poster" alt="" src={poster} /> : <span className="detail-poster placeholder"><Clapperboard size={32} /></span>}
-          <div className="detail-title-copy">
-            <TypeBadge>{mediaLabel(item.mediaType)}</TypeBadge>
-            <SheetTitle className="detail-title">{item.title}</SheetTitle>
-            {item.releaseYear ? <p className="detail-year">{item.releaseYear}</p> : null}
-            {watched && editingDate ? (
-              <input
-                aria-label="Date watched"
-                autoFocus
-                className="watched-date-input"
-                max={today}
-                onBlur={() => setEditingDate(false)}
-                onChange={(event) => {
-                  setDateDraft(event.target.value);
-                  const stamp = watchedDateStamp(event.target.value);
-                  if (stamp) void persist({ watchedAt: stamp }, false);
-                }}
-                type="date"
-                value={dateDraft}
-              />
-            ) : null}
-            {watched && !editingDate ? (
-              <button
-                className="date-chip"
-                onClick={() => {
-                  setDateDraft(watchedDateValue(item.watchedAt) || today);
-                  setEditingDate(true);
-                }}
-                type="button"
-              >
-                <CalendarDays aria-hidden="true" size={13} />
-                {watchedChipLabel(item.watchedAt)}
-                <ChevronDown aria-hidden="true" size={12} />
-              </button>
-            ) : null}
-          </div>
-        </div>
+        <MediaDetailOverview
+          item={item}
+          titleMeta={watched ? (
+            <>
+              {editingDate ? (
+                <input
+                  aria-label="Date watched"
+                  autoFocus
+                  className="watched-date-input"
+                  max={today}
+                  onBlur={() => setEditingDate(false)}
+                  onChange={(event) => {
+                    setDateDraft(event.target.value);
+                    const stamp = watchedDateStamp(event.target.value);
+                    if (stamp) void persist({ watchedAt: stamp }, false);
+                  }}
+                  type="date"
+                  value={dateDraft}
+                />
+              ) : (
+                <button
+                  className="date-chip"
+                  onClick={() => {
+                    setDateDraft(watchedDateValue(item.watchedAt) || today);
+                    setEditingDate(true);
+                  }}
+                  type="button"
+                >
+                  <CalendarDays aria-hidden="true" size={13} />
+                  {watchedChipLabel(item.watchedAt)}
+                  <ChevronDown aria-hidden="true" size={12} />
+                </button>
+              )}
+            </>
+          ) : null}
+        >
+          {watched && item.watchlistNote ? (
+            <div className="note-recall">
+              <span>Notes</span>
+              <p>{item.watchlistNote}</p>
+            </div>
+          ) : null}
 
-        {item.overview ? <p className="overview">{item.overview}</p> : null}
-
-        {watched && item.watchlistNote ? (
-          <div className="note-recall">
-            <span>Notes</span>
-            <p>{item.watchlistNote}</p>
-          </div>
-        ) : null}
-
-        {/* Unwatched, the note belongs with the description: it says why the
-            title is here, and the add flow drops you straight into it. Once
-            watched it becomes the review and moves down beside the rating,
-            because settling on a score and saying why are one thought. */}
-        {watched ? null : noteEditor}
-
-        <WatchProviders item={item} />
+          {/* Unwatched, the note belongs with the description: it says why the
+              title is here, and the add flow drops you straight into it. Once
+              watched it becomes the review and moves down beside the rating,
+              because settling on a score and saying why are one thought. */}
+          {watched ? null : noteEditor}
+        </MediaDetailOverview>
 
         {watched ? (
           <div className="rating-block">

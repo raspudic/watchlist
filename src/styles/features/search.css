@@ -69,9 +69,27 @@
 .search-result[data-disabled],
 .custom-result:disabled { cursor: default; opacity: 0.55; }
 .search-result img { width: 30px; height: 42px; flex: 0 0 auto; border-radius: 5px; object-fit: cover; }
-.search-result[data-highlighted] .result-affordance { color: var(--accent-text); }
-.search-result[data-highlighted] .result-affordance > svg { display: none; }
-.search-result[data-highlighted] .result-hint { display: inline; }
+.result-add-button {
+  min-width: 70px;
+  height: 32px;
+  padding: 0 9px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+.result-add-button:hover:not(:disabled) { border-color: var(--text-faint); color: var(--text); }
+.result-add-button:focus-visible { outline: none; box-shadow: var(--focus-ring-field); }
+.result-add-button:disabled { cursor: default; opacity: 0.58; }
+.return-key-glyph { color: var(--text-faint); font-family: var(--font-mono); font-size: 14px; line-height: 1; }
 
 .search-limit-message {
   margin: 9px;
@@ -90,7 +108,8 @@
 .search-footer .custom-result:not(:disabled) { background: var(--surface-hover); }
 .search-footer .custom-result:not(:disabled):hover { border-color: var(--line-strong); }
 .search-footer-line { padding: 5px 6px 1px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.quick-add-status { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-faint); font-size: 10px; }
+.quick-add-status { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-faint); font-size: 10px; }
+.preview-shortcut-hint { flex: 0 0 auto; color: var(--text-faint); font-size: 10px; }
 
 /* Global library search ------------------------------------------------ */
 .library-search-dialog { width: min(100%, 690px); }
@@ -195,6 +214,7 @@
   .search-results { max-height: 48vh; }
   .library-search-results { max-height: 62vh; }
   .keyboard-hint { display: none; }
+  .preview-shortcut-hint { display: none; }
 
   .bulk-header { padding: 22px 19px 17px; }
   .bulk-header h2 { font-size: 21px; }
