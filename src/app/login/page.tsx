@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="login-page">
       <section className="login-panel">
-        <div className="login-brand"><span>/</span> later</div>
+        <div className="login-brand"><span>/</span> watchlist</div>
         <div className="login-copy">
           <h1>Welcome back</h1>
           <p>Sign in to get to your list.</p>

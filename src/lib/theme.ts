@@ -1,10 +1,10 @@
 export type ThemePreference = "light" | "system" | "dark";
 
-export const THEME_STORAGE_KEY = "later-theme";
+export const THEME_STORAGE_KEY = "watchlist-theme";
 /* Read once so a browser that stored a preference under the old product name
    keeps it through the rename. */
-export const LEGACY_THEME_STORAGE_KEY = "watchlist-theme";
-export const THEME_CHANGE_EVENT = "later-theme-change";
+export const LEGACY_THEME_STORAGE_KEY = "later-theme";
+export const THEME_CHANGE_EVENT = "watchlist-theme-change";
 
 export function isThemePreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "system" || value === "dark";

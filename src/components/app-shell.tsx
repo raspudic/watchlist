@@ -47,8 +47,8 @@ export function AppShell({
       <ToastProvider>
         <div className="app-frame">
           <aside className="sidebar">
-            <Link className="brand" href="/watchlist" aria-label="Later home">
-              <span aria-hidden="true">/</span> later
+            <Link className="brand" href="/watchlist" aria-label="watchlist home">
+              <span aria-hidden="true">/</span> watchlist
             </Link>
             <button className="nav-search-button" onClick={() => setSearchOpen(true)} type="button">
               <Search aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -87,7 +87,7 @@ export function AppShell({
           </aside>
 
           <header className="mobile-header">
-            <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> later</Link>
+            <Link className="brand" href="/watchlist"><span aria-hidden="true">/</span> watchlist</Link>
             <div className="mobile-header-actions">
               <button aria-label="Search library" className="mobile-search-button" onClick={() => setSearchOpen(true)} type="button">
                 <Search aria-hidden="true" size={18} />

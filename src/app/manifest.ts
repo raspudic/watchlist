@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Later",
-    short_name: "Later",
+    name: "watchlist",
+    short_name: "watchlist",
     description: "A calm home for what you want to watch and what you loved.",
     start_url: "/watchlist",
     display: "standalone",

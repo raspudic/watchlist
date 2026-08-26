@@ -69,7 +69,7 @@ export function createWatchlistAuth({
   const baseURL = process.env.BETTER_AUTH_URL;
 
   return betterAuth({
-    appName: "Watchlist",
+    appName: "watchlist",
     baseURL,
     secret: getSecret(),
     database: drizzleAdapter(db, {
