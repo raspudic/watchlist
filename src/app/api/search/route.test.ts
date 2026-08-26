@@ -44,13 +44,14 @@ describe("GET /api/search", () => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
-  it("serves a shared cache hit without consuming application TMDB capacity", async () => {
+  it("serves a shared cache hit using only library-read capacity", async () => {
     mocks.getCachedTmdbSearch.mockResolvedValue([{ provider: "tmdb", externalId: 1 }]);
 
     const response = await GET(request());
 
     expect(response.status).toBe(200);
     expect(mocks.consumeRateLimits).toHaveBeenCalledTimes(1);
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.libraryRead);
     expect(fetch).not.toHaveBeenCalled();
     expect(mocks.logOperationalEvent).toHaveBeenCalledWith("tmdb_search_completed", expect.objectContaining({
       cacheHit: true,
@@ -60,6 +61,7 @@ describe("GET /api/search", () => {
 
   it("returns the machine-readable application limit before calling TMDB", async () => {
     mocks.consumeRateLimits
+      .mockResolvedValueOnce({ allowed: true })
       .mockResolvedValueOnce({ allowed: true })
       .mockResolvedValueOnce({ allowed: false, reason: "tmdb_application", retryAfter: 1 });
 
@@ -113,24 +115,22 @@ describe("GET /api/search", () => {
   });
 
   it("charges the interactive account tier when no scope is given", async () => {
-    mocks.getCachedTmdbSearch.mockResolvedValue([]);
-
+    vi.mocked(fetch).mockResolvedValue(Response.json({ results: [] }));
     await GET(request());
 
+    expect(mocks.consumeRateLimits).toHaveBeenNthCalledWith(1, "account-1", API_RATE_LIMITS.libraryRead);
     expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbAccount);
   });
 
   it("charges the bulk import tier for scope=bulk", async () => {
-    mocks.getCachedTmdbSearch.mockResolvedValue([]);
-
+    vi.mocked(fetch).mockResolvedValue(Response.json({ results: [] }));
     await GET(request("?q=Arrival&scope=bulk"));
 
     expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbBulkImport);
   });
 
   it("falls back to the interactive tier for an unrecognized scope", async () => {
-    mocks.getCachedTmdbSearch.mockResolvedValue([]);
-
+    vi.mocked(fetch).mockResolvedValue(Response.json({ results: [] }));
     await GET(request("?q=Arrival&scope=nonsense"));
 
     expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.tmdbAccount);

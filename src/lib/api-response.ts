@@ -44,7 +44,11 @@ export function isRateLimitError(error: unknown): error is ApiResponseError & { 
 }
 
 export function friendlySearchLimitMessage(reason: string | undefined) {
-  if (reason === "tmdb_account_burst" || reason === "tmdb_account_minute") {
+  if (
+    reason === "account_read"
+    || reason === "tmdb_account_burst"
+    || reason === "tmdb_account_minute"
+  ) {
     return "You’re searching quickly. Custom titles still work while search cools down.";
   }
 

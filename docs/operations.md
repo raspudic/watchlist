@@ -11,7 +11,7 @@ Authenticated application routes use shared PostgreSQL counters, so the limits a
 | Library reads and local search | 30 requests per 10 seconds and 120 per minute | — |
 | Library writes | 15 requests per 10 seconds and 60 per minute | — |
 
-There is no daily quota. Identical normalized TMDB searches are cached for 30 seconds across application instances. A cache hit still counts against the account search limits, but it does not consume shared upstream capacity.
+There is no daily quota. Identical normalized TMDB searches are cached for one hour across application instances and for 15 minutes in the current browser session. A shared-cache hit counts against the library-read limit rather than the account TMDB allowance and does not consume shared upstream capacity.
 
 Watch provider lookups have their own account limit so that opening a title does not consume the search budget. They share the same upstream application limit. Availability is cached per title and country for 12 hours, and the list of supported countries for 30 days; JustWatch supplies TMDB with one export a day, so a shorter window would only add upstream traffic.
 

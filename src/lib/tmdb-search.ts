@@ -7,7 +7,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { tmdbSearchCache } from "@/lib/db/schema";
 
-export const TMDB_SEARCH_CACHE_TTL_MS = 30_000;
+export const TMDB_SEARCH_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export type TmdbSearchResult = {
   provider: "tmdb";

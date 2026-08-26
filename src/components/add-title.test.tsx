@@ -108,7 +108,7 @@ describe("AddTitleActions rate-limit experience", () => {
     fireEvent.change(input, { target: { value: "Arrival" } });
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(350);
     });
 
     expect(input).toHaveValue("Arrival");
@@ -120,6 +120,77 @@ describe("AddTitleActions rate-limit experience", () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
     expect(screen.getByRole("button", { name: "Try search again" })).toBeEnabled();
+  });
+});
+
+describe("AddTitleActions optimized search", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("keeps two-character TMDB searches with a longer debounce", async () => {
+    stubSearchFetch((query) => [makeResult(query)]);
+    render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Search movies and shows" }),
+      { target: { value: "Up" } },
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(799);
+    });
+    expect(fetch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(screen.getByRole("option", { name: "Preview Up" })).toBeInTheDocument();
+  });
+
+  it("waits longer for uncached deletions but restores cached prefixes immediately", async () => {
+    stubSearchFetch((query) => [makeResult(query)]);
+    render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a title" }));
+    const input = screen.getByRole("combobox", { name: "Search movies and shows" });
+
+    fireEvent.change(input, { target: { value: "Cachin" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(screen.getByRole("option", { name: "Preview Cachin" })).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "Caching" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(screen.getByRole("option", { name: "Preview Caching" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    fireEvent.change(input, { target: { value: "Cachin" } });
+    await act(async () => undefined);
+
+    expect(screen.getByRole("option", { name: "Preview Cachin" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    fireEvent.change(input, { target: { value: "Cachi" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(599);
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 });
 

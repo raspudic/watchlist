@@ -62,7 +62,56 @@ type BulkDraft = {
   searchFailed: boolean;
 };
 
+type SearchCacheEntry = {
+  expiresAt: number;
+  results: SearchResult[];
+};
 
+const SEARCH_SESSION_CACHE_MAX_ENTRIES = 50;
+const SEARCH_SESSION_CACHE_TTL_MS = 15 * 60 * 1000;
+const titleSearchCache = new Map<string, SearchCacheEntry>();
+
+function normalizeSearchQuery(query: string) {
+  return query.normalize("NFKC").toLocaleLowerCase("en-US").replace(/\s+/g, " ").trim();
+}
+
+function readSearchCache(cache: Map<string, SearchCacheEntry>, query: string, now = Date.now()) {
+  const key = normalizeSearchQuery(query);
+  const entry = cache.get(key);
+  if (!entry) return null;
+
+  if (entry.expiresAt <= now) {
+    cache.delete(key);
+    return null;
+  }
+
+  // Refresh insertion order so the least recently used query is evicted first.
+  cache.delete(key);
+  cache.set(key, entry);
+  return entry.results;
+}
+
+function writeSearchCache(
+  cache: Map<string, SearchCacheEntry>,
+  query: string,
+  results: SearchResult[],
+  now = Date.now(),
+) {
+  const key = normalizeSearchQuery(query);
+  cache.delete(key);
+  cache.set(key, { expiresAt: now + SEARCH_SESSION_CACHE_TTL_MS, results });
+
+  while (cache.size > SEARCH_SESSION_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+}
+
+function titleSearchDebounce(query: string, previousQuery: string) {
+  if (query.length === 2) return 800;
+  return query.length < previousQuery.length ? 600 : 350;
+}
 
 function normalizedTitle(title: string) {
   return title.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -178,6 +227,10 @@ function SearchDialog({
   }, []);
 
   const cooling = rateLimit !== null && rateLimit.retryAt > clock;
+  const getCached = useCallback(
+    (value: string) => readSearchCache(titleSearchCache, value),
+    [],
+  );
   const {
     error: searchError,
     query,
@@ -187,10 +240,15 @@ function SearchDialog({
     searching,
     setQuery,
   } = useAsyncSearch<SearchResult>({
-    debounceMs: 280,
+    debounceMs: titleSearchDebounce,
     enabled: !cooling,
+    getCached,
     onError,
-    search: async (value, signal) => (await searchTitles(value, signal)).results,
+    search: async (value, signal) => {
+      const data = await searchTitles(value, signal);
+      writeSearchCache(titleSearchCache, value, data.results);
+      return data.results;
+    },
   });
 
   useEffect(() => {

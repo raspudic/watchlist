@@ -7,6 +7,7 @@ import {
   mapTmdbResults,
   normalizeTmdbQuery,
   parseRetryAfter,
+  TMDB_SEARCH_CACHE_TTL_MS,
   tmdbQueryCacheKey,
 } from "./tmdb-search";
 
@@ -15,6 +16,10 @@ describe("TMDB search helpers", () => {
     expect(normalizeTmdbQuery("  DUNE\tPart TWO ")).toBe("dune part two");
     expect(tmdbQueryCacheKey("  DUNE\tPart TWO ")).toBe(tmdbQueryCacheKey("dune part two"));
     expect(tmdbQueryCacheKey("dune part two")).not.toContain("dune");
+  });
+
+  it("keeps shared search results for one hour", () => {
+    expect(TMDB_SEARCH_CACHE_TTL_MS).toBe(60 * 60 * 1000);
   });
 
   it("maps supported results and excludes people", () => {
