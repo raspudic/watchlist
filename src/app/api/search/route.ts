@@ -36,13 +36,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Search is not configured yet." }, { status: 503 });
   }
 
-  const accountLimit = await consumeRateLimits(
-    userId,
-    parsedScope.success && parsedScope.data === "bulk"
-      ? API_RATE_LIMITS.tmdbBulkImport
-      : API_RATE_LIMITS.tmdbAccount,
-  );
-  if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
+  const readLimit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryRead);
+  if (!readLimit.allowed) return rateLimitResponse(readLimit);
 
   const cached = await getCachedTmdbSearch(parsedQuery.data);
   if (cached) {
@@ -56,6 +51,14 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "private, no-store" } },
     );
   }
+
+  const accountLimit = await consumeRateLimits(
+    userId,
+    parsedScope.success && parsedScope.data === "bulk"
+      ? API_RATE_LIMITS.tmdbBulkImport
+      : API_RATE_LIMITS.tmdbAccount,
+  );
+  if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
 
   const applicationLimit = await consumeRateLimits("application", API_RATE_LIMITS.tmdbApplication);
   if (!applicationLimit.allowed) return rateLimitResponse(applicationLimit);

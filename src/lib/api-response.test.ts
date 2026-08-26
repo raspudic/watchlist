@@ -40,6 +40,7 @@ describe("readApiJson", () => {
 
 describe("friendlySearchLimitMessage", () => {
   it("distinguishes account and shared TMDB capacity", () => {
+    expect(friendlySearchLimitMessage("account_read")).toContain("searching quickly");
     expect(friendlySearchLimitMessage("tmdb_account_minute")).toContain("searching quickly");
     expect(friendlySearchLimitMessage("tmdb_upstream")).toContain("TMDB is temporarily busy");
   });
