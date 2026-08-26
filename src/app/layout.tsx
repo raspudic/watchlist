@@ -8,15 +8,15 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Later",
-    template: "%s · Later",
+    default: "watchlist",
+    template: "%s · watchlist",
   },
   description: "A quiet place for what you want to watch and what you loved.",
-  applicationName: "Later",
+  applicationName: "watchlist",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Later",
+    title: "watchlist",
   },
   formatDetection: { telephone: false },
 };

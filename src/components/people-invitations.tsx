@@ -103,7 +103,7 @@ export function PeopleInvitations({ initialInvitations }: { initialInvitations: 
       <header className="people-heading">
         <p className="eyebrow">Admins only</p>
         <h1>People</h1>
-        <p>Later is invite-only. Links last seven days and work once.</p>
+        <p>watchlist is invite-only. Links last seven days and work once.</p>
       </header>
 
       <section className="people-card">
