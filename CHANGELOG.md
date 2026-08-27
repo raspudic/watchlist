@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/raspudic/watchlist/compare/v0.6.0...v0.7.0) (2026-08-26)
+
+
+### Features
+
+* rename Later to watchlist ([#45](https://github.com/raspudic/watchlist/issues/45)) ([673d590](https://github.com/raspudic/watchlist/commit/673d5906a17113c2d244b550e9a462d9f4841648))
+
+
+### Bug Fixes
+
+* reduce TMDB search request churn ([#47](https://github.com/raspudic/watchlist/issues/47)) ([27d62c5](https://github.com/raspudic/watchlist/commit/27d62c51e8b89ad92fd6039057e35744921933d8))
+
 ## [0.6.0](https://github.com/raspudic/watchlist/compare/v0.5.1...v0.6.0) (2026-08-25)
 
 
