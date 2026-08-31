@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getCachedTmdbSearch: vi.fn(),
   getRequestUserId: vi.fn(),
   logOperationalEvent: vi.fn(),
+  upsertCatalogSearchResults: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -15,6 +16,7 @@ vi.mock("@/lib/api-rate-limit", async () => {
   return { ...actual, consumeRateLimits: mocks.consumeRateLimits };
 });
 vi.mock("@/lib/db/client", () => ({ db: {} }));
+vi.mock("@/lib/catalog", () => ({ upsertCatalogSearchResults: mocks.upsertCatalogSearchResults }));
 vi.mock("@/lib/operational-events", () => ({ logOperationalEvent: mocks.logOperationalEvent }));
 vi.mock("@/lib/tmdb-search", async () => {
   const actual = await vi.importActual<typeof import("@/lib/tmdb-search")>("@/lib/tmdb-search");
@@ -41,6 +43,7 @@ describe("GET /api/search", () => {
     mocks.consumeRateLimits.mockResolvedValue({ allowed: true });
     mocks.getCachedTmdbSearch.mockResolvedValue(null);
     mocks.cacheTmdbSearch.mockResolvedValue(undefined);
+    mocks.upsertCatalogSearchResults.mockResolvedValue(undefined);
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -53,6 +56,7 @@ describe("GET /api/search", () => {
     expect(mocks.consumeRateLimits).toHaveBeenCalledTimes(1);
     expect(mocks.consumeRateLimits).toHaveBeenCalledWith("account-1", API_RATE_LIMITS.libraryRead);
     expect(fetch).not.toHaveBeenCalled();
+    expect(mocks.upsertCatalogSearchResults).toHaveBeenCalledTimes(1);
     expect(mocks.logOperationalEvent).toHaveBeenCalledWith("tmdb_search_completed", expect.objectContaining({
       cacheHit: true,
       status: 200,
@@ -107,6 +111,10 @@ describe("GET /api/search", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.cacheTmdbSearch).toHaveBeenCalledWith("Arrival", [expect.objectContaining({
+      externalId: 1,
+      title: "Arrival",
+    })]);
+    expect(mocks.upsertCatalogSearchResults).toHaveBeenCalledWith([expect.objectContaining({
       externalId: 1,
       title: "Arrival",
     })]);

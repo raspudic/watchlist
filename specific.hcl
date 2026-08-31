@@ -55,3 +55,14 @@ cron "lifecycle-cleanup" {
     DATABASE_URL = postgres.main.url
   }
 }
+
+cron "catalog-refresh" {
+  build    = build.web
+  command  = "pnpm refresh:catalog"
+  schedule = "30 2 * * *"
+
+  env = {
+    DATABASE_URL      = postgres.main.url
+    TMDB_ACCESS_TOKEN = secret.tmdb_read_access_token
+  }
+}

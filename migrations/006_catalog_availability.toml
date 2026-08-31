@@ -1,0 +1,328 @@
+# The catalog is deliberately additive. Existing application versions keep
+# reading media_items and the legacy TMDB cache while the refresh job fills
+# these shared, queryable tables.
+[[actions]]
+type = "create_table"
+name = "catalog_titles"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "provider"
+  type = "TEXT"
+  nullable = false
+  default = "'tmdb'"
+
+  [[actions.columns]]
+  name = "external_id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "media_type"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "title"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "original_title"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "release_date"
+  type = "DATE"
+
+  [[actions.columns]]
+  name = "release_year"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "poster_path"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "overview"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "runtime_minutes"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "vote_average"
+  type = "REAL"
+
+  [[actions.columns]]
+  name = "vote_count"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "popularity"
+  type = "REAL"
+
+  [[actions.columns]]
+  name = "metadata_refreshed_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "availability_refreshed_at"
+  type = "TIMESTAMPTZ"
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+[[actions]]
+type = "add_index"
+table = "catalog_titles"
+
+  [actions.index]
+  name = "catalog_titles_provider_identity_unique"
+  columns = ["provider", "media_type", "external_id"]
+  unique = true
+
+[[actions]]
+type = "add_index"
+table = "catalog_titles"
+
+  [actions.index]
+  name = "catalog_titles_metadata_refreshed_at_idx"
+  columns = ["metadata_refreshed_at"]
+
+[[actions]]
+type = "add_index"
+table = "catalog_titles"
+
+  [actions.index]
+  name = "catalog_titles_availability_refreshed_at_idx"
+  columns = ["availability_refreshed_at"]
+
+[[actions]]
+type = "create_table"
+name = "catalog_title_genres"
+primary_key = ["catalog_title_id", "genre_id"]
+
+  [[actions.columns]]
+  name = "catalog_title_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "genre_id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "name"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.foreign_keys]]
+  columns = ["catalog_title_id"]
+  referenced_table = "catalog_titles"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "add_index"
+table = "catalog_title_genres"
+
+  [actions.index]
+  name = "catalog_title_genres_name_idx"
+  columns = ["name"]
+
+[[actions]]
+type = "create_table"
+name = "streaming_providers"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "name"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "logo_path"
+  type = "TEXT"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+[[actions]]
+type = "create_table"
+name = "streaming_provider_regions"
+primary_key = ["provider_id", "region", "media_type"]
+
+  [[actions.columns]]
+  name = "provider_id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "region"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "media_type"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "display_priority"
+  type = "INTEGER"
+  nullable = false
+  default = "9999"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.foreign_keys]]
+  columns = ["provider_id"]
+  referenced_table = "streaming_providers"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "add_index"
+table = "streaming_provider_regions"
+
+  [actions.index]
+  name = "streaming_provider_regions_region_idx"
+  columns = ["region", "media_type"]
+
+[[actions]]
+type = "create_table"
+name = "catalog_availability"
+primary_key = ["catalog_title_id", "region"]
+
+  [[actions.columns]]
+  name = "catalog_title_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "region"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "link"
+  type = "TEXT"
+
+  [[actions.foreign_keys]]
+  columns = ["catalog_title_id"]
+  referenced_table = "catalog_titles"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "create_table"
+name = "catalog_availability_services"
+primary_key = ["catalog_title_id", "region", "provider_id"]
+
+  [[actions.columns]]
+  name = "catalog_title_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "region"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "provider_id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "access_type"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "display_priority"
+  type = "INTEGER"
+  nullable = false
+  default = "9999"
+
+  [[actions.foreign_keys]]
+  columns = ["catalog_title_id"]
+  referenced_table = "catalog_titles"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+  [[actions.foreign_keys]]
+  columns = ["provider_id"]
+  referenced_table = "streaming_providers"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "add_index"
+table = "catalog_availability_services"
+
+  [actions.index]
+  name = "catalog_availability_services_provider_idx"
+  columns = ["provider_id", "region"]
+
+[[actions]]
+type = "create_table"
+name = "user_streaming_services"
+primary_key = ["user_id", "provider_id"]
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "provider_id"
+  type = "INTEGER"
+  nullable = false
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+  [[actions.foreign_keys]]
+  columns = ["provider_id"]
+  referenced_table = "streaming_providers"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
