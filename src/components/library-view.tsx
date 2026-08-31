@@ -13,6 +13,7 @@ import {
   Clapperboard,
   LayoutGrid,
   List,
+  Pin,
   Star,
   Trash2,
   X,
@@ -508,6 +509,12 @@ function MediaRow({
         <span className="row-content">
           <span className="row-title-line">
             <strong>{item.title}</strong>
+            {item.pinnedAt && item.status === "watchlist" ? (
+              <span className="row-pin">
+                <Pin aria-hidden="true" fill="currentColor" size={13} />
+                <span className="sr-only">Pinned for tonight</span>
+              </span>
+            ) : null}
             {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
           </span>
           <span className="row-meta">
@@ -556,6 +563,7 @@ function DetailSheet({
   });
   const pendingNote = useRef<Promise<boolean> | null>(null);
   const watched = item.status === "watched";
+  const pinned = Boolean(item.pinnedAt);
   const noteField: NoteField = watched ? "reviewNote" : "watchlistNote";
   const noteValue = watched ? reviewNote : watchlistNote;
   const today = watchedDateValue(new Date().toISOString());
@@ -739,6 +747,18 @@ function DetailSheet({
         </div>
 
         <div className="detail-footer-actions">
+          {watched ? null : (
+            <Button
+              aria-pressed={pinned}
+              disabled={saving}
+              onClick={() => void persist({ pinned: !pinned }, false)}
+              size="sm"
+              variant="quiet"
+            >
+              <Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} size={15} />
+              {pinned ? "Pinned for tonight" : "Pin for tonight"}
+            </Button>
+          )}
           {watched ? (
             <Button
               disabled={saving}

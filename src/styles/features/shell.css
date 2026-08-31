@@ -149,7 +149,9 @@ body > div:has(> a[href^="https://specific.dev"]) { z-index: 40 !important; }
     height: calc(63px + env(safe-area-inset-bottom));
     padding: 5px 12px calc(5px + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    /* One column per link, so adding a destination needs no change here. */
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     border-top: 1px solid var(--line);
     background: color-mix(in srgb, var(--surface) 92%, transparent);
     backdrop-filter: blur(22px) saturate(1.25);

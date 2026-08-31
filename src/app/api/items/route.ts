@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       .set({
         status: "watchlist",
         watchedAt: null,
+        pinnedAt: null,
         rating: null,
         reviewNote: null,
         watchlistNote: input.watchlistNote ?? existing[0].watchlistNote,

@@ -49,8 +49,19 @@ export async function PATCH(request: Request, context: ItemRouteContext) {
     reviewNote?: string | null;
     rating?: number | null;
     watchedAt?: Date | null;
+    pinnedAt?: Date | null;
     updatedAt: Date;
   } = { updatedAt: new Date() };
+
+  /* A pin says "watch this soon", so it only means anything on the watchlist.
+     Removal deliberately leaves it in place: Undo restores the pin with the
+     title, while an explicit re-add clears it. */
+  const nextStatus = input.status ?? existing.status;
+  if (input.pinned === true && (nextStatus !== "watchlist" || existing.status === "removed")) {
+    return NextResponse.json({ error: "Only watchlist titles can be pinned." }, { status: 409 });
+  }
+  if (typeof input.pinned === "boolean") values.pinnedAt = input.pinned ? new Date() : null;
+  if (nextStatus === "watched") values.pinnedAt = null;
 
   if (input.status) {
     values.status = input.status;

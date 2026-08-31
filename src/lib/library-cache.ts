@@ -16,6 +16,7 @@ export type MediaItem = {
   rating: number | null;
   addedAt: string;
   watchedAt: string | null;
+  pinnedAt: string | null;
 };
 
 type CacheEntry = {
