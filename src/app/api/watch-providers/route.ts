@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
+import { cacheCatalogAvailability, getCatalogWatchProviders } from "@/lib/catalog";
 import { logOperationalEvent } from "@/lib/operational-events";
 import { tmdbFetch } from "@/lib/tmdb-client";
 import {
@@ -49,7 +50,8 @@ export async function GET(request: Request) {
   const accountLimit = await consumeRateLimits(userId, API_RATE_LIMITS.tmdbDetailSheet);
   if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
 
-  const cached = await getCachedWatchProviders(mediaType, tmdbId, region);
+  const catalogCached = await getCatalogWatchProviders(mediaType, tmdbId, region);
+  const cached = catalogCached ?? await getCachedWatchProviders(mediaType, tmdbId, region);
   if (cached) {
     logOperationalEvent("tmdb_watch_providers_completed", {
       cacheHit: true,
@@ -95,7 +97,10 @@ export async function GET(request: Request) {
   }
 
   const providers = mapWatchProviders(upstream.data, region);
-  await cacheWatchProviders(mediaType, tmdbId, region, providers);
+  await Promise.all([
+    cacheWatchProviders(mediaType, tmdbId, region, providers),
+    cacheCatalogAvailability(mediaType, tmdbId, upstream.data),
+  ]);
   logOperationalEvent("tmdb_watch_providers_completed", {
     cacheHit: false,
     durationMs: Math.round(performance.now() - startedAt),

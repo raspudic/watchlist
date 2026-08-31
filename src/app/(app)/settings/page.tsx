@@ -6,6 +6,7 @@ import { PasswordCard } from "@/components/settings/password-card";
 import { ProfileCard } from "@/components/settings/profile-card";
 import { RegionCard } from "@/components/settings/region-card";
 import { SettingsFooter } from "@/components/settings/settings-footer";
+import { StreamingServicesCard } from "@/components/settings/streaming-services-card";
 import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
 
       <ProfileCard displayName={session.user.name} username={username} />
       <RegionCard />
+      <StreamingServicesCard />
       <PasswordCard />
 
       <section className="settings-card">

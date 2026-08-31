@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
+import { upsertCatalogSearchResults } from "@/lib/catalog";
 import { logOperationalEvent } from "@/lib/operational-events";
 import { tmdbFetch } from "@/lib/tmdb-client";
 import {
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
 
   const cached = await getCachedTmdbSearch(parsedQuery.data);
   if (cached) {
+    await upsertCatalogSearchResults(cached);
     logOperationalEvent("tmdb_search_completed", {
       cacheHit: true,
       durationMs: Math.round(performance.now() - startedAt),
@@ -104,7 +106,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Search is temporarily unavailable." }, { status: 502 });
   }
 
-  await cacheTmdbSearch(parsedQuery.data, results);
+  await Promise.all([
+    cacheTmdbSearch(parsedQuery.data, results),
+    upsertCatalogSearchResults(results),
+  ]);
   logOperationalEvent("tmdb_search_completed", {
     cacheHit: false,
     durationMs: Math.round(performance.now() - startedAt),

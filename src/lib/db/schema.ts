@@ -1,9 +1,12 @@
 import {
   bigint,
   boolean,
+  date,
   index,
   integer,
   pgTable,
+  primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -151,6 +154,132 @@ export const tmdbWatchProviderCache = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (table) => [index("tmdb_watch_provider_cache_expires_at_idx").on(table.expiresAt)],
+);
+
+/**
+ * Shared, authoritative TMDB metadata. Media items deliberately keep their
+ * original snapshots, so custom titles and the library remain useful while a
+ * catalog refresh is unavailable.
+ */
+export const catalogTitles = pgTable(
+  "catalog_titles",
+  {
+    id: text("id").primaryKey(),
+    provider: text("provider").default("tmdb").notNull(),
+    externalId: integer("external_id").notNull(),
+    mediaType: text("media_type").notNull(),
+    title: text("title").notNull(),
+    originalTitle: text("original_title"),
+    releaseDate: date("release_date"),
+    releaseYear: integer("release_year"),
+    posterPath: text("poster_path"),
+    overview: text("overview"),
+    runtimeMinutes: integer("runtime_minutes"),
+    voteAverage: real("vote_average"),
+    voteCount: integer("vote_count"),
+    popularity: real("popularity"),
+    metadataRefreshedAt: timestamp("metadata_refreshed_at", { withTimezone: true }),
+    availabilityRefreshedAt: timestamp("availability_refreshed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("catalog_titles_provider_identity_unique").on(
+      table.provider,
+      table.mediaType,
+      table.externalId,
+    ),
+    index("catalog_titles_metadata_refreshed_at_idx").on(table.metadataRefreshedAt),
+    index("catalog_titles_availability_refreshed_at_idx").on(table.availabilityRefreshedAt),
+  ],
+);
+
+export const catalogTitleGenres = pgTable(
+  "catalog_title_genres",
+  {
+    catalogTitleId: text("catalog_title_id")
+      .notNull()
+      .references(() => catalogTitles.id, { onDelete: "cascade" }),
+    genreId: integer("genre_id").notNull(),
+    name: text("name").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.catalogTitleId, table.genreId] }),
+    index("catalog_title_genres_name_idx").on(table.name),
+  ],
+);
+
+export const streamingProviders = pgTable(
+  "streaming_providers",
+  {
+    id: integer("id").primaryKey(),
+    name: text("name").notNull(),
+    logoPath: text("logo_path"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+);
+
+export const streamingProviderRegions = pgTable(
+  "streaming_provider_regions",
+  {
+    providerId: integer("provider_id")
+      .notNull()
+      .references(() => streamingProviders.id, { onDelete: "cascade" }),
+    region: text("region").notNull(),
+    mediaType: text("media_type").notNull(),
+    displayPriority: integer("display_priority").default(9_999).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.providerId, table.region, table.mediaType] }),
+    index("streaming_provider_regions_region_idx").on(table.region, table.mediaType),
+  ],
+);
+
+/** One row records the regional link even when the title has no offers there. */
+export const catalogAvailability = pgTable(
+  "catalog_availability",
+  {
+    catalogTitleId: text("catalog_title_id")
+      .notNull()
+      .references(() => catalogTitles.id, { onDelete: "cascade" }),
+    region: text("region").notNull(),
+    link: text("link"),
+  },
+  (table) => [primaryKey({ columns: [table.catalogTitleId, table.region] })],
+);
+
+export const catalogAvailabilityServices = pgTable(
+  "catalog_availability_services",
+  {
+    catalogTitleId: text("catalog_title_id")
+      .notNull()
+      .references(() => catalogTitles.id, { onDelete: "cascade" }),
+    region: text("region").notNull(),
+    providerId: integer("provider_id")
+      .notNull()
+      .references(() => streamingProviders.id, { onDelete: "cascade" }),
+    accessType: text("access_type").notNull(),
+    displayPriority: integer("display_priority").default(9_999).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.catalogTitleId, table.region, table.providerId] }),
+    index("catalog_availability_services_provider_idx").on(table.providerId, table.region),
+  ],
+);
+
+export const userStreamingServices = pgTable(
+  "user_streaming_services",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    providerId: integer("provider_id")
+      .notNull()
+      .references(() => streamingProviders.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.providerId] })],
 );
 
 export const mediaItems = pgTable(
