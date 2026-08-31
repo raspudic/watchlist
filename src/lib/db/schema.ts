@@ -303,6 +303,10 @@ export const mediaItems = pgTable(
     rating: integer("rating"),
     addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
     watchedAt: timestamp("watched_at", { withTimezone: true }),
+    /* Set while a watchlist title is pinned for Tonight; cleared when it is
+       watched or explicitly re-added, kept through a soft removal so Undo
+       restores it. */
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

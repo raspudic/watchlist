@@ -26,6 +26,7 @@ const item: MediaItem = {
   rating: null,
   addedAt: "2026-08-19T00:00:00.000Z",
   watchedAt: null,
+  pinnedAt: null,
 };
 
 const regions = [{ code: "AR", name: "Argentina" }, { code: "US", name: "United States of America" }];

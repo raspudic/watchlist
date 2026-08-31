@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, isNull, lt, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 
 import {
   CATALOG_AVAILABILITY_TTL_MS,
@@ -93,6 +93,19 @@ export async function seedCatalogTitlesFromLibrary(now = new Date()) {
   return inserted;
 }
 
+/*
+ * Search fills the catalog with titles nobody saved, so a bounded run has to
+ * spend its budget on titles that are in someone's library first: Tonight is
+ * only as good as the availability behind the watchlist.
+ */
+const savedInLibrary = sql<boolean>`exists (
+  select 1 from ${mediaItems}
+  where ${mediaItems.provider} = ${catalogTitles.provider}
+    and ${mediaItems.mediaType} = ${catalogTitles.mediaType}
+    and ${mediaItems.externalId} = ${catalogTitles.externalId}
+    and ${mediaItems.status} <> 'removed'
+)`;
+
 async function selectTitlesForRefresh(now: Date, limit: number) {
   const metadataCutoff = new Date(now.getTime() - CATALOG_METADATA_TTL_MS);
   const availabilityCutoff = new Date(now.getTime() - CATALOG_AVAILABILITY_TTL_MS);
@@ -112,6 +125,7 @@ async function selectTitlesForRefresh(now: Date, limit: number) {
       lt(catalogTitles.availabilityRefreshedAt, availabilityCutoff),
     ))
     .orderBy(
+      desc(savedInLibrary),
       asc(catalogTitles.metadataRefreshedAt),
       asc(catalogTitles.availabilityRefreshedAt),
       asc(catalogTitles.createdAt),

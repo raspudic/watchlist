@@ -1,0 +1,10 @@
+# Additive: a nullable timestamp with no default, so the previous application
+# version keeps writing media_items untouched while this one rolls out.
+[[actions]]
+type = "add_column"
+table = "media_items"
+
+  [actions.column]
+  name = "pinned_at"
+  type = "TIMESTAMPTZ"
+  nullable = true

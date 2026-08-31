@@ -43,6 +43,7 @@ export const updateMediaItemSchema = z
     reviewNote: nullableShortText,
     rating: z.number().int().min(1).max(10).nullable().optional(),
     watchedAt: z.iso.datetime().nullable().optional(),
+    pinned: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Provide at least one value to update.",
