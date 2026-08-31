@@ -247,7 +247,11 @@
 }
 
 .rating-block,
-.note-block { margin-top: 29px; padding-top: 25px; border-top: 1px solid var(--line); }
+.note-block,
+.watch-history { margin-top: 29px; padding-top: 25px; border-top: 1px solid var(--line); }
+.watch-history ul { margin-top: 15px; display: flex; flex-direction: column; gap: 9px; list-style: none; }
+.watch-history li { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-soft); font-size: 12.5px; }
+.watch-history-rating { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-text); font-weight: 650; }
 .detail-section-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .detail-section-title h3 { font-size: 13px; font-weight: 650; }
 .detail-section-title p { margin-top: 5px; color: var(--text-faint); font-size: 12px; }

@@ -36,6 +36,11 @@ export const createMediaItemSchema = z
    without accepting a date that is meaningfully in the future. */
 const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
+function isNotInTheFuture(watchedOn: string | null | undefined, now = Date.now()) {
+  if (!watchedOn) return true;
+  return Date.parse(`${watchedOn}T00:00:00.000Z`) <= now + FUTURE_TOLERANCE_MS;
+}
+
 export const updateMediaItemSchema = z
   .object({
     status: itemStatusSchema.optional(),
@@ -43,6 +48,9 @@ export const updateMediaItemSchema = z
     reviewNote: nullableShortText,
     rating: z.number().int().min(1).max(10).nullable().optional(),
     watchedAt: z.iso.datetime().nullable().optional(),
+    /* The calendar day the browser is showing. Only it knows the reader's
+       time zone, and history is kept by day rather than by instant. */
+    watchedOn: z.iso.date().optional(),
     pinned: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -51,6 +59,25 @@ export const updateMediaItemSchema = z
   .refine(
     (value) => !value.watchedAt || Date.parse(value.watchedAt) <= Date.now() + FUTURE_TOLERANCE_MS,
     { message: "A title cannot be watched in the future.", path: ["watchedAt"] },
-  );
+  )
+  .refine((value) => isNotInTheFuture(value.watchedOn), {
+    message: "A title cannot be watched in the future.",
+    path: ["watchedOn"],
+  });
+
+/*
+ * A rewatch carries its own id so a retry lands on the same occurrence instead
+ * of logging a second one.
+ */
+export const watchEventSchema = z
+  .object({
+    eventId: z.uuid(),
+    watchedOn: z.iso.date(),
+    watchedAt: z.iso.datetime().optional(),
+  })
+  .refine((value) => isNotInTheFuture(value.watchedOn), {
+    message: "A title cannot be watched in the future.",
+    path: ["watchedOn"],
+  });
 
 export type CreateMediaItemInput = z.infer<typeof createMediaItemSchema>;

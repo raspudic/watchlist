@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   List,
   Pin,
+  Repeat,
   Star,
   Trash2,
   X,
@@ -57,6 +58,7 @@ import {
   watchedDateValue,
 } from "@/lib/media-display";
 import { SWIPE_TRAY_WIDTH, getSwipeRelease } from "@/lib/swipe";
+import { type WatchEventRecord, watchEventDateLabel } from "@/lib/watch-history";
 
 export type { MediaItem } from "@/lib/library-cache";
 
@@ -193,7 +195,10 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         await fetch(`/api/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "watched" }),
+          body: JSON.stringify({
+            status: "watched",
+            watchedOn: watchedDateValue(new Date().toISOString()),
+          }),
         }),
       );
       syncItem(data.item);
@@ -554,6 +559,8 @@ function DetailSheet({
   const [editingDate, setEditingDate] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [events, setEvents] = useState<WatchEventRecord[]>([]);
   const [error, setError] = useState("");
   /* What the server already holds, so a blur that changed nothing stays quiet
      and a failed save is retried on the next one. */
@@ -564,9 +571,24 @@ function DetailSheet({
   const pendingNote = useRef<Promise<boolean> | null>(null);
   const watched = item.status === "watched";
   const pinned = Boolean(item.pinnedAt);
+  const itemId = item.id;
   const noteField: NoteField = watched ? "reviewNote" : "watchlistNote";
   const noteValue = watched ? reviewNote : watchlistNote;
   const today = watchedDateValue(new Date().toISOString());
+
+  /* History is a detail of a watched title, so it loads quietly and stays
+     silent when it cannot: nothing else in the sheet depends on it. */
+  useEffect(() => {
+    if (!watched) return;
+    let active = true;
+
+    fetch(`/api/items/${itemId}/watch-events`, { cache: "no-store", credentials: "same-origin" })
+      .then((response) => readApiJson<{ events: WatchEventRecord[] }>(response))
+      .then((data) => { if (active) setEvents(data.events); })
+      .catch(() => undefined);
+
+    return () => { active = false; };
+  }, [itemId, watched]);
 
   /* `block` holds the sheet open behind a spinner. Notes and ratings save
      without it: they must never disable the button being clicked next. */
@@ -616,6 +638,34 @@ function DetailSheet({
     storedNotes.current.watchlistNote = note;
     setNoteSaved(false);
     await persist({ status: "watched", watchlistNote: note || null });
+  }
+
+  /* A rewatch is a new occurrence, not an edit of the last one, so it carries
+     its own id and survives a retry. */
+  async function logRewatch() {
+    const today = watchedDateValue(new Date().toISOString());
+    setLogging(true);
+    setError("");
+
+    try {
+      const data = await readApiJson<{ event: WatchEventRecord; item: MediaItem }>(
+        await fetch(`/api/items/${itemId}/watch-events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: crypto.randomUUID(),
+            watchedAt: watchedDateStamp(today),
+            watchedOn: today,
+          }),
+        }),
+      );
+      setEvents((current) => [data.event, ...current.filter((event) => event.id !== data.event.id)]);
+      onUpdate(data.item);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not log that viewing.");
+    } finally {
+      setLogging(false);
+    }
   }
 
   async function done() {
@@ -675,7 +725,7 @@ function DetailSheet({
                   onChange={(event) => {
                     setDateDraft(event.target.value);
                     const stamp = watchedDateStamp(event.target.value);
-                    if (stamp) void persist({ watchedAt: stamp }, false);
+                    if (stamp) void persist({ watchedAt: stamp, watchedOn: event.target.value }, false);
                   }}
                   type="date"
                   value={dateDraft}
@@ -733,6 +783,28 @@ function DetailSheet({
 
         {watched ? noteEditor : null}
 
+        {/* One viewing is already on the date chip; the list earns its place
+            once a title has been watched more than once. */}
+        {watched && events.length > 1 ? (
+          <div className="watch-history">
+            <div className="detail-section-title">
+              <div><h3>Watched {events.length} times</h3></div>
+            </div>
+            <ul>
+              {events.map((event) => (
+                <li key={event.id}>
+                  <span>{watchEventDateLabel(event.watchedOn)}</span>
+                  {event.rating !== null ? (
+                    <span className="watch-history-rating">
+                      <Star aria-hidden="true" fill="currentColor" size={12} /> {event.rating}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {error ? <p className="form-error" role="alert">{error}</p> : null}
 
         <div className="panel-actions">
@@ -760,14 +832,25 @@ function DetailSheet({
             </Button>
           )}
           {watched ? (
-            <Button
-              disabled={saving}
-              onClick={() => void persist({ status: "watchlist" })}
-              size="sm"
-              variant="quiet"
-            >
-              <Bookmark aria-hidden="true" size={15} /> Move back to watchlist
-            </Button>
+            <>
+              <Button
+                disabled={saving}
+                loading={logging}
+                onClick={() => void logRewatch()}
+                size="sm"
+                variant="quiet"
+              >
+                <Repeat aria-hidden="true" size={15} /> Watched again
+              </Button>
+              <Button
+                disabled={saving || logging}
+                onClick={() => void persist({ status: "watchlist" })}
+                size="sm"
+                variant="quiet"
+              >
+                <Bookmark aria-hidden="true" size={15} /> Move back to watchlist
+              </Button>
+            </>
           ) : null}
           <Button disabled={saving} onClick={() => onRemove(item)} size="sm" variant="danger">
             <Trash2 aria-hidden="true" size={16} /> Remove from library

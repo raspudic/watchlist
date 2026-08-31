@@ -320,5 +320,36 @@ export const mediaItems = pgTable(
   ],
 );
 
+/**
+ * Every occurrence of watching a title. `media_items.watched_at` and
+ * `media_items.rating` stay as the latest state so the library keeps reading
+ * one row per title; this table is the history behind it.
+ */
+export const watchEvents = pgTable(
+  "watch_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    mediaItemId: text("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    /* A calendar day. A timestamp would move an evening viewing into the next
+       month for anyone east of UTC. */
+    watchedOn: date("watched_on").notNull(),
+    /* The rating as it stood, so re-rating a title later leaves history alone. */
+    rating: integer("rating"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("watch_events_user_watched_on_idx").on(table.userId, table.watchedOn),
+    index("watch_events_media_item_idx").on(table.mediaItemId, table.createdAt),
+  ],
+);
+
+export type WatchEvent = typeof watchEvents.$inferSelect;
+
 export type MediaItem = typeof mediaItems.$inferSelect;
 export type NewMediaItem = typeof mediaItems.$inferInsert;
