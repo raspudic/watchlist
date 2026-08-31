@@ -1,9 +1,6 @@
 import "server-only";
 
-import { and, eq, gt } from "drizzle-orm";
-
-import { db } from "@/lib/db/client";
-import { tmdbWatchProviderCache } from "@/lib/db/schema";
+import { readTmdbCache, writeTmdbCache } from "@/lib/tmdb-cache";
 
 /** JustWatch ships one export per day, so a title's availability moves slowly. */
 export const WATCH_PROVIDER_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -115,43 +112,13 @@ export function mapWatchRegions(payload: TmdbWatchRegionPayload): WatchRegion[] 
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function readCache<T>(key: string, now: Date) {
-  const [entry] = await db
-    .select({ payload: tmdbWatchProviderCache.payload })
-    .from(tmdbWatchProviderCache)
-    .where(and(eq(tmdbWatchProviderCache.key, key), gt(tmdbWatchProviderCache.expiresAt, now)))
-    .limit(1);
-
-  if (!entry) return null;
-
-  try {
-    return JSON.parse(entry.payload) as T;
-  } catch {
-    await db.delete(tmdbWatchProviderCache).where(eq(tmdbWatchProviderCache.key, key));
-    return null;
-  }
-}
-
-async function writeCache(key: string, value: unknown, ttlMs: number, now: number) {
-  const payload = JSON.stringify(value);
-  const expiresAt = new Date(now + ttlMs);
-
-  await db
-    .insert(tmdbWatchProviderCache)
-    .values({ key, payload, expiresAt })
-    .onConflictDoUpdate({
-      target: tmdbWatchProviderCache.key,
-      set: { payload, expiresAt },
-    });
-}
-
 export function getCachedWatchProviders(
   mediaType: WatchMediaType,
   tmdbId: number,
   region: string,
   now = new Date(),
 ) {
-  return readCache<TitleWatchProviders>(watchProviderCacheKey(mediaType, tmdbId, region), now);
+  return readTmdbCache<TitleWatchProviders>(watchProviderCacheKey(mediaType, tmdbId, region), now);
 }
 
 export function cacheWatchProviders(
@@ -161,7 +128,7 @@ export function cacheWatchProviders(
   providers: TitleWatchProviders,
   now = Date.now(),
 ) {
-  return writeCache(
+  return writeTmdbCache(
     watchProviderCacheKey(mediaType, tmdbId, region),
     providers,
     WATCH_PROVIDER_CACHE_TTL_MS,
@@ -172,9 +139,9 @@ export function cacheWatchProviders(
 const WATCH_REGIONS_CACHE_KEY = "regions:en-US";
 
 export function getCachedWatchRegions(now = new Date()) {
-  return readCache<WatchRegion[]>(WATCH_REGIONS_CACHE_KEY, now);
+  return readTmdbCache<WatchRegion[]>(WATCH_REGIONS_CACHE_KEY, now);
 }
 
 export function cacheWatchRegions(regions: WatchRegion[], now = Date.now()) {
-  return writeCache(WATCH_REGIONS_CACHE_KEY, regions, WATCH_REGION_CACHE_TTL_MS, now);
+  return writeTmdbCache(WATCH_REGIONS_CACHE_KEY, regions, WATCH_REGION_CACHE_TTL_MS, now);
 }

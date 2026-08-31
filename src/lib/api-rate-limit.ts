@@ -60,11 +60,13 @@ export const API_RATE_LIMITS = {
     { id: "tmdb-account-burst", limit: 10, windowSeconds: 10, reason: "tmdb_account_burst" },
     { id: "tmdb-account-minute", limit: 30, windowSeconds: 60, reason: "tmdb_account_minute" },
   ],
-  // Opening a detail sheet must not eat the search budget, so watch providers
-  // get their own account tier while still sharing the upstream application one.
-  tmdbWatchProviders: [
-    { id: "tmdb-providers-burst", limit: 20, windowSeconds: 10, reason: "tmdb_account_burst" },
-    { id: "tmdb-providers-minute", limit: 60, windowSeconds: 60, reason: "tmdb_account_minute" },
+  // Opening a detail sheet must not eat the search budget, so the sheet gets
+  // its own account tier while still sharing the upstream application one. It
+  // asks two questions per title — availability and external ids — and the
+  // limits are set against titles opened, not requests made.
+  tmdbDetailSheet: [
+    { id: "tmdb-detail-burst", limit: 40, windowSeconds: 10, reason: "tmdb_account_burst" },
+    { id: "tmdb-detail-minute", limit: 120, windowSeconds: 60, reason: "tmdb_account_minute" },
   ],
   tmdbApplication: [
     { id: "tmdb-application-burst", limit: 12, windowSeconds: 0.5, reason: "tmdb_application" },

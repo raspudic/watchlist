@@ -7,21 +7,20 @@ import {
   rateLimitResponse,
 } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
+import {
+  type TmdbExternalIdPayload,
+  cacheExternalIds,
+  getCachedExternalIds,
+  mapExternalIds,
+} from "@/lib/external-ids";
 import { logOperationalEvent } from "@/lib/operational-events";
 import { tmdbFetch } from "@/lib/tmdb-client";
-import {
-  type TmdbWatchProviderPayload,
-  cacheWatchProviders,
-  getCachedWatchProviders,
-  mapWatchProviders,
-} from "@/lib/watch-providers";
 
 export const dynamic = "force-dynamic";
 
 const paramsSchema = z.object({
   mediaType: z.enum(["movie", "tv"]),
   tmdbId: z.coerce.number().int().positive(),
-  region: z.string().regex(/^[A-Z]{2}$/),
 });
 
 export async function GET(request: Request) {
@@ -33,31 +32,30 @@ export async function GET(request: Request) {
   const parsed = paramsSchema.safeParse({
     mediaType: searchParams.get("mediaType"),
     tmdbId: searchParams.get("tmdbId"),
-    region: searchParams.get("region"),
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid watch provider request." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid external id request." }, { status: 400 });
   }
 
-  const { mediaType, region, tmdbId } = parsed.data;
+  const { mediaType, tmdbId } = parsed.data;
 
   if (!process.env.TMDB_ACCESS_TOKEN) {
-    return NextResponse.json({ error: "Streaming data is not configured yet." }, { status: 503 });
+    return NextResponse.json({ error: "External links are not configured yet." }, { status: 503 });
   }
 
   const accountLimit = await consumeRateLimits(userId, API_RATE_LIMITS.tmdbDetailSheet);
   if (!accountLimit.allowed) return rateLimitResponse(accountLimit);
 
-  const cached = await getCachedWatchProviders(mediaType, tmdbId, region);
+  const cached = await getCachedExternalIds(mediaType, tmdbId);
   if (cached) {
-    logOperationalEvent("tmdb_watch_providers_completed", {
+    logOperationalEvent("tmdb_external_ids_completed", {
       cacheHit: true,
       durationMs: Math.round(performance.now() - startedAt),
       status: 200,
     });
     return NextResponse.json(
-      { providers: cached },
+      { externalIds: cached },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   }
@@ -65,9 +63,7 @@ export async function GET(request: Request) {
   const applicationLimit = await consumeRateLimits("application", API_RATE_LIMITS.tmdbApplication);
   if (!applicationLimit.allowed) return rateLimitResponse(applicationLimit);
 
-  const upstream = await tmdbFetch<TmdbWatchProviderPayload>(
-    `/${mediaType}/${tmdbId}/watch/providers`,
-  );
+  const upstream = await tmdbFetch<TmdbExternalIdPayload>(`/${mediaType}/${tmdbId}/external_ids`);
 
   if (!upstream.ok) {
     if (upstream.kind === "rate_limited") {
@@ -84,26 +80,26 @@ export async function GET(request: Request) {
     }
 
     if (upstream.kind === "unconfigured") {
-      return NextResponse.json({ error: "Streaming data is not configured yet." }, { status: 503 });
+      return NextResponse.json({ error: "External links are not configured yet." }, { status: 503 });
     }
 
-    logOperationalEvent("tmdb_watch_providers_failed", {
+    logOperationalEvent("tmdb_external_ids_failed", {
       durationMs: Math.round(performance.now() - startedAt),
       status: upstream.status,
     });
-    return NextResponse.json({ error: "Streaming data is unavailable right now." }, { status: 502 });
+    return NextResponse.json({ error: "External links are unavailable right now." }, { status: 502 });
   }
 
-  const providers = mapWatchProviders(upstream.data, region);
-  await cacheWatchProviders(mediaType, tmdbId, region, providers);
-  logOperationalEvent("tmdb_watch_providers_completed", {
+  const externalIds = mapExternalIds(upstream.data);
+  await cacheExternalIds(mediaType, tmdbId, externalIds);
+  logOperationalEvent("tmdb_external_ids_completed", {
     cacheHit: false,
     durationMs: Math.round(performance.now() - startedAt),
     status: 200,
   });
 
   return NextResponse.json(
-    { providers },
+    { externalIds },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

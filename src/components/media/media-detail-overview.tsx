@@ -4,6 +4,7 @@
 import { Clapperboard } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { TitleLinks } from "@/components/title-links";
 import { TypeBadge } from "@/components/ui/badge";
 import { SheetTitle } from "@/components/ui/sheet";
 import { WatchProviders } from "@/components/watch-providers";
@@ -50,6 +51,7 @@ export function MediaDetailOverview({
       {item.overview ? <p className="overview">{item.overview}</p> : null}
       {children}
       <WatchProviders item={item} />
+      <TitleLinks item={item} />
     </>
   );
 }
