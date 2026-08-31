@@ -161,6 +161,35 @@
 .watch-providers-attribution a { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); text-decoration: underline; }
 .watch-providers-attribution a:hover { color: var(--text); }
 
+/* Where to read more, sitting under availability as the quieter question. It
+   takes the same hairline as every other block rather than a heading: three
+   named links introduce themselves, and it must not read as a continuation of
+   where to watch. Text labels rather than service marks, which are trademarks
+   with their own usage rules and would outshout the providers above. */
+.title-links {
+  margin-top: 26px;
+  margin-bottom: 30px;
+  padding-top: 23px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+.title-links a {
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+.title-links a:hover { border-color: var(--line-strong); color: var(--text); }
+
 .region-select { margin-top: 13px; display: flex; align-items: flex-end; gap: 9px; }
 .region-select .field { flex: 1; min-width: 0; }
 .region-select .btn { flex: 0 0 auto; min-height: var(--field-height); }

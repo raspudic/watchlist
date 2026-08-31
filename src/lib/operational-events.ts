@@ -2,6 +2,8 @@ import "server-only";
 
 type OperationalEvent =
   | "api_rate_limited"
+  | "tmdb_external_ids_completed"
+  | "tmdb_external_ids_failed"
   | "tmdb_search_completed"
   | "tmdb_search_failed"
   | "tmdb_upstream_limited"
