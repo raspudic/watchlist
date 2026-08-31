@@ -1,0 +1,97 @@
+# History becomes its own table while media_items keeps watched_at and rating as
+# the latest state, so the previous application version keeps working unchanged
+# during the rollout.
+[[actions]]
+type = "create_table"
+name = "watch_events"
+primary_key = ["id"]
+
+  [[actions.columns]]
+  name = "id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "media_item_id"
+  type = "TEXT"
+  nullable = false
+
+  # A calendar day, not an instant: an evening in Buenos Aires must not land in
+  # the next month because the server stored it in UTC.
+  [[actions.columns]]
+  name = "watched_on"
+  type = "DATE"
+  nullable = false
+
+  # What the title was rated at the time, so a later change of heart does not
+  # rewrite the past.
+  [[actions.columns]]
+  name = "rating"
+  type = "INTEGER"
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  [[actions.columns]]
+  name = "updated_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  # Deleting an account, or hard-deleting an item, takes its history with it.
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+  [[actions.foreign_keys]]
+  columns = ["media_item_id"]
+  referenced_table = "media_items"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "add_index"
+table = "watch_events"
+
+  [actions.index]
+  name = "watch_events_user_watched_on_idx"
+  columns = ["user_id", "watched_on"]
+
+[[actions]]
+type = "add_index"
+table = "watch_events"
+
+  [actions.index]
+  name = "watch_events_media_item_idx"
+  columns = ["media_item_id", "created_at"]
+
+# One event for every title already marked watched, removed ones included. The
+# id is derived from the item, so the insert is idempotent; it runs again at
+# completion to pick up anything the previous application version marked watched
+# while the migration was in flight.
+[[actions]]
+type = "custom"
+start = """
+INSERT INTO watch_events (id, user_id, media_item_id, watched_on, rating, created_at, updated_at)
+SELECT 'backfill-' || id, user_id, id, (watched_at AT TIME ZONE 'UTC')::date, rating, watched_at, watched_at
+FROM media_items
+WHERE watched_at IS NOT NULL
+ON CONFLICT (id) DO NOTHING
+"""
+complete = """
+INSERT INTO watch_events (id, user_id, media_item_id, watched_on, rating, created_at, updated_at)
+SELECT 'backfill-' || id, user_id, id, (watched_at AT TIME ZONE 'UTC')::date, rating, watched_at, watched_at
+FROM media_items
+WHERE watched_at IS NOT NULL
+ON CONFLICT (id) DO NOTHING
+"""

@@ -40,7 +40,7 @@ Movie and television metadata and images are supplied by [TMDB](https://www.them
 
 ## Account deletion and lifecycle operations
 
-Account deletion requires the current password and an explicit irreversible confirmation. It permanently removes the live account, credential records, sessions, invitations associated with that account, and every library row, including previously removed titles. The final administrator cannot delete their account; promote another existing user first with `specific exec web -- env BOOTSTRAP_USERNAME=their-username pnpm auth:bootstrap`.
+Account deletion requires the current password and an explicit irreversible confirmation. It permanently removes the live account, credential records, sessions, invitations associated with that account, and every library row, including previously removed titles and the viewing history behind them. The final administrator cannot delete their account; promote another existing user first with `specific exec web -- env BOOTSTRAP_USERNAME=their-username pnpm auth:bootstrap`.
 
 Specific runs `lifecycle-cleanup` daily at 02:00 UTC. The idempotent job removes expired sessions, verification records, API limiter buckets and TMDB cache entries; Better Auth limiter rows idle for more than 24 hours; and invitations that have been accepted, revoked, or expired for more than 30 days. It uses a PostgreSQL advisory lock, so an overlapping run exits without making changes. Run it manually with:
 
