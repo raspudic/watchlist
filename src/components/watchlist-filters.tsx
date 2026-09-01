@@ -314,7 +314,7 @@ export function PickCard({
           <IconButton
             aria-pressed={pinned}
             className={pinned ? "pin-button pinned" : "pin-button"}
-            label={pinned ? `Unpin ${candidate.item.title}` : `Pin ${candidate.item.title} for tonight`}
+            label={pinned ? `Unpin ${candidate.item.title}` : `Pin ${candidate.item.title}`}
             loading={pinning}
             onClick={() => onTogglePin(candidate)}
           >

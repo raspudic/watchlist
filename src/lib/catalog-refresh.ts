@@ -95,8 +95,8 @@ export async function seedCatalogTitlesFromLibrary(now = new Date()) {
 
 /*
  * Search fills the catalog with titles nobody saved, so a bounded run has to
- * spend its budget on titles that are in someone's library first: Tonight is
- * only as good as the availability behind the watchlist.
+ * spend its budget on titles that are in someone's library first: the watchlist
+ * is only as good as the availability behind it.
  */
 const savedInLibrary = sql<boolean>`exists (
   select 1 from ${mediaItems}

@@ -461,6 +461,36 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.getAllByRole("button", { name: /Solo Pick/ }).length).toBeGreaterThan(0);
   });
 
+  it("pins a title from its sheet and says so plainly", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Arrival" })];
+    stubWatchlistFetch({
+      items,
+      onPatch: (id, body) => ({
+        item: {
+          ...items[0],
+          id,
+          pinnedAt: body.pinned ? "2026-09-01T12:00:00.000Z" : null,
+        },
+      }),
+    });
+
+    renderWatchlist();
+    fireEvent.click(await screen.findByRole("button", { name: /Arrival/ }));
+
+    const pin = await screen.findByRole("button", { name: "Pin" });
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(pin);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Pinned" })).toHaveAttribute("aria-pressed", "true");
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/items/item-1",
+      expect.objectContaining({ body: JSON.stringify({ pinned: true }) }),
+    );
+  });
+
   it("shows a row's streaming service name in list view", async () => {
     const items = [makeWatchlistItem({ id: "item-1", title: "Stream Title" })];
     const extras = makeExtrasResponse({
