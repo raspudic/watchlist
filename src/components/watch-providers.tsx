@@ -6,7 +6,13 @@
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { RegionSelect, loadWatchRegions, regionName } from "@/components/region-select";
+import {
+  RegionMark,
+  RegionSelect,
+  type WatchRegion,
+  loadWatchRegions,
+  regionName,
+} from "@/components/region-select";
 import { useRegion } from "@/components/region-provider";
 import { friendlySearchLimitMessage, isRateLimitError, readApiJson } from "@/lib/api-response";
 import { providerLogoUrl } from "@/lib/media-display";
@@ -20,11 +26,14 @@ type TitleWatchProviders = {
   rentOrBuy: WatchProvider[];
 };
 
-type Result = { key: string; providers?: TitleWatchProviders; error?: string };
+/** One answer per country, from the single request that covers them all. */
+type Answers = Record<string, TitleWatchProviders>;
+
+type Result = { key: string; providers?: Answers; error?: string };
 
 // Reopening a sheet should feel instant, so answers are kept for the tab's
 // lifetime. The server holds the durable 12-hour cache.
-const cache = new Map<string, TitleWatchProviders>();
+const cache = new Map<string, Answers>();
 
 export type WatchProviderItem = {
   externalId: number | null;
@@ -32,12 +41,12 @@ export type WatchProviderItem = {
   provider: string;
 };
 
-function cacheKey(mediaType: string, tmdbId: number, region: string) {
-  return `${mediaType}:${tmdbId}:${region}`;
+function cacheKey(mediaType: string, tmdbId: number, regions: string[]) {
+  return `${mediaType}:${tmdbId}:${regions.join(",")}`;
 }
 
 export function WatchProviders({ item }: { item: WatchProviderItem }) {
-  const { region } = useRegion();
+  const { regions } = useRegion();
   const tmdbId = item.externalId;
   const mediaType = item.mediaType;
 
@@ -48,8 +57,8 @@ export function WatchProviders({ item }: { item: WatchProviderItem }) {
   return (
     <section className="watch-providers">
       <h3>Where to watch</h3>
-      {region
-        ? <ProviderList mediaType={mediaType} region={region} tmdbId={tmdbId} />
+      {regions.length > 0
+        ? <ProviderList mediaType={mediaType} regions={regions} tmdbId={tmdbId} />
         : <RegionPrompt />}
     </section>
   );
@@ -66,35 +75,42 @@ function RegionPrompt() {
 
 function ProviderList({
   mediaType,
-  region,
+  regions,
   tmdbId,
 }: {
   mediaType: "movie" | "tv";
-  region: string;
+  regions: string[];
   tmdbId: number;
 }) {
-  const key = cacheKey(mediaType, tmdbId, region);
+  const key = cacheKey(mediaType, tmdbId, regions);
   // The result carries the key it belongs to, so switching titles or countries
   // falls back to the skeleton during render rather than through a setState.
   const [result, setResult] = useState<Result | null>(null);
-  const [country, setCountry] = useState(region);
+  const [countries, setCountries] = useState<WatchRegion[]>([]);
 
   const current = cache.has(key) ? { key, providers: cache.get(key) } : result?.key === key ? result : null;
 
   useEffect(() => {
+    let active = true;
     loadWatchRegions()
-      .then((regions) => setCountry(regionName(regions, region)))
-      .catch(() => setCountry(region));
-  }, [region]);
+      .then((list) => { if (active) setCountries(list); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (cache.has(key)) return;
 
     const controller = new AbortController();
-    const params = new URLSearchParams({ mediaType, region, tmdbId: String(tmdbId) });
+    /* One request covers every country: TMDB answers for all of them at once. */
+    const params = new URLSearchParams({
+      mediaType,
+      regions: regions.join(","),
+      tmdbId: String(tmdbId),
+    });
 
     fetch(`/api/watch-providers?${params}`, { cache: "no-store", signal: controller.signal })
-      .then((response) => readApiJson<{ providers: TitleWatchProviders }>(response))
+      .then((response) => readApiJson<{ providers: Answers }>(response))
       .then((data) => {
         cache.set(key, data.providers);
         setResult({ key, providers: data.providers });
@@ -110,7 +126,7 @@ function ProviderList({
       });
 
     return () => controller.abort();
-  }, [key, mediaType, region, tmdbId]);
+  }, [key, mediaType, regions, tmdbId]);
 
   if (current?.error) return <p className="watch-providers-note">{current.error}</p>;
 
@@ -124,36 +140,71 @@ function ProviderList({
     );
   }
 
-  const { link, rentOrBuy, streaming } = providers;
+  return (
+    <div className="watch-regions">
+      {regions.map((region) => (
+        <RegionAvailability
+          country={regionName(countries, region)}
+          key={region}
+          providers={providers[region]}
+          region={region}
+          /* With one country the heading would only repeat the setting. */
+          showCountry={regions.length > 1}
+        />
+      ))}
+    </div>
+  );
+}
 
-  if (streaming.length === 0 && rentOrBuy.length === 0) {
-    return <p className="watch-providers-note">Not available to stream in {country} right now.</p>;
-  }
+function RegionAvailability({
+  country,
+  providers,
+  region,
+  showCountry,
+}: {
+  country: string;
+  providers: TitleWatchProviders | undefined;
+  region: string;
+  showCountry: boolean;
+}) {
+  const streaming = providers?.streaming ?? [];
+  const rentOrBuy = providers?.rentOrBuy ?? [];
+  const link = providers?.link ?? null;
 
   return (
-    <>
-      {streaming.length > 0 ? (
-        <ProviderRow providers={streaming} />
-      ) : (
-        <p className="watch-providers-note">No subscription service has this in {country}.</p>
-      )}
-
-      {rentOrBuy.length > 0 ? (
-        <p className="watch-providers-secondary">
-          Also available to rent or buy: {rentOrBuy.map((provider) => provider.name).join(", ")}.
-        </p>
+    <div className="watch-region">
+      {showCountry ? (
+        <h4><RegionMark code={region} /> {country}</h4>
       ) : null}
 
-      {/* TMDB's terms require crediting JustWatch on the item itself. */}
-      <p className="watch-providers-attribution">
-        Streaming data by JustWatch{" · "}
-        {link ? (
-          <a href={link} rel="noreferrer" target="_blank">
-            All options in {country} <ExternalLink aria-hidden="true" size={12} />
-          </a>
-        ) : country}
-      </p>
-    </>
+      {streaming.length === 0 && rentOrBuy.length === 0 ? (
+        <p className="watch-providers-note">Not available to stream in {country} right now.</p>
+      ) : (
+        <>
+          {streaming.length > 0 ? (
+            <ProviderRow providers={streaming} />
+          ) : (
+            <p className="watch-providers-note">No subscription service has this in {country}.</p>
+          )}
+
+          {rentOrBuy.length > 0 ? (
+            <p className="watch-providers-secondary">
+              Also available to rent or buy: {rentOrBuy.map((provider) => provider.name).join(", ")}.
+            </p>
+          ) : null}
+
+          {/* TMDB's terms require crediting JustWatch on the item itself. */}
+          <p className="watch-providers-attribution">
+            Streaming data by JustWatch{" · "}
+            {link ? (
+              <a href={link} rel="noreferrer" target="_blank">
+                All options in {country} <ExternalLink aria-hidden="true" size={12} />
+              </a>
+            ) : country}
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 

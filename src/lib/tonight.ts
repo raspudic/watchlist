@@ -2,7 +2,13 @@ import type { MediaItem } from "@/lib/library-cache";
 
 export type TonightGenre = { id: number; name: string };
 
-export type TonightProvider = { id: number; name: string; logoPath: string | null };
+export type TonightProvider = {
+  id: number;
+  name: string;
+  logoPath: string | null;
+  /** Which of the account's countries stream the title on this service. */
+  regions: string[];
+};
 
 export type TonightCandidate = {
   item: MediaItem;
@@ -11,15 +17,15 @@ export type TonightCandidate = {
   voteAverage: number | null;
   voteCount: number | null;
   releaseDate: string | null;
-  /** Subscription, free and ad-supported services in the saved region. */
+  /** Subscription, free and ad-supported services across the saved countries. */
   streaming: TonightProvider[];
   /** Null until the catalog has looked this title up at all. */
   availabilityCheckedAt: string | null;
 };
 
 export type TonightResponse = {
-  /** The saved country, or null while Settings has not been visited. */
-  region: string | null;
+  /** The saved countries, home first; empty while Settings has not been visited. */
+  regions: string[];
   selectedProviderIds: number[];
   candidates: TonightCandidate[];
 };

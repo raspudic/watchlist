@@ -59,7 +59,7 @@ function makeCandidate(overrides: Partial<TonightCandidate> = {}): TonightCandid
 
 function makeResponse(overrides: Partial<TonightResponse> = {}): TonightResponse {
   return {
-    region: null,
+    regions: [],
     selectedProviderIds: [],
     candidates: [],
     ...overrides,
@@ -104,14 +104,14 @@ describe("TonightView", () => {
     const candidates = [
       makeCandidate({
         item: makeItem({ id: "item-1", title: "The Matrix" }),
-        streaming: [{ id: 8, name: "Netflix", logoPath: null }],
+        streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }],
       }),
       makeCandidate({
         item: makeItem({ id: "item-2", title: "Amelie" }),
-        streaming: [{ id: 337, name: "Disney Plus", logoPath: null }],
+        streaming: [{ id: 337, name: "Disney Plus", logoPath: null, regions: ["US"] }],
       }),
     ];
-    stubFetch(makeResponse({ region: "US", candidates }));
+    stubFetch(makeResponse({ regions: ["US"], candidates }));
 
     renderView();
 
@@ -124,13 +124,13 @@ describe("TonightView", () => {
   it("hides a title that is not on a selected service by default, and shows it under Everything", async () => {
     const onService = makeCandidate({
       item: makeItem({ id: "item-1", title: "The Matrix" }),
-      streaming: [{ id: 8, name: "Netflix", logoPath: null }],
+      streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }],
     });
     const offService = makeCandidate({
       item: makeItem({ id: "item-2", title: "Amelie" }),
-      streaming: [{ id: 337, name: "Disney Plus", logoPath: null }],
+      streaming: [{ id: 337, name: "Disney Plus", logoPath: null, regions: ["US"] }],
     });
-    stubFetch(makeResponse({ region: "US", selectedProviderIds: [8], candidates: [onService, offService] }));
+    stubFetch(makeResponse({ regions: ["US"], selectedProviderIds: [8], candidates: [onService, offService] }));
 
     renderView();
 
@@ -173,7 +173,7 @@ describe("TonightView", () => {
   });
 
   it("shows the setup call-to-action and hides the services control with no region or selections", async () => {
-    stubFetch(makeResponse({ region: null, selectedProviderIds: [], candidates: [makeCandidate()] }));
+    stubFetch(makeResponse({ regions: [], selectedProviderIds: [], candidates: [makeCandidate()] }));
 
     renderView();
 

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, gt, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
@@ -368,12 +368,20 @@ export async function cacheCatalogAvailability(
   return true;
 }
 
-export async function getCatalogWatchProviders(
+/**
+ * Regional availability for several countries at once. A fresh title answers
+ * for every country asked about — a country with no row simply has nothing,
+ * which is a different fact from never having been checked.
+ */
+export async function getCatalogWatchProvidersForRegions(
   mediaType: WatchMediaType,
   tmdbId: number,
-  region: string,
+  regions: string[],
   now = new Date(),
-): Promise<TitleWatchProviders | null> {
+): Promise<Record<string, TitleWatchProviders>> {
+  const normalizedRegions = [...new Set(regions.map((region) => region.trim().toUpperCase()))];
+  if (normalizedRegions.length === 0) return {};
+
   const titleId = catalogTitleId(mediaType, tmdbId);
   const freshAfter = new Date(now.getTime() - CATALOG_AVAILABILITY_TTL_MS);
   const [title] = await db
@@ -384,20 +392,19 @@ export async function getCatalogWatchProviders(
       gt(catalogTitles.availabilityRefreshedAt, freshAfter),
     ))
     .limit(1);
-  if (!title) return null;
+  if (!title) return {};
 
-  const normalizedRegion = region.trim().toUpperCase();
   const [regional, services] = await Promise.all([
     db
-      .select({ link: catalogAvailability.link })
+      .select({ region: catalogAvailability.region, link: catalogAvailability.link })
       .from(catalogAvailability)
       .where(and(
         eq(catalogAvailability.catalogTitleId, titleId),
-        eq(catalogAvailability.region, normalizedRegion),
-      ))
-      .limit(1),
+        inArray(catalogAvailability.region, normalizedRegions),
+      )),
     db
       .select({
+        region: catalogAvailabilityServices.region,
         id: streamingProviders.id,
         name: streamingProviders.name,
         logoPath: streamingProviders.logoPath,
@@ -407,7 +414,7 @@ export async function getCatalogWatchProviders(
       .innerJoin(streamingProviders, eq(streamingProviders.id, catalogAvailabilityServices.providerId))
       .where(and(
         eq(catalogAvailabilityServices.catalogTitleId, titleId),
-        eq(catalogAvailabilityServices.region, normalizedRegion),
+        inArray(catalogAvailabilityServices.region, normalizedRegions),
       ))
       .orderBy(
         asc(catalogAvailabilityServices.displayPriority),
@@ -415,18 +422,26 @@ export async function getCatalogWatchProviders(
       ),
   ]);
 
-  const mapped = services.map((service) => ({
-    id: service.id,
-    name: service.name,
-    logoPath: service.logoPath,
-  }));
+  const links = new Map(regional.map((row) => [row.region, row.link]));
+  const answers: Record<string, TitleWatchProviders> = {};
 
-  return {
-    region: normalizedRegion,
-    link: regional[0]?.link ?? null,
-    streaming: mapped.filter((_provider, index) => services[index].accessType === "streaming"),
-    rentOrBuy: mapped.filter((_provider, index) => services[index].accessType === "rent_or_buy"),
-  };
+  for (const region of normalizedRegions) {
+    const regionServices = services.filter((service) => service.region === region);
+    const provider = (service: (typeof regionServices)[number]) => ({
+      id: service.id,
+      name: service.name,
+      logoPath: service.logoPath,
+    });
+
+    answers[region] = {
+      region,
+      link: links.get(region) ?? null,
+      streaming: regionServices.filter((service) => service.accessType === "streaming").map(provider),
+      rentOrBuy: regionServices.filter((service) => service.accessType === "rent_or_buy").map(provider),
+    };
+  }
+
+  return answers;
 }
 
 export async function persistCatalogTitleMetadata(

@@ -1,6 +1,6 @@
 "use client";
 
-import { RegionSelect } from "@/components/region-select";
+import { RegionPicker } from "@/components/region-select";
 import { useToast } from "@/components/ui/toast";
 
 export function RegionCard() {
@@ -8,9 +8,12 @@ export function RegionCard() {
 
   return (
     <section className="settings-card">
-      <h2>Where to watch</h2>
-      <p>The country used to check which services are streaming a title.</p>
-      <RegionSelect onSaved={() => toast.add({ title: "Country updated." })} />
+      <h2>Your countries</h2>
+      <p>
+        Up to three. The first is home, and every title says which of them it streams in.
+        Removing a country also drops the services only it carried.
+      </p>
+      <RegionPicker onSaved={() => toast.add({ title: "Countries updated." })} />
     </section>
   );
 }

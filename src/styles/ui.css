@@ -281,6 +281,20 @@ select.field-control { padding-right: 34px; appearance: none; background-image: 
 .tab[data-selected] .tab-count { background: var(--accent-soft); color: var(--accent-text); }
 .tabs .segmented { margin-bottom: 6px; }
 
+/* A country marker. The flag is decoration — platforms without flag glyphs
+   draw the two letters — so the code beside it carries the meaning. */
+.region-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.region-mark + .region-mark { margin-left: 5px; }
+
 /* A select that sits in a toolbar rather than in a form. */
 .compact-select-field { display: inline-flex; align-items: center; gap: 8px; color: var(--text-faint); font-size: 11.5px; font-weight: 620; }
 select.compact-select {

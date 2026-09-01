@@ -103,7 +103,7 @@ function stubFetch({ item = makeItem(), events = [], onPostEvent, onPatch }: Fet
 function renderView() {
   return render(
     <LibraryCacheProvider scope="account-1">
-      <RegionProvider region={null} suggestedRegion={null}>
+      <RegionProvider regions={[]} suggestedRegion={null}>
         <ToastProvider>
           <LibraryView mode="watched" />
         </ToastProvider>

@@ -4,10 +4,10 @@ const mocks = vi.hoisted(() => ({
   consumeRateLimits: vi.fn(),
   getRequestUserId: vi.fn(),
   getUserStreamingServiceIds: vi.fn(),
-  listStreamingServicesForRegion: vi.fn(),
+  listStreamingServicesForRegions: vi.fn(),
   refreshStreamingProviderDirectory: vi.fn(),
   replaceUserStreamingServices: vi.fn(),
-  rows: [{ region: "SE" }] as Array<{ region: string | null }>,
+  listUserRegions: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -16,21 +16,14 @@ vi.mock("@/lib/api-rate-limit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-rate-limit")>("@/lib/api-rate-limit");
   return { ...actual, consumeRateLimits: mocks.consumeRateLimits };
 });
-vi.mock("@/lib/db/client", () => ({
-  db: {
-    select: () => ({
-      from: () => ({
-        where: () => ({ limit: () => Promise.resolve(mocks.rows) }),
-      }),
-    }),
-  },
-}));
+vi.mock("@/lib/db/client", () => ({ db: {} }));
+vi.mock("@/lib/account-regions", () => ({ listUserRegions: mocks.listUserRegions }));
 vi.mock("@/lib/streaming-services", async () => {
   const actual = await vi.importActual<typeof import("@/lib/streaming-services")>("@/lib/streaming-services");
   return {
     ...actual,
     getUserStreamingServiceIds: mocks.getUserStreamingServiceIds,
-    listStreamingServicesForRegion: mocks.listStreamingServicesForRegion,
+    listStreamingServicesForRegions: mocks.listStreamingServicesForRegions,
     refreshStreamingProviderDirectory: mocks.refreshStreamingProviderDirectory,
     replaceUserStreamingServices: mocks.replaceUserStreamingServices,
   };
@@ -39,7 +32,7 @@ vi.mock("@/lib/streaming-services", async () => {
 import { GET, PUT } from "./route";
 
 const providers = [
-  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"] },
+  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
 ];
 
 function getRequest() {
@@ -59,10 +52,10 @@ describe("/api/streaming-services", () => {
     vi.clearAllMocks();
     process.env.BETTER_AUTH_URL = "http://watchlist.test";
     process.env.TMDB_ACCESS_TOKEN = "test-token";
-    mocks.rows.splice(0, mocks.rows.length, { region: "SE" });
+    mocks.listUserRegions.mockResolvedValue(["SE"]);
     mocks.getRequestUserId.mockResolvedValue("account-1");
     mocks.consumeRateLimits.mockResolvedValue({ allowed: true });
-    mocks.listStreamingServicesForRegion.mockResolvedValue(providers);
+    mocks.listStreamingServicesForRegions.mockResolvedValue(providers);
     mocks.getUserStreamingServiceIds.mockResolvedValue([8]);
     mocks.replaceUserStreamingServices.mockResolvedValue([8]);
     mocks.refreshStreamingProviderDirectory.mockResolvedValue({ providers: 1, regions: 1 });
@@ -76,15 +69,15 @@ describe("/api/streaming-services", () => {
   });
 
   it("returns an empty setup state before a country is saved", async () => {
-    mocks.rows.splice(0, mocks.rows.length, { region: null });
+    mocks.listUserRegions.mockResolvedValue([]);
 
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      providers: [], region: null, selectedProviderIds: [],
+      providers: [], regions: [], selectedProviderIds: [],
     });
-    expect(mocks.listStreamingServicesForRegion).not.toHaveBeenCalled();
+    expect(mocks.listStreamingServicesForRegions).not.toHaveBeenCalled();
   });
 
   it("returns the regional directory and current selections", async () => {
@@ -94,13 +87,13 @@ describe("/api/streaming-services", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
       providers,
-      region: "SE",
+      regions: ["SE"],
       selectedProviderIds: [8],
     });
   });
 
   it("refreshes a cold provider directory once", async () => {
-    mocks.listStreamingServicesForRegion
+    mocks.listStreamingServicesForRegions
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce(providers);
 
@@ -117,9 +110,9 @@ describe("/api/streaming-services", () => {
     const response = await PUT(putRequest({ providerIds: [8, 337] }));
 
     expect(response.status).toBe(200);
-    expect(mocks.replaceUserStreamingServices).toHaveBeenCalledWith("account-1", "SE", [8, 337]);
+    expect(mocks.replaceUserStreamingServices).toHaveBeenCalledWith("account-1", ["SE"], [8, 337]);
     await expect(response.json()).resolves.toMatchObject({
-      region: "SE",
+      regions: ["SE"],
       selectedProviderIds: [8, 337],
     });
   });

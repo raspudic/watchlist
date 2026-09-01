@@ -109,6 +109,30 @@
 .settings-footer a { padding: 8px 2px; display: inline-flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 12px; font-weight: 600; }
 .settings-footer a:hover { color: var(--text); }
 
+.region-picker { margin-top: 15px; }
+.region-list { display: flex; flex-direction: column; gap: 7px; list-style: none; }
+.region-list li {
+  min-height: 46px;
+  padding: 5px 8px 5px 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.region-name { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-weight: 600; }
+.region-home {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+.region-note { margin-top: 13px; color: var(--text-faint); font-size: 12px; line-height: 1.5; }
+.region-picker .region-select { margin-top: 11px; }
+
 @media (max-width: 760px) {
   .settings-page { padding: 31px 15px 42px; }
   .settings-heading h1 { font-size: 29px; }

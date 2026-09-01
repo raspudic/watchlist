@@ -66,7 +66,7 @@ const horror = { id: 27, name: "Horror" };
 const drama = { id: 18, name: "Drama" };
 
 describe("narrowCandidates", () => {
-  const netflix = candidate("netflix", { streaming: [{ id: 8, name: "Netflix", logoPath: null }] });
+  const netflix = candidate("netflix", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["SE"] }] });
   const nowhere = candidate("nowhere");
 
   it("keeps only titles on a selected service", () => {

@@ -15,6 +15,8 @@ There is no daily quota. Identical normalized TMDB searches are cached for one h
 
 Watch provider lookups have their own account limit so that opening a title does not consume the search budget. They share the same upstream application limit. Availability is cached per title and country for 12 hours, and the list of supported countries for 30 days; JustWatch supplies TMDB with one export a day, so a shorter window would only add upstream traffic.
 
+An account can hold up to three countries. TMDB answers for every country in one response, so a title is looked up once however many countries are saved, and the route only answers for countries the account has actually saved.
+
 Limited requests return HTTP `429`, a `Retry-After` header, and a JSON body with `code`, `reason`, and `retryAfter`. The UI keeps the user's search text, shows a retry countdown, and leaves library and custom-title actions available.
 
 Expired limiter buckets and TMDB cache entries are deleted by the daily `lifecycle-cleanup` job.

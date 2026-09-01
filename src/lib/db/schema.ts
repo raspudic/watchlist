@@ -33,6 +33,27 @@ export const user = pgTable(
   ],
 );
 
+/**
+ * The countries an account watches from, at most three. Position 0 is home:
+ * the country shown first and mirrored into `user.region` so the session field
+ * and anything reading it keep working.
+ */
+export const userRegions = pgTable(
+  "user_regions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    region: text("region").notNull(),
+    position: integer("position").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.region] }),
+    index("user_regions_user_position_idx").on(table.userId, table.position),
+  ],
+);
+
 export const invitations = pgTable(
   "invitations",
   {

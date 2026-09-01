@@ -47,7 +47,7 @@ function stubSearchFetch(handler: (query: string) => SearchResult[] | { retryAft
 
 function SearchProviders({ children }: { children: ReactNode }) {
   return (
-    <RegionProvider region="US" suggestedRegion="US">
+    <RegionProvider regions={["US"]} suggestedRegion="US">
       <ToastProvider>{children}</ToastProvider>
     </RegionProvider>
   );
@@ -63,10 +63,12 @@ function stubPreviewFetch(results: SearchResult[]) {
     if (url.pathname === "/api/watch-providers") {
       return Response.json({
         providers: {
-          region: "US",
-          link: "https://tmdb.test/watch",
-          streaming: [{ id: 8, name: "Netflix", logoPath: null }],
-          rentOrBuy: [],
+          US: {
+            region: "US",
+            link: "https://tmdb.test/watch",
+            streaming: [{ id: 8, name: "Netflix", logoPath: null }],
+            rentOrBuy: [],
+          },
         },
       });
     }

@@ -17,6 +17,8 @@ export type StreamingService = {
   name: string;
   logoPath: string | null;
   mediaTypes: StreamingMediaType[];
+  /** Which of the account's countries carry this service. */
+  regions: string[];
 };
 
 type TmdbDirectoryProvider = {
@@ -43,6 +45,10 @@ export type ProviderDirectory = {
 
 function isRegion(value: string) {
   return /^[A-Z]{2}$/.test(value);
+}
+
+function normalizeRegions(regions: string[]) {
+  return [...new Set(regions.map((region) => region.trim().toUpperCase()).filter(isRegion))];
 }
 
 /** Normalize the global movie and television provider lists into one directory. */
@@ -145,19 +151,23 @@ export async function refreshStreamingProviderDirectory(
   return persistStreamingProviderDirectory(mapTmdbProviderDirectory({ movie: movie.data, tv: tv.data }), now);
 }
 
-export async function listStreamingServicesForRegion(region: string): Promise<StreamingService[]> {
-  const normalizedRegion = region.trim().toUpperCase();
+/** Every service carried by any of the account's countries, best-placed first. */
+export async function listStreamingServicesForRegions(regions: string[]): Promise<StreamingService[]> {
+  const normalizedRegions = normalizeRegions(regions);
+  if (normalizedRegions.length === 0) return [];
+
   const rows = await db
     .select({
       id: streamingProviders.id,
       name: streamingProviders.name,
       logoPath: streamingProviders.logoPath,
+      region: streamingProviderRegions.region,
       mediaType: streamingProviderRegions.mediaType,
       displayPriority: streamingProviderRegions.displayPriority,
     })
     .from(streamingProviderRegions)
     .innerJoin(streamingProviders, eq(streamingProviders.id, streamingProviderRegions.providerId))
-    .where(eq(streamingProviderRegions.region, normalizedRegion))
+    .where(inArray(streamingProviderRegions.region, normalizedRegions))
     .orderBy(asc(streamingProviderRegions.displayPriority), asc(streamingProviders.name));
 
   const services = new Map<number, StreamingService & { displayPriority: number }>();
@@ -166,6 +176,7 @@ export async function listStreamingServicesForRegion(region: string): Promise<St
     const existing = services.get(row.id);
     if (existing) {
       if (!existing.mediaTypes.includes(row.mediaType)) existing.mediaTypes.push(row.mediaType);
+      if (!existing.regions.includes(row.region)) existing.regions.push(row.region);
       existing.displayPriority = Math.min(existing.displayPriority, row.displayPriority);
       continue;
     }
@@ -174,6 +185,7 @@ export async function listStreamingServicesForRegion(region: string): Promise<St
       name: row.name,
       logoPath: row.logoPath,
       mediaTypes: [row.mediaType],
+      regions: [row.region],
       displayPriority: row.displayPriority,
     });
   }
@@ -185,11 +197,22 @@ export async function listStreamingServicesForRegion(region: string): Promise<St
       name: service.name,
       logoPath: service.logoPath,
       mediaTypes: service.mediaTypes,
+      /* Ordered as the account ordered its countries, home first. */
+      regions: normalizedRegions.filter((region) => service.regions.includes(region)),
     }));
 }
 
-export async function getUserStreamingServiceIds(userId: string, region: string): Promise<number[]> {
-  const normalizedRegion = region.trim().toUpperCase();
+/**
+ * A pick is global — one subscription, wherever you are — so this is the set of
+ * picks any of the account's countries still carries.
+ */
+export async function getUserStreamingServiceIds(
+  userId: string,
+  regions: string[],
+): Promise<number[]> {
+  const normalizedRegions = normalizeRegions(regions);
+  if (normalizedRegions.length === 0) return [];
+
   const rows = await db
     .selectDistinct({ providerId: userStreamingServices.providerId })
     .from(userStreamingServices)
@@ -199,7 +222,7 @@ export async function getUserStreamingServiceIds(userId: string, region: string)
     )
     .where(and(
       eq(userStreamingServices.userId, userId),
-      eq(streamingProviderRegions.region, normalizedRegion),
+      inArray(streamingProviderRegions.region, normalizedRegions),
     ));
 
   return rows.map((row) => row.providerId).sort((a, b) => a - b);
@@ -207,17 +230,17 @@ export async function getUserStreamingServiceIds(userId: string, region: string)
 
 export class UnknownStreamingServiceError extends Error {
   constructor() {
-    super("Choose services available in your selected country.");
+    super("Choose services available in your selected countries.");
     this.name = "UnknownStreamingServiceError";
   }
 }
 
 export async function replaceUserStreamingServices(
   userId: string,
-  region: string,
+  regions: string[],
   providerIds: number[],
 ): Promise<number[]> {
-  const normalizedRegion = region.trim().toUpperCase();
+  const normalizedRegions = normalizeRegions(regions);
   const uniqueIds = [...new Set(providerIds)].sort((a, b) => a - b);
 
   if (uniqueIds.some((id) => !Number.isInteger(id) || id <= 0)) {
@@ -229,7 +252,7 @@ export async function replaceUserStreamingServices(
       .selectDistinct({ providerId: streamingProviderRegions.providerId })
       .from(streamingProviderRegions)
       .where(and(
-        eq(streamingProviderRegions.region, normalizedRegion),
+        inArray(streamingProviderRegions.region, normalizedRegions),
         inArray(streamingProviderRegions.providerId, uniqueIds),
       ));
     if (new Set(validRows.map((row) => row.providerId)).size !== uniqueIds.length) {
