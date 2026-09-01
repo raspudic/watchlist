@@ -23,6 +23,50 @@ export type TonightCandidate = {
   availabilityCheckedAt: string | null;
 };
 
+/** What the catalog knows about one saved title, keyed back to the library row. */
+export type TitleExtras = {
+  mediaItemId: string;
+  genres: TonightGenre[];
+  runtimeMinutes: number | null;
+  voteAverage: number | null;
+  voteCount: number | null;
+  releaseDate: string | null;
+  /** Subscription, free and ad-supported services across the saved countries. */
+  streaming: TonightProvider[];
+  /** Null until the catalog has looked this title up at all. */
+  availabilityCheckedAt: string | null;
+};
+
+export type WatchlistExtrasResponse = {
+  /** The saved countries, home first; empty while Settings has not been visited. */
+  regions: string[];
+  selectedProviderIds: number[];
+  titles: TitleExtras[];
+};
+
+/**
+ * Joins the library rows the page already has with whatever enrichment has
+ * arrived. A title the catalog has never seen still becomes a candidate, just
+ * a barer one, so the list never waits on the catalog to render.
+ */
+export function buildCandidates(items: MediaItem[], titles: TitleExtras[]): TonightCandidate[] {
+  const extras = new Map(titles.map((entry) => [entry.mediaItemId, entry]));
+
+  return items.map((item) => {
+    const entry = extras.get(item.id);
+    return {
+      item,
+      genres: entry?.genres ?? [],
+      runtimeMinutes: entry?.runtimeMinutes ?? null,
+      voteAverage: entry?.voteAverage ?? null,
+      voteCount: entry?.voteCount ?? null,
+      releaseDate: entry?.releaseDate ?? null,
+      streaming: entry?.streaming ?? [],
+      availabilityCheckedAt: entry?.availabilityCheckedAt ?? null,
+    };
+  });
+}
+
 export type TonightResponse = {
   /** The saved countries, home first; empty while Settings has not been visited. */
   regions: string[];
@@ -93,6 +137,10 @@ export function moodFacetKey(id: MoodId): FacetKey {
   return `mood:${id}`;
 }
 
+export function regionFacetKey(code: string): FacetKey {
+  return `region:${code}`;
+}
+
 export function genreFacetKey(id: number): FacetKey {
   return `genre:${id}`;
 }
@@ -103,6 +151,12 @@ function genreIds(candidate: TonightCandidate) {
 
 export function matchesFacet(candidate: TonightCandidate, facet: FacetKey) {
   const ids = genreIds(candidate);
+
+  /* A country pill asks where a title streams, not what it is about. */
+  if (facet.startsWith("region:")) {
+    const code = facet.slice("region:".length);
+    return candidate.streaming.some((provider) => provider.regions.includes(code));
+  }
 
   if (facet.startsWith("genre:")) {
     const id = Number(facet.slice("genre:".length));
@@ -169,6 +223,21 @@ function facetOption(
     count: narrowCandidates(candidates, { ...filters, facets }, selectedProviderIds).length,
     selected,
   };
+}
+
+/**
+ * One pill per saved country. Only worth showing with more than one: with a
+ * single country the pill would match everything the list already shows.
+ */
+export function regionOptions(
+  candidates: TonightCandidate[],
+  filters: TonightFilters,
+  selectedProviderIds: number[],
+  regions: string[],
+): FacetOption[] {
+  if (regions.length < 2) return [];
+  return regions.map((code) =>
+    facetOption(candidates, filters, selectedProviderIds, regionFacetKey(code), code));
 }
 
 export function moodOptions(
@@ -300,7 +369,9 @@ export function readTonightFilters(params: URLSearchParams): TonightFilters {
   const facets = (params.get("pills") ?? "")
     .split(",")
     .map((facet) => facet.trim())
-    .filter((facet) => /^mood:[a-z-]+$/.test(facet) || /^genre:\d+$/.test(facet));
+    .filter((facet) => /^mood:[a-z-]+$/.test(facet)
+      || /^genre:\d+$/.test(facet)
+      || /^region:[A-Z]{2}$/.test(facet));
 
   return {
     services: readOption(params.get("services"), SERVICE_FILTERS, DEFAULT_TONIGHT_FILTERS.services),

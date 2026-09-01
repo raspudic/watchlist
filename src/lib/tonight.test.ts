@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { MediaItem } from "@/lib/library-cache";
 import {
   DEFAULT_TONIGHT_FILTERS,
+  buildCandidates,
   candidateWeight,
   genreOptions,
   mediaTypeCounts,
+  regionOptions,
   moodOptions,
   narrowCandidates,
   pickCandidate,
@@ -260,5 +262,74 @@ describe("filter query", () => {
     ));
 
     expect(parsed).toEqual(filters({ facets: ["mood:dark", "genre:80"] }));
+  });
+});
+
+describe("buildCandidates", () => {
+  const rows = [candidate("a").item, candidate("b").item];
+
+  it("keeps a title the catalog has never seen, just a barer one", () => {
+    const [first] = buildCandidates([rows[0]], []);
+
+    expect(first).toMatchObject({
+      availabilityCheckedAt: null,
+      genres: [],
+      runtimeMinutes: null,
+      streaming: [],
+    });
+    expect(first.item).toBe(rows[0]);
+  });
+
+  it("joins the catalog layer on by media item id, in the library's order", () => {
+    const joined = buildCandidates(rows, [
+      {
+        mediaItemId: "b",
+        genres: [comedy],
+        runtimeMinutes: 96,
+        voteAverage: 7.1,
+        voteCount: 40,
+        releaseDate: "2021-02-03",
+        streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["SE"] }],
+        availabilityCheckedAt: "2026-08-31T00:00:00.000Z",
+      },
+    ]);
+
+    expect(joined.map((entry) => entry.item.id)).toEqual(["a", "b"]);
+    expect(joined[0].genres).toEqual([]);
+    expect(joined[1]).toMatchObject({ runtimeMinutes: 96, voteAverage: 7.1 });
+    expect(joined[1].streaming[0].name).toBe("Netflix");
+  });
+});
+
+describe("country pills", () => {
+  const here = candidate("here", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }] });
+  const abroad = candidate("abroad", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["SE"] }] });
+  const nowhere = candidate("nowhere");
+
+  it("keeps only titles that stream in that country", () => {
+    const kept = narrowCandidates(
+      [here, abroad, nowhere],
+      filters({ services: "all", facets: ["region:US"] }),
+      [],
+    );
+
+    expect(kept.map((entry) => entry.item.id)).toEqual(["here"]);
+  });
+
+  it("counts each country and leaves one with nothing at zero", () => {
+    const options = regionOptions(
+      [here, abroad],
+      filters({ services: "all" }),
+      [],
+      ["US", "SE", "AR"],
+    );
+
+    expect(options.map((option) => [option.label, option.count]))
+      .toEqual([["US", 1], ["SE", 1], ["AR", 0]]);
+  });
+
+  /* With one country the pill would match everything already on screen. */
+  it("offers no country pills to an account with a single country", () => {
+    expect(regionOptions([here], filters({ services: "all" }), [], ["US"])).toEqual([]);
   });
 });

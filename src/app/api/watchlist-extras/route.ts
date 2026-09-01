@@ -4,14 +4,15 @@ import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api
 import { getRequestUserId } from "@/lib/api-auth";
 import { listUserRegions } from "@/lib/account-regions";
 import { getUserStreamingServiceIds } from "@/lib/streaming-services";
-import { listTonightCandidates } from "@/lib/tonight-candidates";
+import { listWatchlistExtras } from "@/lib/watchlist-extras";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Everything Tonight needs in one authenticated read. It answers from the
- * normalized catalog only: a picker that waited on TMDB would be slower than
- * scrolling the watchlist, and the daily refresh already keeps the catalog warm.
+ * What the watchlist knows beyond its own rows: genres, runtime, score and
+ * where each title streams. It answers from the normalized catalog only — a
+ * page that waited on TMDB would be slower than scrolling — and it carries no
+ * library rows of its own, so the list can paint from cache before this lands.
  */
 export async function GET(request: Request) {
   const userId = await getRequestUserId(request);
@@ -22,13 +23,13 @@ export async function GET(request: Request) {
 
   const regions = await listUserRegions(userId);
 
-  const [candidates, selectedProviderIds] = await Promise.all([
-    listTonightCandidates(userId, regions),
+  const [titles, selectedProviderIds] = await Promise.all([
+    listWatchlistExtras(userId, regions),
     getUserStreamingServiceIds(userId, regions),
   ]);
 
   return NextResponse.json(
-    { regions, selectedProviderIds, candidates },
+    { regions, selectedProviderIds, titles },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   consumeRateLimits: vi.fn(),
   getRequestUserId: vi.fn(),
   getUserStreamingServiceIds: vi.fn(),
-  listTonightCandidates: vi.fn(),
+  listWatchlistExtras: vi.fn(),
   listUserRegions: vi.fn(),
 }));
 
@@ -20,13 +20,13 @@ vi.mock("@/lib/streaming-services", async () => {
   const actual = await vi.importActual<typeof import("@/lib/streaming-services")>("@/lib/streaming-services");
   return { ...actual, getUserStreamingServiceIds: mocks.getUserStreamingServiceIds };
 });
-vi.mock("@/lib/tonight-candidates", () => ({ listTonightCandidates: mocks.listTonightCandidates }));
+vi.mock("@/lib/watchlist-extras", () => ({ listWatchlistExtras: mocks.listWatchlistExtras }));
 
 import { GET } from "./route";
 
-const candidates = [
+const titles = [
   {
-    item: { id: "item-1", title: "The Matrix" },
+    mediaItemId: "item-1",
     genres: [],
     runtimeMinutes: 136,
     voteAverage: 8.2,
@@ -38,26 +38,26 @@ const candidates = [
 ];
 
 function getRequest() {
-  return new Request("http://watchlist.test/api/tonight");
+  return new Request("http://watchlist.test/api/watchlist-extras");
 }
 
-describe("GET /api/tonight", () => {
+describe("GET /api/watchlist-extras", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listUserRegions.mockResolvedValue(["SE"]);
     mocks.getRequestUserId.mockResolvedValue("account-1");
     mocks.consumeRateLimits.mockResolvedValue({ allowed: true });
     mocks.getUserStreamingServiceIds.mockResolvedValue([8]);
-    mocks.listTonightCandidates.mockResolvedValue(candidates);
+    mocks.listWatchlistExtras.mockResolvedValue(titles);
   });
 
-  it("rejects an unauthenticated request before touching candidates", async () => {
+  it("rejects an unauthenticated request before touching the catalog", async () => {
     mocks.getRequestUserId.mockResolvedValue(null);
 
     const response = await GET(getRequest());
 
     expect(response.status).toBe(401);
-    expect(mocks.listTonightCandidates).not.toHaveBeenCalled();
+    expect(mocks.listWatchlistExtras).not.toHaveBeenCalled();
   });
 
   it("returns 429 when the account is rate limited", async () => {
@@ -66,10 +66,10 @@ describe("GET /api/tonight", () => {
     const response = await GET(getRequest());
 
     expect(response.status).toBe(429);
-    expect(mocks.listTonightCandidates).not.toHaveBeenCalled();
+    expect(mocks.listWatchlistExtras).not.toHaveBeenCalled();
   });
 
-  it("returns candidates and selections for a signed-in user with a saved region", async () => {
+  it("returns the catalog layer and the current selections", async () => {
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
@@ -77,9 +77,9 @@ describe("GET /api/tonight", () => {
     await expect(response.json()).resolves.toEqual({
       regions: ["SE"],
       selectedProviderIds: [8],
-      candidates,
+      titles,
     });
-    expect(mocks.listTonightCandidates).toHaveBeenCalledWith("account-1", ["SE"]);
+    expect(mocks.listWatchlistExtras).toHaveBeenCalledWith("account-1", ["SE"]);
   });
 
   it("returns an empty setup state before a country is saved", async () => {
@@ -92,7 +92,7 @@ describe("GET /api/tonight", () => {
     await expect(response.json()).resolves.toEqual({
       regions: [],
       selectedProviderIds: [],
-      candidates,
+      titles,
     });
   });
 });

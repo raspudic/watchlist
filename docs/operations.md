@@ -8,7 +8,7 @@ Authenticated application routes use shared PostgreSQL counters, so the limits a
 | --- | --- | --- |
 | TMDB search | 10 requests per 10 seconds and 30 per minute | 12 upstream requests per 500 ms and 30 per second |
 | TMDB watch providers | 20 requests per 10 seconds and 60 per minute | 12 upstream requests per 500 ms and 30 per second |
-| Library reads, including Tonight and Insights, and local search | 30 requests per 10 seconds and 120 per minute | — |
+| Library reads, including the catalog layer and Insights, and local search | 30 requests per 10 seconds and 120 per minute | — |
 | Library writes | 15 requests per 10 seconds and 60 per minute | — |
 
 There is no daily quota. Identical normalized TMDB searches are cached for one hour across application instances and for 15 minutes in the current browser session. A shared-cache hit counts against the library-read limit rather than the account TMDB allowance and does not consume shared upstream capacity.
@@ -23,13 +23,13 @@ Expired limiter buckets and TMDB cache entries are deleted by the daily `lifecyc
 
 ## Catalog refresh
 
-The daily `catalog-refresh` job at 02:30 UTC tops up the shared TMDB catalog: title metadata for seven days, regional availability for twelve hours, and the streaming provider directory. It takes a PostgreSQL advisory lock, so an overlapping run exits without making changes, and it refreshes at most 100 titles per run. Titles that are in somebody's library are refreshed first, because search results seed the catalog too and Tonight is only as good as the availability behind saved titles. Run it manually with:
+The daily `catalog-refresh` job at 02:30 UTC tops up the shared TMDB catalog: title metadata for seven days, regional availability for twelve hours, and the streaming provider directory. It takes a PostgreSQL advisory lock, so an overlapping run exits without making changes, and it refreshes at most 100 titles per run. Titles that are in somebody's library are refreshed first, because search results seed the catalog too and the watchlist is only as good as the availability behind saved titles. Run it manually with:
 
 ```sh
 specific exec catalog-refresh
 ```
 
-`GET /api/tonight` answers from that catalog and never calls TMDB, so the page opens at the speed of the database. A title the job has not reached yet is shown as not checked rather than as unavailable.
+`GET /api/watchlist-extras` answers from that catalog and never calls TMDB, so the watchlist opens at the speed of the database. It carries no library rows of its own — the list paints from the client cache first and this layer fills in genres, runtimes, scores and where each title streams. A title the job has not reached yet is shown as not checked rather than as unavailable.
 
 ## Viewing history
 
