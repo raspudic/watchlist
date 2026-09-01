@@ -301,7 +301,7 @@ describe("LibraryView watchlist mode", () => {
 
     renderWatchlist();
 
-    expect(await screen.findByRole("button", { name: /Arrival/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "View Arrival" })).toBeInTheDocument();
     expect(document.querySelector(".pill-skeleton-row")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Funny/ })).not.toBeInTheDocument();
 
@@ -313,7 +313,7 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.getByRole("button", { name: /^Funny/ })).toBeInTheDocument();
   });
 
-  it("narrows on a matching mood pill and flips its own aria-pressed, while a mood with no matches stays disabled", async () => {
+  it("shows matching moods and genres directly while hiding zero-result moods", async () => {
     const items = [
       makeWatchlistItem({ id: "item-1", title: "Comedy Item" }),
       makeWatchlistItem({ id: "item-2", title: "Drama Item" }),
@@ -327,12 +327,13 @@ describe("LibraryView watchlist mode", () => {
     stubWatchlistFetch({ items, extras });
 
     renderWatchlist();
-    await screen.findByRole("button", { name: /Comedy Item/ });
+    await screen.findByRole("button", { name: "View Comedy Item" });
     await waitForExtrasReady();
 
-    const suspenseful = screen.getByRole("button", { name: /^Suspenseful/ });
-    expect(suspenseful).toBeDisabled();
-    expect(suspenseful).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("button", { name: /^Suspenseful/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Comedy/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Drama/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Genres" })).not.toBeInTheDocument();
 
     const funny = screen.getByRole("button", { name: /^Funny/ });
     expect(funny).not.toBeDisabled();
@@ -341,33 +342,11 @@ describe("LibraryView watchlist mode", () => {
     fireEvent.click(funny);
 
     await waitFor(() => expect(funny).toHaveAttribute("aria-pressed", "true"));
-    expect(screen.getByRole("button", { name: /Comedy Item/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Drama Item/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Comedy Item" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Drama Item" })).not.toBeInTheDocument();
   });
 
-  it("hides country pills with a single saved country", async () => {
-    const items = [makeWatchlistItem({ id: "item-1", title: "Solo Country" })];
-    const extras = makeExtrasResponse({
-      regions: ["US"],
-      titles: [makeTitleExtras({
-        mediaItemId: "item-1",
-        genres: [{ id: 35, name: "Comedy" }],
-        streaming: [{ id: 1, name: "Netflix", logoPath: null, regions: ["US"] }],
-      })],
-    });
-    stubWatchlistFetch({ items, extras });
-
-    const { container } = renderWatchlist();
-    await screen.findByRole("button", { name: /Solo Country/ });
-    await waitForExtrasReady();
-
-    /* A country pill would say nothing a single-country reader doesn't already
-       know, so the row shows moods without it. */
-    expect(screen.getByRole("button", { name: /^Funny/ })).toBeInTheDocument();
-    expect(container.querySelectorAll(".pill-region")).toHaveLength(0);
-  });
-
-  it("shows country pills with two saved countries and filters out a title not streaming in the pressed one", async () => {
+  it("does not turn saved countries into filter pills", async () => {
     const items = [
       makeWatchlistItem({ id: "item-1", title: "US Title" }),
       makeWatchlistItem({ id: "item-2", title: "SE Title" }),
@@ -387,19 +366,12 @@ describe("LibraryView watchlist mode", () => {
     });
     stubWatchlistFetch({ items, extras });
 
-    const { container } = renderWatchlist();
-    await screen.findByRole("button", { name: /US Title/ });
+    renderWatchlist();
+    await screen.findByRole("button", { name: "View US Title" });
     await waitForExtrasReady();
-    expect(screen.getByRole("button", { name: /SE Title/ })).toBeInTheDocument();
-
-    const regionPills = container.querySelectorAll(".pill-region");
-    expect(regionPills).toHaveLength(2);
-    expect(regionPills[0]).toHaveTextContent("US");
-
-    fireEvent.click(regionPills[0]);
-
-    await waitFor(() => expect(screen.queryByRole("button", { name: /SE Title/ })).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /US Title/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View SE Title" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^US \d/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^SE \d/ })).not.toBeInTheDocument();
   });
 
   it("shows the full watchlist by default and offers My services as an availability filter", async () => {
@@ -426,13 +398,13 @@ describe("LibraryView watchlist mode", () => {
     renderWatchlist();
     await waitForExtrasReady();
 
-    expect(await screen.findByRole("button", { name: /On Service/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Off Service/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "View On Service" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Off Service" })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Availability"), { target: { value: "mine" } });
 
-    await waitFor(() => expect(screen.queryByRole("button", { name: /Off Service/ })).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /On Service/ })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "View Off Service" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "View On Service" })).toBeInTheDocument();
   });
 
   it("opens the pick card with Math.random stubbed, and View details opens the sheet in place", async () => {
@@ -444,7 +416,7 @@ describe("LibraryView watchlist mode", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
 
     renderWatchlist();
-    await screen.findByRole("button", { name: /Solo Pick/ });
+    await screen.findByRole("button", { name: "View Solo Pick" });
     await waitForExtrasReady();
 
     fireEvent.click(screen.getByRole("button", { name: /Pick for me/ }));
@@ -458,7 +430,54 @@ describe("LibraryView watchlist mode", () => {
     /* The sheet layers over the same page rather than replacing it: the pick
        card and the list row are still mounted underneath it. */
     expect(screen.getByRole("region", { name: "Your pick" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Solo Pick/ }).length).toBeGreaterThan(0);
+    expect(document.querySelector(".media-row")).toHaveTextContent("Solo Pick");
+  });
+
+  it("dismisses a pick without removing its title from the watchlist", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Dismissable Pick" })];
+    stubWatchlistFetch({
+      items,
+      extras: makeExtrasResponse({ titles: [makeTitleExtras({ mediaItemId: "item-1" })] }),
+    });
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: "View Dismissable Pick" });
+    await waitForExtrasReady();
+    fireEvent.click(screen.getByRole("button", { name: /Pick for me/ }));
+
+    const pick = await screen.findByRole("region", { name: "Your pick" });
+    fireEvent.click(within(pick).getByRole("button", { name: "Dismiss pick" }));
+
+    expect(screen.queryByRole("region", { name: "Your pick" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Dismissable Pick" })).toBeInTheDocument();
+  });
+
+  it("pins a title directly from its list card without opening the detail sheet", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Card Pin" })];
+    stubWatchlistFetch({
+      items,
+      onPatch: (id, body) => ({
+        item: {
+          ...items[0],
+          id,
+          pinnedAt: body.pinned ? "2026-09-01T12:00:00.000Z" : null,
+        },
+      }),
+    });
+
+    renderWatchlist();
+    const pin = await screen.findByRole("button", { name: "Pin Card Pin" });
+    fireEvent.click(pin);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Unpin Card Pin" })).toHaveAttribute("aria-pressed", "true");
+    });
+    expect(screen.queryByRole("dialog", { name: "Card Pin" })).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/items/item-1",
+      expect.objectContaining({ body: JSON.stringify({ pinned: true }) }),
+    );
   });
 
   it("pins a title from its sheet and says so plainly", async () => {
@@ -475,16 +494,14 @@ describe("LibraryView watchlist mode", () => {
     });
 
     renderWatchlist();
-    fireEvent.click(await screen.findByRole("button", { name: /Arrival/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "View Arrival" }));
 
     const pin = await screen.findByRole("button", { name: "Pin" });
     expect(pin).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(pin);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Pinned" })).toHaveAttribute("aria-pressed", "true");
-    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unpin" })).toHaveAttribute("aria-pressed", "true"));
     expect(fetch).toHaveBeenCalledWith(
       "/api/items/item-1",
       expect.objectContaining({ body: JSON.stringify({ pinned: true }) }),
@@ -503,7 +520,7 @@ describe("LibraryView watchlist mode", () => {
     stubWatchlistFetch({ items, extras });
 
     renderWatchlist();
-    await screen.findByRole("button", { name: /Stream Title/ });
+    await screen.findByRole("button", { name: "View Stream Title" });
     await waitForExtrasReady();
 
     expect(screen.getByText("Netflix")).toBeInTheDocument();

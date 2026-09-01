@@ -23,7 +23,7 @@ Expired limiter buckets and TMDB cache entries are deleted by the daily `lifecyc
 
 ## Catalog refresh
 
-The daily `catalog-refresh` job at 02:30 UTC tops up the shared TMDB catalog: title metadata for seven days, regional availability for twelve hours, and the streaming provider directory. It takes a PostgreSQL advisory lock, so an overlapping run exits without making changes, and it refreshes at most 100 titles per run. Titles that are in somebody's library are refreshed first, because search results seed the catalog too and the watchlist is only as good as the availability behind saved titles. Run it manually with:
+The hourly `catalog-refresh` job tops up the shared TMDB catalog: title metadata for seven days, regional availability for twelve hours, and the streaming provider directory. Fresh records are skipped, so the hourly schedule mainly shortens the wait for newly saved or newly imported titles. It takes a PostgreSQL advisory lock, so an overlapping run exits without making changes, and it refreshes at most 100 titles per run. Titles that are in somebody's library are refreshed first, because search results seed the catalog too and the watchlist is only as good as the availability behind saved titles. Run it manually with:
 
 ```sh
 specific exec catalog-refresh

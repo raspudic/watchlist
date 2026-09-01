@@ -3,7 +3,7 @@
 /* TMDB logos are already sized at the CDN; a plain image avoids image-proxy overhead. */
 /* eslint-disable @next/next/no-img-element */
 
-import { ChevronDown, Clapperboard, Pin, Shuffle, Star } from "lucide-react";
+import { Clapperboard, Pin, Shuffle, Star, X } from "lucide-react";
 import Link from "next/link";
 
 import { RegionMark } from "@/components/region-select";
@@ -18,7 +18,6 @@ import {
   type TonightSort,
   genreOptions,
   moodOptions,
-  regionOptions,
 } from "@/lib/tonight";
 
 const RUNTIME_LABELS: Array<{ label: string; value: RuntimeFilter }> = [
@@ -51,9 +50,8 @@ export function candidateMeta(candidate: TonightCandidate) {
 }
 
 /**
- * Moods, countries and genres are one row of pills, not three filters. Every
- * pill carries the number of titles it would leave, and a pill that would leave
- * none is shown disabled rather than hidden: the count is the explanation.
+ * Moods and genres are one row of pills, not two filters. Every visible pill
+ * carries the number of titles it would leave.
  */
 export function WatchlistFilters({
   canFilterByServices,
@@ -61,11 +59,8 @@ export function WatchlistFilters({
   filters,
   onChange,
   ready,
-  regions,
   resultCount,
   selectedProviderIds,
-  showGenres,
-  onShowGenres,
   uncheckedCount,
 }: {
   canFilterByServices: boolean;
@@ -74,20 +69,16 @@ export function WatchlistFilters({
   onChange: (filters: TonightFilters) => void;
   /** False until the catalog layer arrives; zero counts would be a lie. */
   ready: boolean;
-  regions: string[];
   resultCount: number;
   selectedProviderIds: number[];
-  showGenres: boolean;
-  onShowGenres: (open: boolean) => void;
   uncheckedCount: number;
 }) {
-  const countries = ready ? regionOptions(candidates, filters, selectedProviderIds, regions) : [];
   const moods = ready ? moodOptions(candidates, filters, selectedProviderIds) : [];
+  const visibleMoods = moods.filter((mood) => mood.count > 0 || mood.selected);
   const genres = ready ? genreOptions(candidates, filters, selectedProviderIds) : [];
-  const visibleGenres = showGenres ? genres : genres.filter((genre) => genre.selected);
   /* A watchlist the catalog has not reached yet has nothing to filter by, and
      a row of dead pills would say less than no row at all. */
-  const hasFacets = countries.length > 0 || genres.length > 0 || moods.some((mood) => mood.count > 0);
+  const hasFacets = genres.length > 0 || visibleMoods.length > 0;
   const hasRuntimes = candidates.some((candidate) => candidate.runtimeMinutes !== null);
 
   function toggleFacet(key: string) {
@@ -105,24 +96,10 @@ export function WatchlistFilters({
         <div className="tonight-pills">
           {ready ? (
             <>
-              {countries.map((option) => (
-                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="region" />
-              ))}
-              {moods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
-              {visibleGenres.map((option) => (
+              {visibleMoods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
+              {genres.map((option) => (
                 <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
               ))}
-              {genres.length > 0 ? (
-                <button
-                  aria-expanded={showGenres}
-                  className="pill pill-more"
-                  onClick={() => onShowGenres(!showGenres)}
-                  type="button"
-                >
-                  Genres
-                  <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
-                </button>
-              ) : null}
             </>
           ) : (
             <span aria-hidden="true" className="pill-skeleton-row">
@@ -196,11 +173,10 @@ function FacetPill({
 }: {
   onToggle: (key: string) => void;
   option: FacetOption;
-  tone?: "genre" | "region";
+  tone?: "genre";
 }) {
   const classes = ["pill"];
   if (tone === "genre") classes.push("pill-genre");
-  if (tone === "region") classes.push("pill-region");
   if (option.selected) classes.push("pill-on");
 
   return (
@@ -211,7 +187,7 @@ function FacetPill({
       onClick={() => onToggle(option.key)}
       type="button"
     >
-      {tone === "region" ? <RegionMark code={option.label} /> : option.label}
+      {option.label}
       <span className="pill-count">{option.count}</span>
     </button>
   );
@@ -272,6 +248,7 @@ export function AvailabilityLine({
 export function PickCard({
   candidate,
   canRepick,
+  onDismiss,
   onOpen,
   onPickAgain,
   onTogglePin,
@@ -280,6 +257,7 @@ export function PickCard({
 }: {
   candidate: TonightCandidate;
   canRepick: boolean;
+  onDismiss: () => void;
   onOpen: (candidate: TonightCandidate) => void;
   onPickAgain: () => void;
   onTogglePin: (candidate: TonightCandidate) => void;
@@ -295,7 +273,12 @@ export function PickCard({
         ? <img alt="" className="tonight-pick-poster" src={poster} />
         : <span className="tonight-pick-poster placeholder"><Clapperboard size={28} /></span>}
       <div className="tonight-pick-copy">
-        <h2>{candidate.item.title}</h2>
+        <div className="tonight-pick-title">
+          <h2>{candidate.item.title}</h2>
+          <IconButton className="tonight-pick-dismiss" label="Dismiss pick" onClick={onDismiss}>
+            <X aria-hidden="true" size={17} />
+          </IconButton>
+        </div>
         <p className="row-meta">
           {candidateMeta(candidate)}
           {candidate.voteAverage ? (

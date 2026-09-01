@@ -112,7 +112,6 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const [extras, setExtras] = useState<WatchlistExtrasResponse | null>(
     () => (mode === "watchlist" ? getCachedWatchlistExtras(cacheScope) : null),
   );
-  const [showGenres, setShowGenres] = useState(false);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [pinningId, setPinningId] = useState<string | null>(null);
@@ -471,12 +470,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
               candidates={candidates}
               filters={active}
               onChange={updateFilters}
-              onShowGenres={setShowGenres}
               ready={extrasReady}
-              regions={regions}
               resultCount={narrowed.length}
               selectedProviderIds={selectedProviderIds}
-              showGenres={showGenres}
               uncheckedCount={unchecked}
             />
           ) : null}
@@ -486,6 +482,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
               <PickCard
                 candidate={picked}
                 canRepick={narrowed.length > 1}
+                onDismiss={() => setPickedId(null)}
                 onOpen={(candidate) => setSelected(candidate.item)}
                 onPickAgain={pick}
                 onTogglePin={togglePin}
@@ -527,6 +524,8 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
                     onMarkWatched={markWatched}
                     onOpen={setSelected}
                     onRemove={removeItem}
+                    onTogglePin={viewStyle === "list" ? togglePin : undefined}
+                    pinning={pinningId === candidate.item.id}
                     showAvailability={regions.length > 0 && viewStyle === "list"}
                     showCountry={regions.length > 1}
                   />
@@ -584,6 +583,8 @@ function MediaRow({
   onMarkWatched,
   onOpen,
   onRemove,
+  onTogglePin,
+  pinning = false,
   promptRating = false,
   showAvailability = false,
   showCountry = false,
@@ -596,6 +597,8 @@ function MediaRow({
   onMarkWatched?: (item: MediaItem) => void;
   onOpen: (item: MediaItem) => void;
   onRemove: (item: MediaItem) => void;
+  onTogglePin?: (candidate: TonightCandidate) => void;
+  pinning?: boolean;
   promptRating?: boolean;
   showAvailability?: boolean;
   showCountry?: boolean;
@@ -689,7 +692,8 @@ function MediaRow({
         <span className="swipe-action-content"><Trash2 size={19} /><span>Remove</span></span>
       </button>
       <button
-        className="media-row"
+        aria-label={`View ${item.title}`}
+        className={onTogglePin ? "media-row has-pin" : "media-row"}
         onClick={() => {
           if (didSwipe.current) {
             didSwipe.current = false;
@@ -712,12 +716,6 @@ function MediaRow({
         <span className="row-content">
           <span className="row-title-line">
             <strong>{item.title}</strong>
-            {item.pinnedAt && item.status === "watchlist" ? (
-              <span className="row-pin">
-                <Pin aria-hidden="true" fill="currentColor" size={13} />
-                <span className="sr-only">Pinned</span>
-              </span>
-            ) : null}
             {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
           </span>
           <span className="row-meta">
@@ -732,6 +730,18 @@ function MediaRow({
         </span>
         {promptRating ? <span className="rate-prompt"><Star size={15} /> Rate</span> : <ChevronRight className="row-chevron" size={18} />}
       </button>
+      {candidate && onTogglePin ? (
+        <IconButton
+          aria-pressed={Boolean(item.pinnedAt)}
+          className={item.pinnedAt ? "row-pin-action pinned" : "row-pin-action"}
+          label={item.pinnedAt ? `Unpin ${item.title}` : `Pin ${item.title}`}
+          loading={pinning}
+          onClick={() => onTogglePin(candidate)}
+          style={{ transform: `translateX(${offset}px)` }}
+        >
+          <Pin aria-hidden="true" fill={item.pinnedAt ? "currentColor" : "none"} size={16} />
+        </IconButton>
+      ) : null}
     </div>
   );
 }
@@ -915,6 +925,17 @@ function DetailSheet({
       <div className="sheet-body">
         <MediaDetailOverview
           item={item}
+          titleActions={watched ? null : (
+            <IconButton
+              aria-pressed={pinned}
+              className={pinned ? "detail-pin-action pinned" : "detail-pin-action"}
+              disabled={saving}
+              label={pinned ? "Unpin" : "Pin"}
+              onClick={() => void persist({ pinned: !pinned }, false)}
+            >
+              <Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} size={16} />
+            </IconButton>
+          )}
           titleMeta={watched ? (
             <>
               {editingDate ? (
@@ -1021,18 +1042,6 @@ function DetailSheet({
         </div>
 
         <div className="detail-footer-actions">
-          {watched ? null : (
-            <Button
-              aria-pressed={pinned}
-              disabled={saving}
-              onClick={() => void persist({ pinned: !pinned }, false)}
-              size="sm"
-              variant="quiet"
-            >
-              <Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} size={15} />
-              {pinned ? "Pinned" : "Pin"}
-            </Button>
-          )}
           {watched ? (
             <>
               <Button

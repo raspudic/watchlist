@@ -7,7 +7,6 @@ import {
   candidateWeight,
   genreOptions,
   mediaTypeCounts,
-  regionOptions,
   moodOptions,
   narrowCandidates,
   pickCandidate,
@@ -258,7 +257,7 @@ describe("filter query", () => {
 
   it("ignores values it did not write", () => {
     const parsed = readTonightFilters(new URLSearchParams(
-      "services=someone-elses&type=film&runtime=0&sort=random&pills=mood:dark,genre:abc,drop table,genre:80,mood:dark",
+      "services=someone-elses&type=film&runtime=0&sort=random&pills=mood:dark,region:US,genre:abc,drop table,genre:80,mood:dark",
     ));
 
     expect(parsed).toEqual(filters({ facets: ["mood:dark", "genre:80"] }));
@@ -303,38 +302,5 @@ describe("buildCandidates", () => {
     expect(joined[0].genres).toEqual([]);
     expect(joined[1]).toMatchObject({ runtimeMinutes: 96, voteAverage: 7.1 });
     expect(joined[1].streaming[0].name).toBe("Netflix");
-  });
-});
-
-describe("country pills", () => {
-  const here = candidate("here", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }] });
-  const abroad = candidate("abroad", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["SE"] }] });
-  const nowhere = candidate("nowhere");
-
-  it("keeps only titles that stream in that country", () => {
-    const kept = narrowCandidates(
-      [here, abroad, nowhere],
-      filters({ services: "all", facets: ["region:US"] }),
-      [],
-    );
-
-    expect(kept.map((entry) => entry.item.id)).toEqual(["here"]);
-  });
-
-  it("counts each country and leaves one with nothing at zero", () => {
-    const options = regionOptions(
-      [here, abroad],
-      filters({ services: "all" }),
-      [],
-      ["US", "SE", "AR"],
-    );
-
-    expect(options.map((option) => [option.label, option.count]))
-      .toEqual([["US", 1], ["SE", 1], ["AR", 0]]);
-  });
-
-  /* With one country the pill would match everything already on screen. */
-  it("offers no country pills to an account with a single country", () => {
-    expect(regionOptions([here], filters({ services: "all" }), [], ["US"])).toEqual([]);
   });
 });
