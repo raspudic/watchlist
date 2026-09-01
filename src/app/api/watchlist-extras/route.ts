@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
 import { listUserRegions } from "@/lib/account-regions";
-import { getUserStreamingServiceIds } from "@/lib/streaming-services";
 import { listWatchlistExtras } from "@/lib/watchlist-extras";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +21,10 @@ export async function GET(request: Request) {
   if (!limit.allowed) return rateLimitResponse(limit);
 
   const regions = await listUserRegions(userId);
-
-  const [titles, selectedProviderIds] = await Promise.all([
-    listWatchlistExtras(userId, regions),
-    getUserStreamingServiceIds(userId, regions),
-  ]);
+  const titles = await listWatchlistExtras(userId, regions);
 
   return NextResponse.json(
-    { regions, selectedProviderIds, titles },
+    { regions, titles },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

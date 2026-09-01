@@ -4,7 +4,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Clapperboard, Pin, Shuffle, Star, X } from "lucide-react";
-import Link from "next/link";
 
 import { RegionMark } from "@/components/region-select";
 import { Button, IconButton } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { mediaLabel, posterUrl, providerLogoUrl } from "@/lib/media-display";
 import {
   type FacetOption,
   type RuntimeFilter,
-  type ServiceFilter,
   type TonightCandidate,
   type TonightFilters,
   type TonightSort,
@@ -54,28 +52,22 @@ export function candidateMeta(candidate: TonightCandidate) {
  * carries the number of titles it would leave.
  */
 export function WatchlistFilters({
-  canFilterByServices,
   candidates,
   filters,
   onChange,
   ready,
   resultCount,
-  selectedProviderIds,
-  uncheckedCount,
 }: {
-  canFilterByServices: boolean;
   candidates: TonightCandidate[];
   filters: TonightFilters;
   onChange: (filters: TonightFilters) => void;
   /** False until the catalog layer arrives; zero counts would be a lie. */
   ready: boolean;
   resultCount: number;
-  selectedProviderIds: number[];
-  uncheckedCount: number;
 }) {
-  const moods = ready ? moodOptions(candidates, filters, selectedProviderIds) : [];
+  const moods = ready ? moodOptions(candidates, filters) : [];
   const visibleMoods = moods.filter((mood) => mood.count > 0 || mood.selected);
-  const genres = ready ? genreOptions(candidates, filters, selectedProviderIds) : [];
+  const genres = ready ? genreOptions(candidates, filters) : [];
   /* A watchlist the catalog has not reached yet has nothing to filter by, and
      a row of dead pills would say less than no row at all. */
   const hasFacets = genres.length > 0 || visibleMoods.length > 0;
@@ -112,28 +104,8 @@ export function WatchlistFilters({
       <div className="tonight-refine">
         <p aria-live="polite" className="tonight-summary">
           {resultCount} {resultCount === 1 ? "title" : "titles"}
-          {filters.services === "mine" && uncheckedCount > 0
-            ? ` · ${uncheckedCount} not checked for streaming yet`
-            : ""}
         </p>
         <div className="tonight-selects">
-          {canFilterByServices ? (
-            <label className="compact-select-field">
-              <span>Availability</span>
-              <select
-                className="field-control compact-select"
-                onChange={(event) => onChange({ ...filters, services: event.target.value as ServiceFilter })}
-                value={filters.services}
-              >
-                <option value="all">All titles</option>
-                <option value="mine">On my services</option>
-              </select>
-            </label>
-          ) : ready ? (
-            /* One quiet line rather than a banner: without a country there is
-               nothing to filter by, and the reader may not want to. */
-            <Link className="tonight-setup-link" href="/settings">Add your countries and services</Link>
-          ) : null}
           {hasRuntimes ? (
             <label className="compact-select-field">
               <span>Length</span>
@@ -218,27 +190,6 @@ export function ProviderChips({
       {providers.length > shown.length ? (
         <span className="tonight-service tonight-services-more">+{providers.length - shown.length}</span>
       ) : null}
-    </span>
-  );
-}
-
-/** What a row says about streaming, once the catalog layer has arrived. */
-export function AvailabilityLine({
-  candidate,
-  showCountry,
-}: {
-  candidate: TonightCandidate;
-  showCountry: boolean;
-}) {
-  if (candidate.streaming.length > 0) {
-    return <ProviderChips providers={candidate.streaming} showCountry={showCountry} />;
-  }
-
-  return (
-    <span className="tonight-availability">
-      {candidate.availabilityCheckedAt === null
-        ? "Streaming not checked yet"
-        : "Not included with a subscription"}
     </span>
   );
 }

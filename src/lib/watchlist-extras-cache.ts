@@ -11,7 +11,6 @@ export const WATCHLIST_EXTRAS_TTL_MS = 5 * 60 * 1000;
 
 export const EMPTY_EXTRAS: WatchlistExtrasResponse = {
   regions: [],
-  selectedProviderIds: [],
   titles: [] as TitleExtras[],
 };
 
@@ -56,7 +55,6 @@ export async function loadWatchlistExtras(scope: string, force = false) {
       if (!response.ok || !body.titles) throw new Error(body.error ?? "Could not load streaming details.");
       const answer: WatchlistExtrasResponse = {
         regions: body.regions ?? [],
-        selectedProviderIds: body.selectedProviderIds ?? [],
         titles: body.titles,
       };
       if (pendingRequests.get(scope) === request) setCachedWatchlistExtras(scope, answer);
