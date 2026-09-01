@@ -81,12 +81,14 @@ export function WatchlistFilters({
   candidates,
   filters,
   onChange,
+  onPick,
   ready,
   resultCount,
 }: {
   candidates: TonightCandidate[];
   filters: TonightFilters;
   onChange: (filters: TonightFilters) => void;
+  onPick: () => void;
   /** False until the catalog layer arrives; zero counts would be a lie. */
   ready: boolean;
   resultCount: number;
@@ -145,9 +147,17 @@ export function WatchlistFilters({
       ) : null}
 
       <div className="tonight-refine">
-        <p aria-live="polite" className="tonight-summary">
-          {resultCount} {resultCount === 1 ? "title" : "titles"}
-        </p>
+        {/* The pick comes out of the filtered set, so it sits beside the count
+            of that set and above the card it produces, not up in the header
+            where it read as a page-level action of its own. */}
+        <div className="tonight-count">
+          <p aria-live="polite" className="tonight-summary">
+            {resultCount} {resultCount === 1 ? "title" : "titles"}
+          </p>
+          <Button disabled={resultCount === 0} onClick={onPick} size="sm" variant="secondary">
+            <Shuffle aria-hidden="true" size={15} /> Pick for me
+          </Button>
+        </div>
         <div className="tonight-selects">
           {hasRuntimes ? (
             <label className="compact-select-field">

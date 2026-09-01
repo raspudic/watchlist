@@ -170,7 +170,7 @@ export function AddTitleActions({
              the primary instead of holding a slot of its own in the header. */
           <div className="split-button">
             <Button className="split-button-main" onClick={() => setSearchOpen(true)}>
-              <Plus aria-hidden="true" size={18} /> Add a title
+              <Plus aria-hidden="true" size={16} /> Add a title
             </Button>
             <Menu.Root>
               <Menu.Trigger

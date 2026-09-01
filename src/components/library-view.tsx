@@ -15,7 +15,6 @@ import {
   List,
   Pin,
   Repeat,
-  Shuffle,
   Star,
   Trash2,
   X,
@@ -427,11 +426,6 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         </div>
         {watchlist ? (
           <div className="library-header-actions">
-            {items.length > 0 ? (
-              <Button disabled={narrowed.length === 0} onClick={pick} variant="secondary">
-                <Shuffle aria-hidden="true" size={16} /> Pick for me
-              </Button>
-            ) : null}
             <AddTitleActions onAdd={addItem} onAddNote={setSelected} onBulkAdd={addItems} />
           </div>
         ) : null}
@@ -474,6 +468,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
               candidates={candidates}
               filters={active}
               onChange={updateFilters}
+              onPick={pick}
               ready={extrasReady}
               resultCount={narrowed.length}
             />
