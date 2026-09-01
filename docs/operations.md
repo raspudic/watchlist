@@ -8,7 +8,7 @@ Authenticated application routes use shared PostgreSQL counters, so the limits a
 | --- | --- | --- |
 | TMDB search | 10 requests per 10 seconds and 30 per minute | 12 upstream requests per 500 ms and 30 per second |
 | TMDB watch providers | 20 requests per 10 seconds and 60 per minute | 12 upstream requests per 500 ms and 30 per second |
-| Library reads, Tonight and local search | 30 requests per 10 seconds and 120 per minute | — |
+| Library reads, including Tonight and Insights, and local search | 30 requests per 10 seconds and 120 per minute | — |
 | Library writes | 15 requests per 10 seconds and 60 per minute | — |
 
 There is no daily quota. Identical normalized TMDB searches are cached for one hour across application instances and for 15 minutes in the current browser session. A shared-cache hit counts against the library-read limit rather than the account TMDB allowance and does not consume shared upstream capacity.
@@ -28,6 +28,10 @@ specific exec catalog-refresh
 ```
 
 `GET /api/tonight` answers from that catalog and never calls TMDB, so the page opens at the speed of the database. A title the job has not reached yet is shown as not checked rather than as unavailable.
+
+## Viewing history
+
+Every viewing is a row in `watch_events`, keyed by calendar day rather than by instant, with the rating as it stood at the time. `media_items.watched_at` and `media_items.rating` remain the latest state, so the library still reads one row per title. `GET /api/insights` aggregates the account's own events in TypeScript; there is no scheduled job behind it, and a title the catalog knows nothing about still counts as something watched.
 
 ## Operational events
 

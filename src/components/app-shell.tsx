@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, CheckCircle2, ChevronsUpDown, Popcorn, Search, Users } from "lucide-react";
+import { Bookmark, ChartColumn, CheckCircle2, ChevronsUpDown, Popcorn, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -21,6 +21,7 @@ const links = [
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
   { href: "/tonight", label: "Tonight", icon: Popcorn },
   { href: "/watched", label: "Watched", icon: CheckCircle2 },
+  { href: "/insights", label: "Insights", icon: ChartColumn },
 ];
 
 export function AppShell({
