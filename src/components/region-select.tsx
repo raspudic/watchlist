@@ -219,7 +219,6 @@ export function RegionPicker({ onSaved }: { onSaved?: () => void }) {
         <div className="region-select">
           <SelectField
             disabled={loading || saving || available.length === 0}
-            error={error || listError}
             label={saved.length === 0 ? "Country" : "Add another country"}
             onChange={(event) => setSelected(event.target.value)}
             value={value}
@@ -241,6 +240,10 @@ export function RegionPicker({ onSaved }: { onSaved?: () => void }) {
           </Button>
         </div>
       )}
+
+      {/* Outside the select: removing a country at the cap has no select to
+          hang an error on. */}
+      {error || listError ? <p className="field-error" role="alert">{error || listError}</p> : null}
     </div>
   );
 }
