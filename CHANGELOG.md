@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0](https://github.com/raspudic/watchlist/compare/v0.12.0...v0.13.0) (2026-09-01)
+
+
+### Features
+
+* rework watchlist pinning, sorting and filter pills ([#77](https://github.com/raspudic/watchlist/issues/77)) ([9312430](https://github.com/raspudic/watchlist/commit/9312430b163f9c5a069ecaf34dbcc11ae732c8d4))
+
+
+### Bug Fixes
+
+* drop a re-added title's viewing history ([#74](https://github.com/raspudic/watchlist/issues/74)) ([d803a06](https://github.com/raspudic/watchlist/commit/d803a0635198c8947c91df9836b15c18b815eb5f))
+* move the pick action next to the filtered count ([#76](https://github.com/raspudic/watchlist/issues/76)) ([67867a7](https://github.com/raspudic/watchlist/commit/67867a76e3827ccf7d8d9865e305694c673f5d0f))
+
 ## [0.12.0](https://github.com/raspudic/watchlist/compare/v0.11.0...v0.12.0) (2026-09-01)
 
 
