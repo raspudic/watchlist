@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/raspudic/watchlist/compare/v0.8.0...v0.9.0) (2026-09-01)
+
+
+### Features
+
+* fold Tonight into the watchlist ([#57](https://github.com/raspudic/watchlist/issues/57)) ([fe9fdb5](https://github.com/raspudic/watchlist/commit/fe9fdb517766a238674a9f3fb2e9323e78b9a036))
+* show availability across your countries ([#55](https://github.com/raspudic/watchlist/issues/55)) ([5a945d2](https://github.com/raspudic/watchlist/commit/5a945d23d2b32bf1a1f7266cb882af6b6f6fd53f))
+
+
+### Bug Fixes
+
+* clear the service search on selection ([#54](https://github.com/raspudic/watchlist/issues/54)) ([234358f](https://github.com/raspudic/watchlist/commit/234358fda53b2eb93849c1434988731c83aa49be))
+
 ## [0.8.0](https://github.com/raspudic/watchlist/compare/v0.7.0...v0.8.0) (2026-09-01)
 
 
