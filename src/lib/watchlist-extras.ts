@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
@@ -10,21 +10,23 @@ import {
   mediaItems,
   streamingProviders,
 } from "@/lib/db/schema";
-import type { MediaItem } from "@/lib/library-cache";
-import type { TonightCandidate, TonightGenre, TonightProvider } from "@/lib/tonight";
+import type { TitleExtras, TonightGenre, TonightProvider } from "@/lib/tonight";
 
 /**
- * Every watchlist title with whatever the shared catalog knows about it. The
- * catalog is joined on the provider identity rather than a foreign key, so a
- * library row the catalog has never seen still comes back, just barer.
+ * What the shared catalog knows about the account's watchlist, keyed by media
+ * item id. The library rows themselves come from /api/items, so this is purely
+ * the layer on top: genres, runtime, score and where each title streams.
+ *
+ * The catalog is joined on the provider identity rather than a foreign key, so
+ * a title it has never seen simply has no entry here.
  */
-export async function listTonightCandidates(
+export async function listWatchlistExtras(
   userId: string,
   regions: string[],
-): Promise<TonightCandidate[]> {
+): Promise<TitleExtras[]> {
   const rows = await db
     .select({
-      item: mediaItems,
+      mediaItemId: mediaItems.id,
       catalogTitleId: catalogTitles.id,
       runtimeMinutes: catalogTitles.runtimeMinutes,
       voteAverage: catalogTitles.voteAverage,
@@ -43,8 +45,7 @@ export async function listTonightCandidates(
         eq(catalogTitles.externalId, mediaItems.externalId),
       ),
     )
-    .where(and(eq(mediaItems.userId, userId), eq(mediaItems.status, "watchlist")))
-    .orderBy(desc(mediaItems.addedAt));
+    .where(and(eq(mediaItems.userId, userId), eq(mediaItems.status, "watchlist")));
 
   const catalogIds = [...new Set(rows.map((row) => row.catalogTitleId).filter((id): id is string => Boolean(id)))];
 
@@ -114,15 +115,8 @@ export async function listTonightCandidates(
     }
   }
 
-  const candidates = rows.map((row): TonightCandidate => ({
-    item: {
-      ...row.item,
-      mediaType: row.item.mediaType as MediaItem["mediaType"],
-      status: row.item.status as MediaItem["status"],
-      addedAt: row.item.addedAt.toISOString(),
-      watchedAt: row.item.watchedAt?.toISOString() ?? null,
-      pinnedAt: row.item.pinnedAt?.toISOString() ?? null,
-    },
+  return rows.map((row): TitleExtras => ({
+    mediaItemId: row.mediaItemId,
     genres: row.catalogTitleId ? genres.get(row.catalogTitleId) ?? [] : [],
     runtimeMinutes: row.runtimeMinutes,
     voteAverage: row.voteAverage,
@@ -133,6 +127,4 @@ export async function listTonightCandidates(
        says out loud rather than presenting as "not available". */
     availabilityCheckedAt: row.availabilityRefreshedAt?.toISOString() ?? null,
   }));
-
-  return candidates;
 }
