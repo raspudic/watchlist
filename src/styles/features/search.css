@@ -233,6 +233,21 @@
 
 .add-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
 
+/* One object, two targets. The chevron carries the primary's own ink and is
+   divided from it by a hairline rather than a gap, so the pair never reads as
+   two buttons that happen to touch. */
+.split-button { display: inline-flex; align-items: stretch; }
+.split-button-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.split-button-more {
+  min-height: var(--control-height);
+  padding: 0 9px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--canvas) 28%, transparent);
+}
+/* A menu of one: the account menu's fixed width would be mostly empty here. */
+.menu-popup-compact { width: max-content; min-width: 186px; }
+
 .bulk-dialog { width: min(100%, 820px); max-height: min(860px, 90vh); }
 
 .quick-add-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); cursor: pointer; font-size: 11px; font-weight: 620; }
@@ -245,6 +260,9 @@
 @media (max-width: 760px) {
   .add-actions { width: 100%; }
   .add-actions .btn-primary { flex: 1; }
+  /* The pair takes the line; the chevron keeps its own width within it. */
+  .add-actions .split-button { flex: 1; }
+  .add-actions .split-button-more { flex: 0 0 auto; }
   .bulk-dialog { width: 100%; height: min(92vh, 880px); max-height: none; }
   .library-note-match { max-width: 64vw; }
 }

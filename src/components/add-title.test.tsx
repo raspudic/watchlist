@@ -331,9 +331,34 @@ describe("AddTitleActions bulk import", () => {
     vi.unstubAllGlobals();
   });
 
-  it("associates the label with the textarea, tracks the parsed count, and disables past the max", () => {
+  /* Import hangs off the primary in the header, so reaching it is two steps. */
+  async function openImport() {
+    fireEvent.click(screen.getByRole("button", { name: "More ways to add" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Import a list" }));
+  }
+
+  it("keeps import out of the header until the menu is opened", async () => {
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+
+    expect(screen.getByRole("button", { name: "Add a title" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import a list" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "More ways to add" }));
+    expect(await screen.findByRole("menuitem", { name: "Import a list" })).toBeInTheDocument();
+  });
+
+  /* The empty state is where someone with nothing saved actually stands, so
+     import stays a plain button there. */
+  it("offers import directly in the empty state", () => {
+    render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} variant="empty" />, { wrapper: ToastProvider });
+
+    expect(screen.getByRole("button", { name: "Import a list" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More ways to add" })).not.toBeInTheDocument();
+  });
+
+  it("associates the label with the textarea, tracks the parsed count, and disables past the max", async () => {
+    render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
+    await openImport();
     const textarea = screen.getByLabelText("Titles");
 
     fireEvent.change(textarea, { target: { value: "Arrival\nSeverance" } });
@@ -351,7 +376,7 @@ describe("AddTitleActions bulk import", () => {
     const onBulkAdd = vi.fn().mockResolvedValue({ added: 3, duplicates: 0, failedTitles: [] });
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={onBulkAdd} />, { wrapper: ToastProvider });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+    await openImport();
     fireEvent.change(screen.getByLabelText("Titles"), { target: { value: "Arrival\nSeverance\nDune" } });
     fireEvent.click(screen.getByRole("button", { name: "Find matches" }));
 
@@ -372,7 +397,7 @@ describe("AddTitleActions bulk import", () => {
     const onBulkAdd = vi.fn().mockResolvedValue({ added: 2, duplicates: 0, failedTitles: [] });
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={onBulkAdd} />, { wrapper: ToastProvider });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+    await openImport();
     fireEvent.change(screen.getByLabelText("Titles"), { target: { value: "Arrival\nSeverance\nDune" } });
     fireEvent.click(screen.getByRole("button", { name: "Find matches" }));
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Review before adding" })).toBeInTheDocument());
@@ -390,7 +415,7 @@ describe("AddTitleActions bulk import", () => {
     const onBulkAdd = vi.fn().mockResolvedValue({ added: 1, duplicates: 0, failedTitles: [] });
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={onBulkAdd} />, { wrapper: ToastProvider });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+    await openImport();
     fireEvent.change(screen.getByLabelText("Titles"), { target: { value: "A Weird One" } });
     fireEvent.click(screen.getByRole("button", { name: "Find matches" }));
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Review before adding" })).toBeInTheDocument());
@@ -407,7 +432,7 @@ describe("AddTitleActions bulk import", () => {
     stubSearchFetch((query) => (query === "Severance" ? { retryAfter: 7 } : [makeResult(query)]));
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+    await openImport();
     fireEvent.change(screen.getByLabelText("Titles"), { target: { value: "Arrival\nSeverance\nDune" } });
     fireEvent.click(screen.getByRole("button", { name: "Find matches" }));
 
@@ -421,7 +446,7 @@ describe("AddTitleActions bulk import", () => {
     stubSearchFetch((query) => [makeResult(query)]);
     render(<AddTitleActions onAdd={vi.fn()} onBulkAdd={vi.fn()} />, { wrapper: ToastProvider });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import a list" }));
+    await openImport();
     fireEvent.change(screen.getByLabelText("Titles"), { target: { value: "Arrival" } });
     fireEvent.click(screen.getByRole("button", { name: "Find matches" }));
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Review before adding" })).toBeInTheDocument());
