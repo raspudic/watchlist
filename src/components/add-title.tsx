@@ -6,6 +6,7 @@
 import {
   BookmarkPlus,
   Check,
+  ChevronDown,
   Clapperboard,
   FileText,
   ListPlus,
@@ -16,6 +17,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Autocomplete } from "@base-ui/react/autocomplete";
+import { Menu } from "@base-ui/react/menu";
 
 import { MediaDetailOverview } from "@/components/media/media-detail-overview";
 import { MediaResultContent } from "@/components/media/media-result-content";
@@ -164,14 +166,31 @@ export function AddTitleActions({
     <>
       <div className="add-actions">
         {variant === "header" ? (
-          <>
-            <IconButton label="Import a list" onClick={() => setImportOpen(true)} size="lg">
-              <ListPlus aria-hidden="true" size={18} />
-            </IconButton>
-            <Button onClick={() => setSearchOpen(true)}>
+          /* Importing is a once-or-never act for most accounts, so it hangs off
+             the primary instead of holding a slot of its own in the header. */
+          <div className="split-button">
+            <Button className="split-button-main" onClick={() => setSearchOpen(true)}>
               <Plus aria-hidden="true" size={18} /> Add a title
             </Button>
-          </>
+            <Menu.Root>
+              <Menu.Trigger
+                aria-label="More ways to add"
+                className="btn btn-primary split-button-more"
+              >
+                <ChevronDown aria-hidden="true" size={16} />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner align="end" className="menu-positioner" side="bottom" sideOffset={8}>
+                  <Menu.Popup className="menu-popup menu-popup-compact">
+                    <Menu.Item className="menu-item" onClick={() => setImportOpen(true)}>
+                      <ListPlus aria-hidden="true" size={15} />
+                      Import a list
+                    </Menu.Item>
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          </div>
         ) : (
           <>
             <Button onClick={() => setSearchOpen(true)} size="sm">
