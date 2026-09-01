@@ -1,5 +1,6 @@
 import "server-only";
 
+import { streamingServiceIdentity } from "@/lib/streaming-service-brand";
 import { readTmdbCache, writeTmdbCache } from "@/lib/tmdb-cache";
 
 /** JustWatch ships one export per day, so a title's availability moves slowly. */
@@ -58,27 +59,31 @@ export function watchProviderCacheKey(mediaType: WatchMediaType, tmdbId: number,
 /**
  * Flattens TMDB's per-offer-type lists into the two groups the sheet shows.
  * A provider routinely appears under both flatrate and rent, so entries are
- * deduplicated by provider id and streaming always wins the tie.
+ * deduplicated by consumer brand and streaming always wins the tie.
  */
-function collect(groups: (TmdbProvider[] | undefined)[], exclude?: Set<number>) {
-  const byId = new Map<number, { provider: WatchProvider; priority: number }>();
+function collect(groups: (TmdbProvider[] | undefined)[], exclude?: Set<string>) {
+  const byBrand = new Map<string, { provider: WatchProvider; priority: number }>();
 
   for (const group of groups) {
     for (const entry of group ?? []) {
       const id = entry.provider_id;
       const name = entry.provider_name?.trim();
       if (id === undefined || !Number.isInteger(id) || !name) continue;
-      if (exclude?.has(id)) continue;
+      const identity = streamingServiceIdentity(name);
+      if (exclude?.has(identity.key)) continue;
 
       const priority = typeof entry.display_priority === "number" ? entry.display_priority : 9999;
-      const existing = byId.get(id);
+      const existing = byBrand.get(identity.key);
       if (existing && existing.priority <= priority) continue;
 
-      byId.set(id, { priority, provider: { id, name, logoPath: entry.logo_path ?? null } });
+      byBrand.set(identity.key, {
+        priority,
+        provider: { id, name: identity.name, logoPath: entry.logo_path ?? null },
+      });
     }
   }
 
-  return [...byId.values()]
+  return [...byBrand.values()]
     .sort((a, b) => a.priority - b.priority || a.provider.name.localeCompare(b.provider.name))
     .map((entry) => entry.provider);
 }
@@ -91,13 +96,13 @@ export function mapWatchProviders(
   if (!availability) return { region, link: null, streaming: [], rentOrBuy: [] };
 
   const streaming = collect([availability.flatrate, availability.free, availability.ads]);
-  const streamingIds = new Set(streaming.map((provider) => provider.id));
+  const streamingBrands = new Set(streaming.map((provider) => streamingServiceIdentity(provider.name).key));
 
   return {
     region,
     link: availability.link?.trim() || null,
     streaming,
-    rentOrBuy: collect([availability.rent, availability.buy], streamingIds),
+    rentOrBuy: collect([availability.rent, availability.buy], streamingBrands),
   };
 }
 

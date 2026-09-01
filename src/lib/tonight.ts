@@ -120,7 +120,7 @@ export type TonightFilters = {
 };
 
 export const DEFAULT_TONIGHT_FILTERS: TonightFilters = {
-  services: "mine",
+  services: "all",
   mediaType: "all",
   runtime: "any",
   facets: [],

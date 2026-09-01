@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db/client", () => ({ db: {} }));
 
-import { mapTmdbProviderDirectory } from "./streaming-services";
+import { groupStreamingServiceRows, mapTmdbProviderDirectory } from "./streaming-services";
 
 describe("mapTmdbProviderDirectory", () => {
   it("unifies providers while preserving regional priorities by media type", () => {
@@ -50,5 +50,35 @@ describe("mapTmdbProviderDirectory", () => {
       movie: { results: [{ provider_name: "Missing id" }, { provider_id: 4, provider_name: " " }] },
       tv: { results: [] },
     })).toEqual({ providers: [], regions: [] });
+  });
+
+  it("presents regional Prime Video ids as one subscription", () => {
+    const services = groupStreamingServiceRows([
+      {
+        id: 9,
+        name: "Amazon Prime Video",
+        logoPath: "/prime-se.jpg",
+        region: "SE",
+        mediaType: "movie",
+        displayPriority: 2,
+      },
+      {
+        id: 119,
+        name: "Prime Video with Ads",
+        logoPath: "/prime-us.jpg",
+        region: "US",
+        mediaType: "tv",
+        displayPriority: 1,
+      },
+    ], ["SE", "US"]);
+
+    expect(services).toEqual([{
+      id: 9,
+      providerIds: [9, 119],
+      name: "Prime Video",
+      logoPath: "/prime-se.jpg",
+      mediaTypes: ["movie", "tv"],
+      regions: ["SE", "US"],
+    }]);
   });
 });

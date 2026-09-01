@@ -10,6 +10,7 @@ import {
   mediaItems,
   streamingProviders,
 } from "@/lib/db/schema";
+import { streamingServiceIdentity } from "@/lib/streaming-service-brand";
 import type { TitleExtras, TonightGenre, TonightProvider } from "@/lib/tonight";
 
 /**
@@ -95,17 +96,18 @@ export async function listWatchlistExtras(
     genres.set(row.catalogTitleId, list);
   }
 
-  /* One entry per service per title, carrying the countries it streams in, so
-     a chip can say "Max, in SE" without repeating the service. */
+  /* One entry per consumer service per title, carrying the countries it
+     streams in. TMDB may use multiple provider ids for the same brand. */
   const streaming = new Map<string, TonightProvider[]>();
   for (const row of serviceRows) {
     const list = streaming.get(row.catalogTitleId) ?? [];
-    const existing = list.find((provider) => provider.id === row.id);
+    const identity = streamingServiceIdentity(row.name);
+    const existing = list.find((provider) => streamingServiceIdentity(provider.name).key === identity.key);
     if (existing) {
       if (!existing.regions.includes(row.region)) existing.regions.push(row.region);
       continue;
     }
-    list.push({ id: row.id, name: row.name, logoPath: row.logoPath, regions: [row.region] });
+    list.push({ id: row.id, name: identity.name, logoPath: row.logoPath, regions: [row.region] });
     streaming.set(row.catalogTitleId, list);
   }
 

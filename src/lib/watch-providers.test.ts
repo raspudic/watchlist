@@ -17,7 +17,7 @@ describe("mapWatchProviders", () => {
       },
     }, "AR");
 
-    expect(result.streaming.map((provider) => provider.name)).toEqual(["Amazon Prime Video", "Netflix"]);
+    expect(result.streaming.map((provider) => provider.name)).toEqual(["Prime Video", "Netflix"]);
     expect(result.rentOrBuy.map((provider) => provider.name)).toEqual(["Apple TV"]);
     expect(result.link).toBe("https://www.themoviedb.org/movie/603/watch?locale=AR");
   });
@@ -37,6 +37,27 @@ describe("mapWatchProviders", () => {
 
     expect(result.streaming.map((provider) => provider.id)).toEqual([9]);
     expect(result.rentOrBuy.map((provider) => provider.id)).toEqual([2]);
+  });
+
+  it("folds Prime Video provider aliases into one service", () => {
+    const result = mapWatchProviders({
+      results: {
+        SE: {
+          flatrate: [
+            { provider_id: 9, provider_name: "Amazon Prime Video", display_priority: 2 },
+            { provider_id: 119, provider_name: "Prime Video with Ads", display_priority: 1 },
+          ],
+          rent: [{ provider_id: 9, provider_name: "Prime Video" }],
+        },
+      },
+    }, "SE");
+
+    expect(result.streaming).toEqual([{
+      id: 119,
+      name: "Prime Video",
+      logoPath: null,
+    }]);
+    expect(result.rentOrBuy).toEqual([]);
   });
 
   it("returns an empty result for a region TMDB has no data for", () => {

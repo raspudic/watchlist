@@ -11,8 +11,8 @@ import { ToastProvider } from "@/components/ui/toast";
 import { StreamingServicesCard } from "./streaming-services-card";
 
 const providers = [
-  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
-  { id: 337, name: "Disney Plus", logoPath: null, mediaTypes: ["movie"], regions: ["SE"] },
+  { id: 8, providerIds: [8], name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
+  { id: 337, providerIds: [337], name: "Disney Plus", logoPath: null, mediaTypes: ["movie"], regions: ["SE"] },
 ];
 
 function renderCard(regions: string[] = ["SE"]) {
@@ -99,5 +99,26 @@ describe("StreamingServicesCard", () => {
     renderCard();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Streaming services are unavailable right now.");
+  });
+
+  it("treats regional provider ids as one selected service", async () => {
+    const prime = [{
+      id: 9,
+      providerIds: [9, 119],
+      name: "Prime Video",
+      logoPath: "/prime.jpg",
+      mediaTypes: ["movie", "tv"],
+      regions: ["SE", "US"],
+    }];
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(
+      Response.json({ regions: ["SE", "US"], providers: prime, selectedProviderIds: [119] }),
+    )));
+
+    renderCard(["SE", "US"]);
+
+    expect(await screen.findByText("Prime Video")).toBeInTheDocument();
+    expect(screen.getAllByText("Prime Video")).toHaveLength(1);
+    expect(screen.getByText("1 service selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Prime Video/ })).toBeChecked();
   });
 });

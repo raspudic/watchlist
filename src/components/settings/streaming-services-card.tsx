@@ -17,6 +17,7 @@ import { providerLogoUrl } from "@/lib/media-display";
 
 type StreamingService = {
   id: number;
+  providerIds: number[];
   name: string;
   logoPath: string | null;
   mediaTypes: Array<"movie" | "tv">;
@@ -33,6 +34,20 @@ function sameIds(left: Set<number>, right: Set<number>) {
   if (left.size !== right.size) return false;
   for (const id of left) if (!right.has(id)) return false;
   return true;
+}
+
+function selectedService(provider: StreamingService, selected: Set<number>) {
+  return provider.providerIds.some((id) => selected.has(id));
+}
+
+function expandSelectedIds(ids: number[], providers: StreamingService[]) {
+  const expanded = new Set(ids);
+  for (const provider of providers) {
+    if (selectedService(provider, expanded)) {
+      for (const id of provider.providerIds) expanded.add(id);
+    }
+  }
+  return expanded;
 }
 
 export function StreamingServicesCard() {
@@ -61,7 +76,7 @@ export function StreamingServicesCard() {
     fetch("/api/streaming-services", { cache: "no-store", signal: controller.signal })
       .then((response) => readApiJson<StreamingServicesResponse>(response))
       .then((data) => {
-        const ids = new Set(data.selectedProviderIds);
+        const ids = expandSelectedIds(data.selectedProviderIds, data.providers);
         setProviders(data.providers);
         setSelected(ids);
         setStored(new Set(ids));
@@ -87,7 +102,7 @@ export function StreamingServicesCard() {
       : providers;
 
     return [...matches].sort((left, right) => {
-      const selectedDifference = Number(selected.has(right.id)) - Number(selected.has(left.id));
+      const selectedDifference = Number(selectedService(right, selected)) - Number(selectedService(left, selected));
       return selectedDifference || left.name.localeCompare(right.name);
     });
   }, [providers, query, selected]);
@@ -100,9 +115,9 @@ export function StreamingServicesCard() {
       const data = await readApiJson<StreamingServicesResponse>(await fetch("/api/streaming-services", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerIds: [...selected] }),
+        body: JSON.stringify({ providerIds: [...selected].sort((a, b) => a - b) }),
       }));
-      const ids = new Set(data.selectedProviderIds);
+      const ids = expandSelectedIds(data.selectedProviderIds, data.providers);
       setSelected(ids);
       setStored(new Set(ids));
       toast.add({ title: "Streaming services updated." });
@@ -113,11 +128,13 @@ export function StreamingServicesCard() {
     }
   }
 
-  function toggle(id: number, checked: boolean) {
+  function toggle(providerIds: number[], checked: boolean) {
     setSelected((current) => {
       const next = new Set(current);
-      if (checked) next.add(id);
-      else next.delete(id);
+      for (const id of providerIds) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
 
@@ -133,6 +150,7 @@ export function StreamingServicesCard() {
   const currentLoadError = savedRegions && loadError?.regions === savedRegions ? loadError.message : "";
   const loading = Boolean(savedRegions && loadedRegions !== savedRegions && !currentLoadError);
   const error = saveError || currentLoadError;
+  const selectedCount = providers.filter((provider) => selectedService(provider, selected)).length;
 
   return (
     <section className="settings-card">
@@ -171,7 +189,7 @@ export function StreamingServicesCard() {
             value={query}
           />
           <p className="streaming-services-summary" aria-live="polite">
-            {selected.size} {selected.size === 1 ? "service" : "services"} selected
+            {selectedCount} {selectedCount === 1 ? "service" : "services"} selected
           </p>
           <div className="streaming-services-list">
             {visibleProviders.map((provider) => {
@@ -183,7 +201,7 @@ export function StreamingServicesCard() {
                 <div className="streaming-service-option" key={provider.id}>
                   {logo ? <img alt="" src={logo} /> : <span className="streaming-service-logo-placeholder" />}
                   <CheckboxField
-                    checked={selected.has(provider.id)}
+                    checked={selectedService(provider, selected)}
                     disabled={saving}
                     label={(
                       <span>
@@ -197,7 +215,7 @@ export function StreamingServicesCard() {
                         </small>
                       </span>
                     )}
-                    onCheckedChange={(checked) => toggle(provider.id, checked)}
+                    onCheckedChange={(checked) => toggle(provider.providerIds, checked)}
                   />
                 </div>
               );

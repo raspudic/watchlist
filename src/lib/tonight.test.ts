@@ -242,7 +242,7 @@ describe("pickCandidate", () => {
 describe("filter query", () => {
   it("round-trips everything that differs from the defaults", () => {
     const chosen = filters({
-      services: "all",
+      services: "mine",
       mediaType: "tv",
       runtime: "under-120",
       facets: ["mood:dark", "genre:80"],
@@ -262,6 +262,11 @@ describe("filter query", () => {
     ));
 
     expect(parsed).toEqual(filters({ facets: ["mood:dark", "genre:80"] }));
+  });
+
+  it("shows the complete watchlist by default", () => {
+    expect(DEFAULT_TONIGHT_FILTERS.services).toBe("all");
+    expect(readTonightFilters(new URLSearchParams()).services).toBe("all");
   });
 });
 

@@ -8,12 +8,15 @@ import {
   streamingProviders,
   userStreamingServices,
 } from "@/lib/db/schema";
+import { streamingServiceIdentity } from "@/lib/streaming-service-brand";
 import { tmdbFetch } from "@/lib/tmdb-client";
 
 export type StreamingMediaType = "movie" | "tv";
 
 export type StreamingService = {
+  /** Representative id retained for stable rendering; save every provider id. */
   id: number;
+  providerIds: number[];
   name: string;
   logoPath: string | null;
   mediaTypes: StreamingMediaType[];
@@ -170,19 +173,39 @@ export async function listStreamingServicesForRegions(regions: string[]): Promis
     .where(inArray(streamingProviderRegions.region, normalizedRegions))
     .orderBy(asc(streamingProviderRegions.displayPriority), asc(streamingProviders.name));
 
-  const services = new Map<number, StreamingService & { displayPriority: number }>();
+  return groupStreamingServiceRows(rows, normalizedRegions);
+}
+
+type StreamingServiceRow = {
+  id: number;
+  name: string;
+  logoPath: string | null;
+  region: string;
+  mediaType: string;
+  displayPriority: number;
+};
+
+/** Collapse TMDB provider ids into the service brand a person subscribes to. */
+export function groupStreamingServiceRows(
+  rows: StreamingServiceRow[],
+  normalizedRegions: string[],
+): StreamingService[] {
+  const services = new Map<string, StreamingService & { displayPriority: number }>();
   for (const row of rows) {
     if (row.mediaType !== "movie" && row.mediaType !== "tv") continue;
-    const existing = services.get(row.id);
+    const identity = streamingServiceIdentity(row.name);
+    const existing = services.get(identity.key);
     if (existing) {
       if (!existing.mediaTypes.includes(row.mediaType)) existing.mediaTypes.push(row.mediaType);
       if (!existing.regions.includes(row.region)) existing.regions.push(row.region);
+      if (!existing.providerIds.includes(row.id)) existing.providerIds.push(row.id);
       existing.displayPriority = Math.min(existing.displayPriority, row.displayPriority);
       continue;
     }
-    services.set(row.id, {
+    services.set(identity.key, {
       id: row.id,
-      name: row.name,
+      providerIds: [row.id],
+      name: identity.name,
       logoPath: row.logoPath,
       mediaTypes: [row.mediaType],
       regions: [row.region],
@@ -194,6 +217,7 @@ export async function listStreamingServicesForRegions(regions: string[]): Promis
     .sort((a, b) => a.displayPriority - b.displayPriority || a.name.localeCompare(b.name))
     .map((service) => ({
       id: service.id,
+      providerIds: service.providerIds.sort((a, b) => a - b),
       name: service.name,
       logoPath: service.logoPath,
       mediaTypes: service.mediaTypes,
@@ -213,19 +237,26 @@ export async function getUserStreamingServiceIds(
   const normalizedRegions = normalizeRegions(regions);
   if (normalizedRegions.length === 0) return [];
 
-  const rows = await db
-    .selectDistinct({ providerId: userStreamingServices.providerId })
-    .from(userStreamingServices)
-    .innerJoin(
-      streamingProviderRegions,
-      eq(streamingProviderRegions.providerId, userStreamingServices.providerId),
-    )
-    .where(and(
-      eq(userStreamingServices.userId, userId),
-      inArray(streamingProviderRegions.region, normalizedRegions),
-    ));
+  const [selected, available] = await Promise.all([
+    db
+      .select({ providerId: userStreamingServices.providerId, name: streamingProviders.name })
+      .from(userStreamingServices)
+      .innerJoin(streamingProviders, eq(streamingProviders.id, userStreamingServices.providerId))
+      .where(eq(userStreamingServices.userId, userId)),
+    db
+      .selectDistinct({ providerId: streamingProviders.id, name: streamingProviders.name })
+      .from(streamingProviderRegions)
+      .innerJoin(streamingProviders, eq(streamingProviders.id, streamingProviderRegions.providerId))
+      .where(inArray(streamingProviderRegions.region, normalizedRegions)),
+  ]);
 
-  return rows.map((row) => row.providerId).sort((a, b) => a - b);
+  /* A saved provider id selects its whole brand. This also upgrades existing
+     picks immediately when TMDB introduces another regional id. */
+  const selectedBrands = new Set(selected.map((row) => streamingServiceIdentity(row.name).key));
+  return available
+    .filter((row) => selectedBrands.has(streamingServiceIdentity(row.name).key))
+    .map((row) => row.providerId)
+    .sort((a, b) => a - b);
 }
 
 export class UnknownStreamingServiceError extends Error {
