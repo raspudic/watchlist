@@ -155,6 +155,11 @@
   font-weight: 600;
 }
 .watch-provider-logo { width: 24px; height: 24px; flex: 0 0 auto; border-radius: 7px; object-fit: cover; background: var(--surface-strong); }
+/* One block per saved country, home first: the comparison is the point. */
+.watch-regions { display: flex; flex-direction: column; gap: 21px; }
+.watch-region h4 { margin-top: 17px; display: flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 12px; font-weight: 650; }
+.watch-region h4 + * { margin-top: 10px; }
+
 .watch-provider-skeleton { margin-top: 14px; display: flex; gap: 9px; }
 .watch-provider-skeleton span { width: 104px; height: 37px; border-radius: 999px; background: var(--surface-strong); }
 .watch-providers-attribution { margin-top: 14px; color: var(--text-faint); font-size: 11px; }

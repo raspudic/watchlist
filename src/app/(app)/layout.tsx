@@ -2,25 +2,28 @@ import { headers } from "next/headers";
 
 import { AppShell } from "@/components/app-shell";
 import { RegionProvider } from "@/components/region-provider";
+import { listUserRegions } from "@/lib/account-regions";
 import { isUserAdmin } from "@/lib/admin";
 import { getSearchShortcut } from "@/lib/keyboard-shortcut";
-import { isRegionCode, parseRegionFromAcceptLanguage } from "@/lib/region";
+import { parseRegionFromAcceptLanguage } from "@/lib/region";
 import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProtectedLayout({ children }: LayoutProps<"/">) {
   const session = await requireSession();
-  const [requestHeaders, isAdmin] = await Promise.all([headers(), isUserAdmin(session.user.id)]);
+  const [requestHeaders, isAdmin, regions] = await Promise.all([
+    headers(),
+    isUserAdmin(session.user.id),
+    listUserRegions(session.user.id),
+  ]);
   const searchShortcut = getSearchShortcut(
     requestHeaders.get("sec-ch-ua-platform"),
     requestHeaders.get("user-agent"),
   );
-  const region = session.user.region;
-
   return (
     <RegionProvider
-      region={isRegionCode(region) ? region : null}
+      regions={regions}
       suggestedRegion={parseRegionFromAcceptLanguage(requestHeaders.get("accept-language"))}
     >
       <AppShell

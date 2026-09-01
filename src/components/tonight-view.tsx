@@ -9,6 +9,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
+import { RegionMark } from "@/components/region-select";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyInline, EmptyState } from "@/components/ui/empty-state";
 import { FilterTabs } from "@/components/ui/filter-tabs";
@@ -110,9 +111,10 @@ export function TonightView() {
 
   const candidates = useMemo(() => data?.candidates ?? [], [data]);
   const selectedProviderIds = useMemo(() => data?.selectedProviderIds ?? [], [data]);
+  const regions = useMemo(() => data?.regions ?? [], [data]);
   /* Without a country or any saved services, "my services" would filter on
      nothing, so the control disappears and everything is shown instead. */
-  const canFilterByServices = Boolean(data?.region) && selectedProviderIds.length > 0;
+  const canFilterByServices = regions.length > 0 && selectedProviderIds.length > 0;
   const active = useMemo<TonightFilters>(
     () => ({ ...filters, services: canFilterByServices ? filters.services : "all" }),
     [canFilterByServices, filters],
@@ -206,7 +208,7 @@ export function TonightView() {
           {!canFilterByServices ? (
             <div className="tonight-setup">
               <p>
-                {data?.region
+                {regions.length > 0
                   ? "Choose the services you subscribe to and Tonight can show what is included with them."
                   : "Set your country and streaming services and Tonight can show what is included with them."}
               </p>
@@ -324,7 +326,8 @@ export function TonightView() {
                       key={candidate.item.id}
                       onTogglePin={togglePin}
                       pinning={pinningId === candidate.item.id}
-                      showAvailability={Boolean(data?.region)}
+                      showAvailability={regions.length > 0}
+                      showCountry={regions.length > 1}
                     />
                   ))}
                 </div>
@@ -390,7 +393,13 @@ function PinButton({
   );
 }
 
-function ProviderChips({ providers }: { providers: TonightCandidate["streaming"] }) {
+function ProviderChips({
+  providers,
+  showCountry = false,
+}: {
+  providers: TonightCandidate["streaming"];
+  showCountry?: boolean;
+}) {
   const shown = providers.slice(0, 3);
 
   return (
@@ -401,6 +410,8 @@ function ProviderChips({ providers }: { providers: TonightCandidate["streaming"]
           <li key={provider.id}>
             {logo ? <img alt="" src={logo} /> : null}
             {provider.name}
+            {/* Which country carries it, when that can differ. */}
+            {showCountry ? provider.regions.map((code) => <RegionMark code={code} key={code} />) : null}
           </li>
         );
       })}
@@ -409,8 +420,16 @@ function ProviderChips({ providers }: { providers: TonightCandidate["streaming"]
   );
 }
 
-function AvailabilityLine({ candidate }: { candidate: TonightCandidate }) {
-  if (candidate.streaming.length > 0) return <ProviderChips providers={candidate.streaming} />;
+function AvailabilityLine({
+  candidate,
+  showCountry,
+}: {
+  candidate: TonightCandidate;
+  showCountry: boolean;
+}) {
+  if (candidate.streaming.length > 0) {
+    return <ProviderChips providers={candidate.streaming} showCountry={showCountry} />;
+  }
   return (
     <p className="tonight-availability">
       {candidate.availabilityCheckedAt === null
@@ -427,11 +446,13 @@ function TonightRow({
   onTogglePin,
   pinning,
   showAvailability,
+  showCountry,
 }: {
   candidate: TonightCandidate;
   onTogglePin: (candidate: TonightCandidate) => void;
   pinning: boolean;
   showAvailability: boolean;
+  showCountry: boolean;
 }) {
   const poster = posterUrl(candidate.item.posterPath);
 
@@ -450,7 +471,7 @@ function TonightRow({
             <span className="tonight-score"><Star aria-hidden="true" size={12} /> {candidate.voteAverage.toFixed(1)}</span>
           ) : null}
         </p>
-        {showAvailability ? <AvailabilityLine candidate={candidate} /> : null}
+        {showAvailability ? <AvailabilityLine candidate={candidate} showCountry={showCountry} /> : null}
       </div>
       <PinButton candidate={candidate} onTogglePin={onTogglePin} pinning={pinning} />
     </div>

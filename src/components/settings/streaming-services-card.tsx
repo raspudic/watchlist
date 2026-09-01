@@ -10,6 +10,7 @@ import { CheckboxField, TextField } from "@/components/ui/field";
 import { InlineMessage } from "@/components/ui/inline-message";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
+import { RegionMark } from "@/components/region-select";
 import { useRegion } from "@/components/region-provider";
 import { readApiJson } from "@/lib/api-response";
 import { providerLogoUrl } from "@/lib/media-display";
@@ -19,11 +20,12 @@ type StreamingService = {
   name: string;
   logoPath: string | null;
   mediaTypes: Array<"movie" | "tv">;
+  regions: string[];
 };
 
 type StreamingServicesResponse = {
   providers: StreamingService[];
-  region: string | null;
+  regions: string[];
   selectedProviderIds: number[];
 };
 
@@ -34,20 +36,23 @@ function sameIds(left: Set<number>, right: Set<number>) {
 }
 
 export function StreamingServicesCard() {
-  const { region } = useRegion();
+  const { regions } = useRegion();
+  /* A stable key for the saved countries, so the effect reruns when they
+     change without depending on the array's identity. */
+  const savedRegions = regions.join(",");
   const toast = useToast();
   const [providers, setProviders] = useState<StreamingService[]>([]);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const [stored, setStored] = useState<Set<number>>(() => new Set());
   const [query, setQuery] = useState("");
-  const [loadedRegion, setLoadedRegion] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<{ message: string; region: string } | null>(null);
+  const [loadedRegions, setLoadedRegions] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{ message: string; regions: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!region) {
+    if (!savedRegions) {
       return;
     }
 
@@ -61,19 +66,19 @@ export function StreamingServicesCard() {
         setSelected(ids);
         setStored(new Set(ids));
         setLoadError(null);
-        setLoadedRegion(region);
+        setLoadedRegions(savedRegions);
       })
       .catch((caught: unknown) => {
         if ((caught as Error).name !== "AbortError") {
           setLoadError({
             message: caught instanceof Error ? caught.message : "Could not load streaming services.",
-            region,
+            regions: savedRegions,
           });
         }
       });
 
     return () => controller.abort();
-  }, [region]);
+  }, [savedRegions]);
 
   const visibleProviders = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -125,20 +130,23 @@ export function StreamingServicesCard() {
     }
   }
 
-  const currentLoadError = region && loadError?.region === region ? loadError.message : "";
-  const loading = Boolean(region && loadedRegion !== region && !currentLoadError);
+  const currentLoadError = savedRegions && loadError?.regions === savedRegions ? loadError.message : "";
+  const loading = Boolean(savedRegions && loadedRegions !== savedRegions && !currentLoadError);
   const error = saveError || currentLoadError;
 
   return (
     <section className="settings-card">
       <h2>Your streaming services</h2>
-      <p>Used by Tonight to show titles included with services you already have.</p>
+      <p>
+        What you subscribe to, wherever you are. Your watchlist marks the titles included
+        with them, and says which of your countries carries each one.
+      </p>
 
-      {!region ? (
-        <p className="streaming-services-note">Choose and save your country above first.</p>
+      {regions.length === 0 ? (
+        <p className="streaming-services-note">Choose and save a country above first.</p>
       ) : null}
 
-      {region && loading ? (
+      {savedRegions && loading ? (
         <div className="streaming-services-state" role="status">
           <Spinner size={18} /> Loading services…
         </div>
@@ -146,11 +154,13 @@ export function StreamingServicesCard() {
 
       {error ? <InlineMessage>{error}</InlineMessage> : null}
 
-      {region && !loading && !error && providers.length === 0 ? (
-        <p className="streaming-services-note">No subscription services are listed for this country yet.</p>
+      {savedRegions && !loading && !error && providers.length === 0 ? (
+        <p className="streaming-services-note">
+          No subscription services are listed for {regions.length === 1 ? "this country" : "these countries"} yet.
+        </p>
       ) : null}
 
-      {region && !loading && !error && providers.length > 0 ? (
+      {savedRegions && !loading && !error && providers.length > 0 ? (
         <div className="streaming-services-picker">
           <TextField
             label="Find a service"
@@ -175,7 +185,18 @@ export function StreamingServicesCard() {
                   <CheckboxField
                     checked={selected.has(provider.id)}
                     disabled={saving}
-                    label={<span><strong>{provider.name}</strong><small>{availability}</small></span>}
+                    label={(
+                      <span>
+                        <strong>{provider.name}</strong>
+                        <small>
+                          {availability}
+                          {/* Which of your countries carry it, when that can differ. */}
+                          {regions.length > 1 ? (
+                            <> · {provider.regions.map((code) => <RegionMark code={code} key={code} />)}</>
+                          ) : null}
+                        </small>
+                      </span>
+                    )}
                     onCheckedChange={(checked) => toggle(provider.id, checked)}
                   />
                 </div>

@@ -3,32 +3,34 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
 type RegionContextValue = {
-  /** The saved country, or null when the user has not chosen one yet. */
-  region: string | null;
+  /** The saved countries, home first. Empty until one is chosen. */
+  regions: string[];
+  /** The first country: what a single-country answer is about. */
+  homeRegion: string | null;
   /** A guess from the browser's language header, used to prefill the picker. */
   suggestedRegion: string | null;
-  setRegion: (region: string) => void;
+  setRegions: (regions: string[]) => void;
 };
 
 const RegionContext = createContext<RegionContextValue | null>(null);
 
 export function RegionProvider({
   children,
-  region: savedRegion,
+  regions: savedRegions,
   suggestedRegion,
 }: {
   children: ReactNode;
-  region: string | null;
+  regions: string[];
   suggestedRegion: string | null;
 }) {
-  const [region, setRegionState] = useState(savedRegion);
+  const [regions, setRegionsState] = useState(savedRegions);
 
   // Saving updates local state immediately so an open detail sheet fills in
   // without waiting for the session to be re-read.
-  const setRegion = useCallback((next: string) => setRegionState(next), []);
+  const setRegions = useCallback((next: string[]) => setRegionsState(next), []);
   const value = useMemo(
-    () => ({ region, suggestedRegion, setRegion }),
-    [region, setRegion, suggestedRegion],
+    () => ({ regions, homeRegion: regions[0] ?? null, suggestedRegion, setRegions }),
+    [regions, setRegions, suggestedRegion],
   );
 
   return <RegionContext.Provider value={value}>{children}</RegionContext.Provider>;
