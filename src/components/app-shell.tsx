@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChartColumn, CheckCircle2, ChevronsUpDown, Popcorn, Search, Users } from "lucide-react";
+import { Bookmark, ChartColumn, CheckCircle2, ChevronsUpDown, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -14,12 +14,11 @@ import type { KeyboardShortcut } from "@/lib/keyboard-shortcut";
 /*
  * These routes are dynamic and have no loading boundary, so the default `auto`
  * prefetch stores nothing and each tab switch waits on a server round trip.
- * Their payload carries no server data, the lists come from the client library
- * cache and from /api/tonight, so the links below opt into a full `prefetch`.
+ * Their payload carries no server data — the lists come from the client caches
+ * — so the links below opt into a full `prefetch`.
  */
 const links = [
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
-  { href: "/tonight", label: "Tonight", icon: Popcorn },
   { href: "/watched", label: "Watched", icon: CheckCircle2 },
   { href: "/insights", label: "Insights", icon: ChartColumn },
 ];

@@ -15,6 +15,7 @@ import {
   List,
   Pin,
   Repeat,
+  Shuffle,
   Star,
   Trash2,
   X,
@@ -29,6 +30,11 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
+import {
+  AvailabilityLine,
+  PickCard,
+  WatchlistFilters,
+} from "@/components/watchlist-filters";
 import { MediaDetailOverview } from "@/components/media/media-detail-overview";
 import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
@@ -58,14 +64,34 @@ import {
   watchedDateValue,
 } from "@/lib/media-display";
 import { SWIPE_TRAY_WIDTH, getSwipeRelease } from "@/lib/swipe";
+import {
+  type TonightCandidate,
+  type TonightFilters,
+  buildCandidates,
+  mediaTypeCounts,
+  narrowCandidates,
+  pickCandidate,
+  readTonightFilters,
+  rememberPick,
+  sortCandidates,
+  tonightFilterQuery,
+} from "@/lib/tonight";
+import type { WatchlistExtrasResponse } from "@/lib/tonight";
+import {
+  getCachedWatchlistExtras,
+  loadWatchlistExtras,
+} from "@/lib/watchlist-extras-cache";
 import { type WatchEventRecord, watchEventDateLabel } from "@/lib/watch-history";
 
 export type { MediaItem } from "@/lib/library-cache";
 
 type ViewMode = LibraryMode;
-type MediaFilter = "all" | "movie" | "tv";
 
 const UNDO_WINDOW_MS = 6000;
+
+/* Filters that mean nothing until the catalog layer has arrived: a link
+   carrying one waits for it rather than flashing an unfiltered list. */
+const ENRICHED_FILTERS = ["pills", "runtime", "services", "sort"];
 
 export function LibraryView({ mode }: { mode: ViewMode }) {
   const cacheScope = useLibraryCacheScope();
@@ -77,8 +103,19 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const [loading, setLoading] = useState(initialItems === null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<MediaItem | null>(null);
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [viewStyle, setViewStyle] = useLibraryViewStyle(cacheScope);
+  /* The query string is the source of truth on arrival, so a shared or reloaded
+     link opens on the same shortlist. */
+  const [filters, setFilters] = useState<TonightFilters>(
+    () => readTonightFilters(new URLSearchParams(searchParams.toString())),
+  );
+  const [extras, setExtras] = useState<WatchlistExtrasResponse | null>(
+    () => (mode === "watchlist" ? getCachedWatchlistExtras(cacheScope) : null),
+  );
+  const [showGenres, setShowGenres] = useState(false);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [pinningId, setPinningId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -118,9 +155,41 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     };
   }, [cacheScope, mode]);
 
+  /* The catalog layer is a second, additive request: the list is already on
+     screen from the library cache, and this fills in genres, runtimes, scores
+     and where each title streams when it lands. */
+  useEffect(() => {
+    if (mode !== "watchlist") return;
+    let active = true;
+
+    loadWatchlistExtras(cacheScope)
+      .then((data) => { if (active) setExtras(data); })
+      .catch(() => undefined);
+
+    return () => { active = false; };
+  }, [cacheScope, mode]);
+
+  function writeQuery(params: URLSearchParams) {
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }
+
+  /* Filters and the open title share one query string, so neither erases the
+     other: `?item=` is a link people send each other. */
+  function updateFilters(next: TonightFilters) {
+    setFilters(next);
+    const params = new URLSearchParams(window.location.search);
+    for (const key of ["services", "type", "runtime", "pills", "sort"]) params.delete(key);
+    for (const [key, value] of new URLSearchParams(tonightFilterQuery(next))) params.set(key, value);
+    writeQuery(params);
+  }
+
   function closeDetail() {
     setSelected(null);
-    if (searchParams.has("item")) window.history.replaceState(null, "", pathname);
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("item")) return;
+    params.delete("item");
+    writeQuery(params);
   }
 
   function postItem(result: AddableTitle, bulk?: boolean) {
@@ -268,19 +337,78 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     }
   }
 
-  const visibleItems = mediaFilter === "all" ? items : items.filter((item) => item.mediaType === mediaFilter);
+  const watchlist = mode === "watchlist";
+  const extrasReady = extras !== null;
+  const regions = extras?.regions ?? [];
+  const selectedProviderIds = extras?.selectedProviderIds ?? [];
+  /* Without a country or any saved services, "my services" would filter on
+     nothing, so it is not offered and everything is shown instead. */
+  const canFilterByServices = regions.length > 0 && selectedProviderIds.length > 0;
+  const active: TonightFilters = {
+    ...filters,
+    services: canFilterByServices ? filters.services : "all",
+  };
+
+  const candidates = watchlist ? buildCandidates(items, extras?.titles ?? []) : [];
+  const narrowed = watchlist
+    ? sortCandidates(narrowCandidates(candidates, active, selectedProviderIds), active.sort)
+    : [];
+  const visibleItems = watchlist
+    ? narrowed.map((candidate) => candidate.item)
+    : active.mediaType === "all" ? items : items.filter((item) => item.mediaType === active.mediaType);
   const needsRating = mode === "watched" ? visibleItems.filter((item) => item.rating === null) : [];
   const rated = mode === "watched" ? visibleItems.filter((item) => item.rating !== null) : [];
   const linkedItemId = searchParams.get("item");
   const linkedItem = linkedItemId ? items.find((item) => item.id === linkedItemId) ?? null : null;
   const detailItem = selected ?? linkedItem;
   const listClass = viewStyle === "grid" ? "media-grid" : "media-list";
+  const picked = narrowed.find((candidate) => candidate.item.id === pickedId) ?? null;
+  const unchecked = candidates.filter((candidate) => candidate.availabilityCheckedAt === null).length;
+  /* A link that filters on the catalog layer waits for it rather than showing
+     an unfiltered list for a moment. */
+  const waitingOnExtras = watchlist && !extrasReady
+    && ENRICHED_FILTERS.some((key) => searchParams.has(key));
 
-  const filters: Array<{ count: number; label: string; value: MediaFilter }> = [
-    { count: items.length, label: "All", value: "all" },
-    { count: items.filter((item) => item.mediaType === "movie").length, label: "Movies", value: "movie" },
-    { count: items.filter((item) => item.mediaType === "tv").length, label: "Series", value: "tv" },
+  const counts = watchlist
+    ? mediaTypeCounts(candidates, active, selectedProviderIds)
+    : {
+      all: items.length,
+      movie: items.filter((item) => item.mediaType === "movie").length,
+      tv: items.filter((item) => item.mediaType === "tv").length,
+    };
+  const tabs = [
+    { count: counts.all, label: "All", value: "all" as const },
+    { count: counts.movie, label: "Movies", value: "movie" as const },
+    { count: counts.tv, label: "Series", value: "tv" as const },
   ];
+
+  function pick() {
+    const choice = pickCandidate(narrowed, { now: Date.now(), random: Math.random, recentIds });
+    if (!choice) return;
+    setPickedId(choice.item.id);
+    setRecentIds((current) => rememberPick(current, choice.item.id));
+  }
+
+  async function togglePin(candidate: TonightCandidate) {
+    const pinned = Boolean(candidate.item.pinnedAt);
+    setPinningId(candidate.item.id);
+    setError("");
+
+    try {
+      const data = await readApiJson<{ item: MediaItem }>(
+        await fetch(`/api/items/${candidate.item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinned: !pinned }),
+        }),
+      );
+      syncItem(data.item);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update that pin.");
+    } finally {
+      setPinningId(null);
+    }
+  }
 
   return (
     <div className="library-page">
@@ -289,7 +417,16 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
           <h1>{mode === "watchlist" ? "Watchlist" : "Watched"}</h1>
           {mode === "watchlist" ? <p className="library-subtitle">Movies and shows saved for later.</p> : null}
         </div>
-        {mode === "watchlist" ? <AddTitleActions onAdd={addItem} onAddNote={setSelected} onBulkAdd={addItems} /> : null}
+        {watchlist ? (
+          <div className="library-header-actions">
+            {items.length > 0 ? (
+              <Button disabled={narrowed.length === 0} onClick={pick} variant="secondary">
+                <Shuffle aria-hidden="true" size={16} /> Pick for me
+              </Button>
+            ) : null}
+            <AddTitleActions onAdd={addItem} onAddNote={setSelected} onBulkAdd={addItems} />
+          </div>
+        ) : null}
       </header>
 
       {error ? <InlineMessage onDismiss={() => setError("")}>{error}</InlineMessage> : null}
@@ -307,9 +444,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
       {!loading && items.length > 0 ? (
         <FilterTabs
-          items={filters}
+          items={tabs}
           label="Filter titles"
-          onValueChange={setMediaFilter}
+          onValueChange={(mediaType) => updateFilters({ ...filters, mediaType })}
           trailing={
             <SegmentedControl<LibraryViewStyle>
               iconsOnly
@@ -322,22 +459,70 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
               value={viewStyle}
             />
           }
-          value={mediaFilter}
+          value={active.mediaType}
         >
-          {visibleItems.length === 0 ? (
-            <EmptyInline>No {mediaFilter === "movie" ? "movies" : "series"} here yet.</EmptyInline>
+          {watchlist ? (
+            <WatchlistFilters
+              canFilterByServices={canFilterByServices}
+              candidates={candidates}
+              filters={active}
+              onChange={updateFilters}
+              onShowGenres={setShowGenres}
+              ready={extrasReady}
+              regions={regions}
+              resultCount={narrowed.length}
+              selectedProviderIds={selectedProviderIds}
+              showGenres={showGenres}
+              uncheckedCount={unchecked}
+            />
           ) : null}
 
-          {mode === "watchlist" && visibleItems.length > 0 ? (
+          <div aria-live="polite" className="tonight-pick-region">
+            {picked ? (
+              <PickCard
+                candidate={picked}
+                canRepick={narrowed.length > 1}
+                onOpen={(candidate) => setSelected(candidate.item)}
+                onPickAgain={pick}
+                onTogglePin={togglePin}
+                pinning={pinningId === picked.item.id}
+                showCountry={regions.length > 1}
+              />
+            ) : null}
+          </div>
+
+          {waitingOnExtras ? <LoadingList /> : null}
+
+          {!waitingOnExtras && visibleItems.length === 0 ? (
+            <EmptyInline>
+              {watchlist && active.services === "mine"
+                ? "Nothing here is on your services yet."
+                : `No ${active.mediaType === "movie" ? "movies" : active.mediaType === "tv" ? "series" : "titles"} match those filters.`}
+              {watchlist && active.services === "mine" ? (
+                <Button
+                  onClick={() => updateFilters({ ...filters, services: "all" })}
+                  size="sm"
+                  variant="quiet"
+                >
+                  Show everything
+                </Button>
+              ) : null}
+            </EmptyInline>
+          ) : null}
+
+          {watchlist && !waitingOnExtras && narrowed.length > 0 ? (
             <section aria-label="Watchlist titles" className="media-section">
               <div className={listClass}>
-                {visibleItems.map((item) => (
+                {narrowed.map((candidate) => (
                   <MediaRow
-                    item={item}
-                    key={item.id}
+                    candidate={candidate}
+                    item={candidate.item}
+                    key={candidate.item.id}
                     onMarkWatched={markWatched}
                     onOpen={setSelected}
                     onRemove={removeItem}
+                    showAvailability={regions.length > 0 && viewStyle === "list"}
+                    showCountry={regions.length > 1}
                   />
                 ))}
               </div>
@@ -388,12 +573,17 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 }
 
 function MediaRow({
+  candidate,
   item,
   onMarkWatched,
   onOpen,
   onRemove,
   promptRating = false,
+  showAvailability = false,
+  showCountry = false,
 }: {
+  /* The catalog layer for this title, once it has arrived. */
+  candidate?: TonightCandidate;
   item: MediaItem;
   /* Present only where marking watched is meaningful, which is what enables
      the right-hand tray at all. */
@@ -401,6 +591,8 @@ function MediaRow({
   onOpen: (item: MediaItem) => void;
   onRemove: (item: MediaItem) => void;
   promptRating?: boolean;
+  showAvailability?: boolean;
+  showCountry?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -525,6 +717,10 @@ function MediaRow({
           <span className="row-meta">
             {mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
           </span>
+          {/* Tiles have no room for it, so availability is a list-view line. */}
+          {showAvailability && candidate ? (
+            <AvailabilityLine candidate={candidate} showCountry={showCountry} />
+          ) : null}
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
         </span>

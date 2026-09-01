@@ -296,8 +296,119 @@
 /* One group, one control height: placement and variant carry the difference. */
 .detail-footer-actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
 
+
+/* Filters and the pick, on the page that holds the titles -------------- */
+.library-header-actions { display: flex; align-items: center; gap: 9px; }
+
+/* Moods and genres are one row of pills, not two filters. Each pill carries the
+   number of titles it would leave, and a pill that would leave none is shown
+   disabled rather than hidden: the count is the explanation. */
+.tonight-pills { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 7px; }
+.pill {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: border-color var(--duration), background var(--duration), color var(--duration);
+}
+.pill:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text); }
+.pill:disabled { cursor: default; opacity: 0.45; }
+.pill-count { color: var(--text-faint); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Genres are the finer grain under the moods, so they read one step quieter. */
+.pill-genre { background: transparent; }
+.pill-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-text); }
+.pill-on .pill-count { color: var(--accent-text); }
+.pill-more { border-style: dashed; color: var(--text-faint); }
+.pill-chevron { transition: transform var(--duration); }
+.pill-chevron.open { transform: rotate(180deg); }
+
+.tonight-refine {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.tonight-summary { color: var(--text-faint); font-size: 12px; }
+.tonight-selects { display: flex; align-items: center; gap: 12px; }
+
+/* The picked title ------------------------------------------------------ */
+.tonight-pick {
+  margin-top: 24px;
+  padding: 16px;
+  display: flex;
+  gap: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
+}
+.tonight-pick-poster { width: 94px; height: 141px; flex: 0 0 auto; border-radius: 11px; object-fit: cover; background: var(--surface-strong); }
+.tonight-pick-poster.placeholder { display: grid; place-items: center; color: var(--text-faint); }
+.tonight-pick-copy { min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.tonight-pick h2 { font-size: 21px; line-height: 1.15; letter-spacing: -0.035em; }
+.tonight-pick-actions { margin-top: auto; padding-top: 6px; display: flex; align-items: center; gap: 8px; }
+/* One group, one control height. */
+.tonight-pick-actions .pin-button { width: var(--control-height-sm); height: var(--control-height-sm); }
+
+/* A quiet way to Settings when there is nothing to filter services by. */
+.tonight-setup-link { color: var(--text-faint); font-size: 12px; font-weight: 620; }
+.tonight-setup-link:hover { color: var(--text); }
+
+/* Pills cannot carry honest counts until the catalog layer lands. */
+.pill-skeleton-row { display: flex; gap: 7px; }
+.pill-skeleton-row span { width: 84px; height: 34px; border-radius: var(--radius-pill); background: var(--surface-strong); opacity: 0.7; }
+.pill-skeleton-row span:nth-child(2) { width: 68px; }
+.pill-skeleton-row span:nth-child(3) { width: 96px; }
+.pill-skeleton-row span:nth-child(4) { width: 74px; }
+
+.tonight-services { display: flex; flex-wrap: wrap; gap: 6px; }
+.tonight-service {
+  padding: 3px 9px 3px 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+.tonight-service img { width: 19px; height: 19px; border-radius: 6px; object-fit: cover; background: var(--surface-strong); }
+.tonight-services-more { padding: 3px 9px; color: var(--text-faint); }
+/* A country pill reads as a place, not as a genre. */
+.pill-region { background: transparent; }
+.pill-region .region-mark { color: inherit; font-size: 12px; }
+.tonight-availability { color: var(--text-faint); font-size: 11.5px; }
+
+.empty-inline .btn { margin-top: 14px; }
+
+
+/* The pin is a Tonight idea, but a pinned title says so in the library too. */
+.row-pin { display: inline-flex; flex: 0 0 auto; color: var(--accent-text); }
+
 @media (max-width: 760px) {
   .library-page { padding: 31px 15px 42px; }
+  .library-header-actions { width: 100%; }
+  .library-header-actions .btn { flex: 1; }
+  /* Comfortable thumb targets once the pointer is a finger. */
+  .pill { min-height: 40px; gap: 8px; }
+  .tonight-refine { align-items: flex-start; flex-direction: column-reverse; gap: 12px; }
+  .tonight-selects { width: 100%; flex-wrap: wrap; }
+  .tonight-selects .compact-select-field { flex: 1; }
+  .tonight-pick { padding: 14px; gap: 14px; }
+  .tonight-pick-poster { width: 78px; height: 117px; }
+  .tonight-pick h2 { font-size: 19px; }
+  .tonight-pick-actions { flex-wrap: wrap; }
+
   .library-header { display: block; }
   .library-header > * + * { margin-top: 21px; }
   .library-header h1 { font-size: 31px; }
