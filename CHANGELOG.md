@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.1](https://github.com/raspudic/watchlist/compare/v0.10.0...v0.10.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* publish release commit status ([#64](https://github.com/raspudic/watchlist/issues/64)) ([2eede0f](https://github.com/raspudic/watchlist/commit/2eede0f5ff37745590b9f04da90c3772e0b2792f))
+* serialize release promotion ([#61](https://github.com/raspudic/watchlist/issues/61)) ([2558103](https://github.com/raspudic/watchlist/commit/25581036411f6f29c3908c942f4f541c82ce4f6f))
+* wait for release authorization ([#63](https://github.com/raspudic/watchlist/issues/63)) ([8f21a7f](https://github.com/raspudic/watchlist/commit/8f21a7fcd3755f3d342249a3ea823ead9baf07e2))
+
 ## [0.10.0](https://github.com/raspudic/watchlist/compare/v0.9.0...v0.10.0) (2026-09-01)
 
 
