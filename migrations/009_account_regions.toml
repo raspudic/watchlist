@@ -1,0 +1,61 @@
+# Additive: a new table beside the existing user.region column, which keeps
+# being written with the home country so the previous application version and
+# the session field carry on unchanged.
+[[actions]]
+type = "create_table"
+name = "user_regions"
+primary_key = ["user_id", "region"]
+
+  [[actions.columns]]
+  name = "user_id"
+  type = "TEXT"
+  nullable = false
+
+  [[actions.columns]]
+  name = "region"
+  type = "TEXT"
+  nullable = false
+
+  # 0 is home: the country shown first and mirrored into user.region.
+  [[actions.columns]]
+  name = "position"
+  type = "INTEGER"
+  nullable = false
+  default = "0"
+
+  [[actions.columns]]
+  name = "created_at"
+  type = "TIMESTAMPTZ"
+  nullable = false
+  default = "NOW()"
+
+  # Deleting an account takes its countries with it.
+  [[actions.foreign_keys]]
+  columns = ["user_id"]
+  referenced_table = "user"
+  referenced_columns = ["id"]
+  on_delete = "CASCADE"
+
+[[actions]]
+type = "add_index"
+table = "user_regions"
+
+  [actions.index]
+  name = "user_regions_user_position_idx"
+  columns = ["user_id", "position"]
+
+# Everyone who already chose a country keeps it as home. The primary key makes
+# the insert idempotent, so it runs again at completion to pick up anyone who
+# set a country while the migration was in flight.
+[[actions]]
+type = "custom"
+start = """
+INSERT INTO user_regions (user_id, region, position)
+SELECT id, region, 0 FROM "user" WHERE region ~ '^[A-Z]{2}$'
+ON CONFLICT DO NOTHING
+"""
+complete = """
+INSERT INTO user_regions (user_id, region, position)
+SELECT id, region, 0 FROM "user" WHERE region ~ '^[A-Z]{2}$'
+ON CONFLICT DO NOTHING
+"""
