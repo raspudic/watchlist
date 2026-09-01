@@ -59,7 +59,7 @@ cron "lifecycle-cleanup" {
 cron "catalog-refresh" {
   build    = build.web
   command  = "pnpm refresh:catalog"
-  schedule = "30 2 * * *"
+  schedule = "@hourly"
 
   env = {
     DATABASE_URL      = postgres.main.url

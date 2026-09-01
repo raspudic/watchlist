@@ -24,10 +24,12 @@ export type MediaDetailItem = {
 export function MediaDetailOverview({
   children,
   item,
+  titleActions,
   titleMeta,
 }: {
   children?: ReactNode;
   item: MediaDetailItem;
+  titleActions?: ReactNode;
   titleMeta?: ReactNode;
 }) {
   const poster = posterUrl(item.posterPath, "w342");
@@ -42,7 +44,10 @@ export function MediaDetailOverview({
         )}
         <div className="detail-title-copy">
           <TypeBadge>{mediaLabel(item.mediaType)}</TypeBadge>
-          <SheetTitle className="detail-title">{item.title}</SheetTitle>
+          <div className="detail-title-line">
+            <SheetTitle className="detail-title">{item.title}</SheetTitle>
+            {titleActions}
+          </div>
           {item.releaseYear ? <p className="detail-year">{item.releaseYear}</p> : null}
           {titleMeta}
         </div>

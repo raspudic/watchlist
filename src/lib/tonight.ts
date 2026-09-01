@@ -137,10 +137,6 @@ export function moodFacetKey(id: MoodId): FacetKey {
   return `mood:${id}`;
 }
 
-export function regionFacetKey(code: string): FacetKey {
-  return `region:${code}`;
-}
-
 export function genreFacetKey(id: number): FacetKey {
   return `genre:${id}`;
 }
@@ -151,12 +147,6 @@ function genreIds(candidate: TonightCandidate) {
 
 export function matchesFacet(candidate: TonightCandidate, facet: FacetKey) {
   const ids = genreIds(candidate);
-
-  /* A country pill asks where a title streams, not what it is about. */
-  if (facet.startsWith("region:")) {
-    const code = facet.slice("region:".length);
-    return candidate.streaming.some((provider) => provider.regions.includes(code));
-  }
 
   if (facet.startsWith("genre:")) {
     const id = Number(facet.slice("genre:".length));
@@ -223,21 +213,6 @@ function facetOption(
     count: narrowCandidates(candidates, { ...filters, facets }, selectedProviderIds).length,
     selected,
   };
-}
-
-/**
- * One pill per saved country. Only worth showing with more than one: with a
- * single country the pill would match everything the list already shows.
- */
-export function regionOptions(
-  candidates: TonightCandidate[],
-  filters: TonightFilters,
-  selectedProviderIds: number[],
-  regions: string[],
-): FacetOption[] {
-  if (regions.length < 2) return [];
-  return regions.map((code) =>
-    facetOption(candidates, filters, selectedProviderIds, regionFacetKey(code), code));
 }
 
 export function moodOptions(
@@ -369,9 +344,7 @@ export function readTonightFilters(params: URLSearchParams): TonightFilters {
   const facets = (params.get("pills") ?? "")
     .split(",")
     .map((facet) => facet.trim())
-    .filter((facet) => /^mood:[a-z-]+$/.test(facet)
-      || /^genre:\d+$/.test(facet)
-      || /^region:[A-Z]{2}$/.test(facet));
+    .filter((facet) => /^mood:[a-z-]+$/.test(facet) || /^genre:\d+$/.test(facet));
 
   return {
     services: readOption(params.get("services"), SERVICE_FILTERS, DEFAULT_TONIGHT_FILTERS.services),

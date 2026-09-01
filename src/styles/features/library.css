@@ -111,6 +111,7 @@
 .row-poster.placeholder,
 .detail-poster.placeholder { display: grid; place-items: center; color: var(--text-faint); }
 .row-content { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.media-list .media-row.has-pin .row-content { padding-right: 36px; }
 .row-title-line { display: flex; align-items: center; gap: 8px; }
 .row-title-line strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; font-weight: 620; }
 .row-meta { color: var(--text-faint); font-size: 12px; }
@@ -130,7 +131,10 @@
 .detail-poster { width: 102px; height: 148px; flex: 0 0 auto; border-radius: 11px; object-fit: cover; background: var(--surface-strong); }
 .detail-title-copy { padding-bottom: 4px; }
 .detail-title-copy .badge-type { display: inline-block; margin-bottom: 9px; }
+.detail-title-line { display: flex; align-items: flex-start; gap: 7px; }
 .detail-title { font-size: 25px; line-height: 1.12; letter-spacing: -0.04em; }
+.detail-pin-action { margin-top: -3px; color: var(--text-faint); }
+.detail-pin-action.pinned { color: var(--accent-text); }
 .detail-year { margin-top: 7px; color: var(--text-faint); font-size: 13px; }
 .overview { margin-top: 25px; color: var(--text-soft); font-size: 13.5px; line-height: 1.65; }
 
@@ -326,9 +330,6 @@
 .pill-genre { background: transparent; }
 .pill-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-text); }
 .pill-on .pill-count { color: var(--accent-text); }
-.pill-more { border-style: dashed; color: var(--text-faint); }
-.pill-chevron { transition: transform var(--duration); }
-.pill-chevron.open { transform: rotate(180deg); }
 
 .tonight-refine {
   margin-top: 18px;
@@ -354,7 +355,9 @@
 .tonight-pick-poster { width: 94px; height: 141px; flex: 0 0 auto; border-radius: 11px; object-fit: cover; background: var(--surface-strong); }
 .tonight-pick-poster.placeholder { display: grid; place-items: center; color: var(--text-faint); }
 .tonight-pick-copy { min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.tonight-pick-title { display: flex; align-items: flex-start; gap: 8px; }
 .tonight-pick h2 { font-size: 21px; line-height: 1.15; letter-spacing: -0.035em; }
+.tonight-pick-dismiss { margin: -5px -5px 0 auto; color: var(--text-faint); }
 .tonight-pick-actions { margin-top: auto; padding-top: 6px; display: flex; align-items: center; gap: 8px; }
 /* One group, one control height. */
 .tonight-pick-actions .pin-button { width: var(--control-height-sm); height: var(--control-height-sm); }
@@ -384,16 +387,22 @@
 }
 .tonight-service img { width: 19px; height: 19px; border-radius: 6px; object-fit: cover; background: var(--surface-strong); }
 .tonight-services-more { padding: 3px 9px; color: var(--text-faint); }
-/* A country pill reads as a place, not as a genre. */
-.pill-region { background: transparent; }
-.pill-region .region-mark { color: inherit; font-size: 12px; }
 .tonight-availability { color: var(--text-faint); font-size: 11.5px; }
 
 .empty-inline .btn { margin-top: 14px; }
 
 
-/* A pinned title says so in the list, not only inside the sheet. */
-.row-pin { display: inline-flex; flex: 0 0 auto; color: var(--accent-text); }
+/* A pin is a title-level action, so it sits in the card's upper-right corner
+   beside the title rather than among the sheet's destructive footer actions. */
+.row-pin-action {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 38px;
+  color: var(--text-faint);
+  transition: transform 150ms ease-out, background var(--duration), color var(--duration);
+}
+.row-pin-action.pinned { color: var(--accent-text); }
 
 @media (max-width: 760px) {
   .library-page { padding: 31px 15px 42px; }
