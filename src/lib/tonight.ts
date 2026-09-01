@@ -106,7 +106,7 @@ export type FacetKey = string;
 
 export type MediaTypeFilter = "all" | "movie" | "tv";
 export type RuntimeFilter = "any" | "under-90" | "under-120";
-export type TonightSort = "pinned" | "oldest" | "release" | "score";
+export type TonightSort = "recent" | "oldest" | "release" | "score";
 
 export type TonightFilters = {
   mediaType: MediaTypeFilter;
@@ -120,7 +120,7 @@ export const DEFAULT_TONIGHT_FILTERS: TonightFilters = {
   mediaType: "all",
   runtime: "any",
   facets: [],
-  sort: "pinned",
+  sort: "recent",
 };
 
 export const RUNTIME_LIMITS: Record<RuntimeFilter, number | null> = {
@@ -206,7 +206,13 @@ export function moodOptions(candidates: TonightCandidate[], filters: TonightFilt
 
 /**
  * Only genres someone actually has saved, so the row is a map of this library
- * rather than of TMDB. The list stays put as filters change; counts move.
+ * rather than of TMDB. The biggest genres lead, because behind a disclosure the
+ * first thing revealed should be the one that does the most work.
+ *
+ * What orders the row is not what the pill displays. A pill's number is counted
+ * against whatever else is already on, so ordering by it would reshuffle every
+ * pill on every click. The rank instead comes from a frozen baseline — this tab,
+ * no pills, any length — and so moves only when the tab does.
  */
 export function genreOptions(candidates: TonightCandidate[], filters: TonightFilters): FacetOption[] {
   const names = new Map<number, string>();
@@ -214,9 +220,18 @@ export function genreOptions(candidates: TonightCandidate[], filters: TonightFil
     for (const genre of candidate.genres) if (!names.has(genre.id)) names.set(genre.id, genre.name);
   }
 
+  const baseline: TonightFilters = { ...filters, facets: [], runtime: "any" };
+
   return [...names.entries()]
-    .map(([id, name]) => facetOption(candidates, filters, genreFacetKey(id), name))
-    .sort((left, right) => left.label.localeCompare(right.label));
+    .map(([id, name]) => {
+      const key = genreFacetKey(id);
+      return {
+        option: facetOption(candidates, filters, key, name),
+        rank: narrowCandidates(candidates, { ...baseline, facets: [key] }).length,
+      };
+    })
+    .sort((left, right) => right.rank - left.rank || left.option.label.localeCompare(right.option.label))
+    .map((entry) => entry.option);
 }
 
 export function mediaTypeCounts(candidates: TonightCandidate[], filters: TonightFilters) {
@@ -231,19 +246,14 @@ function releaseKey(candidate: TonightCandidate) {
 }
 
 /** Every comparison ends on the title, so equal rows keep a stable order. */
-export function sortCandidates(candidates: TonightCandidate[], sort: TonightSort) {
-  const byTitle = (left: TonightCandidate, right: TonightCandidate) =>
-    left.item.title.localeCompare(right.item.title) || left.item.id.localeCompare(right.item.id);
+function byTitle(left: TonightCandidate, right: TonightCandidate) {
+  return left.item.title.localeCompare(right.item.title) || left.item.id.localeCompare(right.item.id);
+}
 
+export function sortCandidates(candidates: TonightCandidate[], sort: TonightSort) {
   return [...candidates].sort((left, right) => {
-    if (sort === "pinned") {
-      const pinDifference = Number(Boolean(right.item.pinnedAt)) - Number(Boolean(left.item.pinnedAt));
-      if (pinDifference !== 0) return pinDifference;
-      if (left.item.pinnedAt && right.item.pinnedAt) {
-        const pinnedOrder = Date.parse(right.item.pinnedAt) - Date.parse(left.item.pinnedAt);
-        if (pinnedOrder !== 0) return pinnedOrder;
-      }
-      return Date.parse(left.item.addedAt) - Date.parse(right.item.addedAt) || byTitle(left, right);
+    if (sort === "recent") {
+      return Date.parse(right.item.addedAt) - Date.parse(left.item.addedAt) || byTitle(left, right);
     }
 
     if (sort === "oldest") {
@@ -260,6 +270,23 @@ export function sortCandidates(candidates: TonightCandidate[], sort: TonightSort
       || (right.voteCount ?? 0) - (left.voteCount ?? 0)
       || byTitle(left, right);
   });
+}
+
+/**
+ * Pinning is a state, not one ordering among several: pinned titles lead the
+ * list under every sort, and the sort control governs only what is left. Their
+ * own order is the pinning itself, most recent first.
+ */
+export function partitionPinned(candidates: TonightCandidate[], sort: TonightSort) {
+  const pinned = candidates.filter((candidate) => candidate.item.pinnedAt);
+  const rest = candidates.filter((candidate) => !candidate.item.pinnedAt);
+
+  return {
+    pinned: pinned.sort((left, right) =>
+      Date.parse(right.item.pinnedAt ?? "") - Date.parse(left.item.pinnedAt ?? "")
+      || byTitle(left, right)),
+    rest: sortCandidates(rest, sort),
+  };
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -305,7 +332,7 @@ export function rememberPick(recentIds: string[], id: string) {
 
 const MEDIA_TYPE_FILTERS: MediaTypeFilter[] = ["all", "movie", "tv"];
 const RUNTIME_FILTERS: RuntimeFilter[] = ["any", "under-90", "under-120"];
-const SORTS: TonightSort[] = ["pinned", "oldest", "release", "score"];
+const SORTS: TonightSort[] = ["recent", "oldest", "release", "score"];
 
 function readOption<T extends string>(value: string | null, allowed: T[], fallback: T): T {
   return allowed.includes((value ?? "") as T) ? (value as T) : fallback;

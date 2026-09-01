@@ -29,7 +29,7 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
-import { PickCard, WatchlistFilters } from "@/components/watchlist-filters";
+import { PickCard, ScoreMark, WatchlistFilters, candidateMeta, runtimeLabel } from "@/components/watchlist-filters";
 import { MediaDetailOverview } from "@/components/media/media-detail-overview";
 import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
@@ -65,10 +65,10 @@ import {
   buildCandidates,
   mediaTypeCounts,
   narrowCandidates,
+  partitionPinned,
   pickCandidate,
   readTonightFilters,
   rememberPick,
-  sortCandidates,
   tonightFilterQuery,
 } from "@/lib/tonight";
 import type { WatchlistExtrasResponse } from "@/lib/tonight";
@@ -337,9 +337,12 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const active: TonightFilters = filters;
 
   const candidates = watchlist ? buildCandidates(items, extras?.titles ?? []) : [];
-  const narrowed = watchlist
-    ? sortCandidates(narrowCandidates(candidates, active), active.sort)
-    : [];
+  /* Filters speak for the whole list, so a pinned title that does not match is
+     gone like any other; the sort speaks only for what is left unpinned. */
+  const { pinned, rest } = watchlist
+    ? partitionPinned(narrowCandidates(candidates, active), active.sort)
+    : { pinned: [], rest: [] };
+  const narrowed = [...pinned, ...rest];
   const visibleItems = watchlist
     ? narrowed.map((candidate) => candidate.item)
     : active.mediaType === "all" ? items : items.filter((item) => item.mediaType === active.mediaType);
@@ -376,6 +379,21 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
     if (!choice) return;
     setPickedId(choice.item.id);
     setRecentIds((current) => rememberPick(current, choice.item.id));
+  }
+
+  function watchlistRow(candidate: TonightCandidate) {
+    return (
+      <MediaRow
+        candidate={candidate}
+        item={candidate.item}
+        key={candidate.item.id}
+        onMarkWatched={markWatched}
+        onOpen={setSelected}
+        onRemove={removeItem}
+        onTogglePin={togglePin}
+        pinning={pinningId === candidate.item.id}
+      />
+    );
   }
 
   async function togglePin(candidate: TonightCandidate) {
@@ -483,20 +501,16 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
           {watchlist && !waitingOnExtras && narrowed.length > 0 ? (
             <section aria-label="Watchlist titles" className="media-section">
-              <div className={listClass}>
-                {narrowed.map((candidate) => (
-                  <MediaRow
-                    candidate={candidate}
-                    item={candidate.item}
-                    key={candidate.item.id}
-                    onMarkWatched={markWatched}
-                    onOpen={setSelected}
-                    onRemove={removeItem}
-                    onTogglePin={togglePin}
-                    pinning={pinningId === candidate.item.id}
-                  />
-                ))}
-              </div>
+              {/* Pinned titles lead in the same cards as everything else — the
+                  layout toggle still decides the shape. Only a firmer edge and a
+                  step of space separate them; a divider would claim this is a
+                  second list when it is the top of one. */}
+              {pinned.length > 0 ? (
+                <div aria-label="Pinned" className={`${listClass} media-pinned`} role="group">
+                  {pinned.map(watchlistRow)}
+                </div>
+              ) : null}
+              {rest.length > 0 ? <div className={listClass}>{rest.map(watchlistRow)}</div> : null}
             </section>
           ) : null}
 
@@ -532,6 +546,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
       {detailItem ? (
         <DetailSheet
+          candidate={candidates.find((entry) => entry.item.id === detailItem.id) ?? null}
           item={detailItem}
           key={detailItem.id}
           onClose={closeDetail}
@@ -681,8 +696,14 @@ function MediaRow({
             <strong>{item.title}</strong>
             {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
           </span>
+          {/* Length filters on runtime and "Highest score" sorts on the rating,
+              so a watchlist row carries both rather than leaving the controls
+              acting on numbers that are nowhere on screen. */}
           <span className="row-meta">
-            {mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
+            {candidate
+              ? candidateMeta(candidate)
+              : mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
+            {candidate ? <ScoreMark candidate={candidate} /> : null}
           </span>
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
@@ -716,11 +737,14 @@ type NoteField = "watchlistNote" | "reviewNote";
    open and turns it into the logging step, because deciding you have finished
    a film and deciding what you made of it are the same moment. */
 function DetailSheet({
+  candidate,
   item,
   onClose,
   onRemove,
   onUpdate,
 }: {
+  /* Null for a watched title, and for a saved one the catalog has not reached. */
+  candidate: TonightCandidate | null;
   item: MediaItem;
   onClose: () => void;
   onRemove: (item: MediaItem) => void;
@@ -898,7 +922,15 @@ function DetailSheet({
               <Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} size={16} />
             </IconButton>
           )}
-          titleMeta={watched ? (
+          titleMeta={!watched && candidate ? (
+            /* The one place the score is named rather than just shown: a row has
+               no space to say whose rating it is. */
+            /* The hero already carries the year and the type badge. */
+            <p className="detail-score">
+              {runtimeLabel(candidate.runtimeMinutes)}
+              <ScoreMark candidate={candidate} votes />
+            </p>
+          ) : watched ? (
             <>
               {editingDate ? (
                 <input

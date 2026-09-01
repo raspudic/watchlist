@@ -3,7 +3,8 @@
 /* TMDB logos are already sized at the CDN; a plain image avoids image-proxy overhead. */
 /* eslint-disable @next/next/no-img-element */
 
-import { Clapperboard, Pin, Shuffle, Star, X } from "lucide-react";
+import { ChevronDown, Clapperboard, Pin, Shuffle, Star, X } from "lucide-react";
+import { useState } from "react";
 
 import { RegionMark } from "@/components/region-select";
 import { Button, IconButton } from "@/components/ui/button";
@@ -24,9 +25,11 @@ const RUNTIME_LABELS: Array<{ label: string; value: RuntimeFilter }> = [
   { label: "Under 2 hours", value: "under-120" },
 ];
 
+/* Pinned titles lead the list under every one of these, so pinning is not among
+   them: the control orders what is left. */
 const SORT_LABELS: Array<{ label: string; value: TonightSort }> = [
-  { label: "Pinned first", value: "pinned" },
-  { label: "Oldest saved", value: "oldest" },
+  { label: "Recently added", value: "recent" },
+  { label: "Longest waiting", value: "oldest" },
   { label: "Newest release", value: "release" },
   { label: "Highest score", value: "score" },
 ];
@@ -37,6 +40,24 @@ export function runtimeLabel(minutes: number | null) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/**
+ * TMDB's user rating, wherever a title is shown. "Highest score" sorts on this,
+ * so it has to be legible somewhere other than the sort menu. The outline star
+ * keeps it apart from a viewer's own rating, which is a filled star on a badge.
+ */
+export function ScoreMark({ candidate, votes = false }: { candidate: TonightCandidate; votes?: boolean }) {
+  if (!candidate.voteAverage) return null;
+
+  return (
+    <span className="tonight-score" title="TMDB rating">
+      <Star aria-hidden="true" size={12} /> {candidate.voteAverage.toFixed(1)}
+      {votes && candidate.voteCount
+        ? <span className="score-votes">on TMDB · {candidate.voteCount.toLocaleString()} votes</span>
+        : null}
+    </span>
+  );
 }
 
 export function candidateMeta(candidate: TonightCandidate) {
@@ -50,6 +71,11 @@ export function candidateMeta(candidate: TonightCandidate) {
 /**
  * Moods and genres are one row of pills, not two filters. Every visible pill
  * carries the number of titles it would leave.
+ *
+ * The seven moods are always out; the genres under them fold behind a
+ * disclosure, because a real watchlist surfaces twenty of them and four rows of
+ * pills push the list itself off the first screen. A genre already switched on
+ * stays out while collapsed, so the row never hides a filter that is working.
  */
 export function WatchlistFilters({
   candidates,
@@ -67,9 +93,12 @@ export function WatchlistFilters({
   ready: boolean;
   resultCount: number;
 }) {
+  const [showGenres, setShowGenres] = useState(false);
   const moods = ready ? moodOptions(candidates, filters) : [];
   const visibleMoods = moods.filter((mood) => mood.count > 0 || mood.selected);
   const genres = ready ? genreOptions(candidates, filters) : [];
+  const visibleGenres = showGenres ? genres : genres.filter((genre) => genre.selected);
+  const hiddenGenres = genres.length - visibleGenres.length;
   /* A watchlist the catalog has not reached yet has nothing to filter by, and
      a row of dead pills would say less than no row at all. */
   const hasFacets = genres.length > 0 || visibleMoods.length > 0;
@@ -91,7 +120,21 @@ export function WatchlistFilters({
           {ready ? (
             <>
               {visibleMoods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
-              {genres.map((option) => (
+              {genres.length > 0 ? (
+                <button
+                  aria-expanded={showGenres}
+                  className="pill pill-more"
+                  onClick={() => setShowGenres(!showGenres)}
+                  type="button"
+                >
+                  Genres
+                  {/* Not a count of titles like every other pill, but of what is
+                      still folded away; the chevron is what says so. */}
+                  {hiddenGenres > 0 ? <span className="pill-count">{hiddenGenres}</span> : null}
+                  <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
+                </button>
+              ) : null}
+              {visibleGenres.map((option) => (
                 <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
               ))}
             </>
@@ -242,9 +285,7 @@ export function PickCard({
         </div>
         <p className="row-meta">
           {candidateMeta(candidate)}
-          {candidate.voteAverage ? (
-            <span className="tonight-score"><Star aria-hidden="true" size={12} /> {candidate.voteAverage.toFixed(1)}</span>
-          ) : null}
+          <ScoreMark candidate={candidate} />
         </p>
         {candidate.streaming.length > 0 ? (
           <ProviderChips providers={candidate.streaming} showCountry={showCountry} />
