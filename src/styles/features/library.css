@@ -392,7 +392,7 @@
 .empty-inline .btn { margin-top: 14px; }
 
 
-/* The pin is a Tonight idea, but a pinned title says so in the library too. */
+/* A pinned title says so in the list, not only inside the sheet. */
 .row-pin { display: inline-flex; flex: 0 0 auto; color: var(--accent-text); }
 
 @media (max-width: 760px) {
