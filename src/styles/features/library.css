@@ -338,6 +338,7 @@
   justify-content: space-between;
   gap: 16px;
 }
+.tonight-count { display: flex; align-items: center; gap: 12px; }
 .tonight-summary { color: var(--text-faint); font-size: 12px; }
 .tonight-selects { display: flex; align-items: center; gap: 12px; }
 
@@ -425,6 +426,7 @@
   /* Comfortable thumb targets once the pointer is a finger. */
   .pill { min-height: 40px; gap: 8px; }
   .tonight-refine { align-items: flex-start; flex-direction: column-reverse; gap: 12px; }
+  .tonight-count { width: 100%; justify-content: space-between; }
   .tonight-selects { width: 100%; flex-wrap: wrap; }
   .tonight-selects .compact-select-field { flex: 1; }
   .tonight-pick { padding: 14px; gap: 14px; }
