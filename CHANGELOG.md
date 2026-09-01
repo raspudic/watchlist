@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://github.com/raspudic/watchlist/compare/v0.7.0...v0.8.0) (2026-09-01)
+
+
+### Features
+
+* add catalog and streaming preferences ([#50](https://github.com/raspudic/watchlist/issues/50)) ([6d08949](https://github.com/raspudic/watchlist/commit/6d08949d2c6feac38ea7af2149805d10f8044b59))
+* add Tonight recommendations ([#51](https://github.com/raspudic/watchlist/issues/51)) ([f4a08dd](https://github.com/raspudic/watchlist/commit/f4a08dd9c50cf0ad6abf7ee6eeddfff4894b8f3a))
+* add viewing insights and annual recap ([#53](https://github.com/raspudic/watchlist/issues/53)) ([d4e36a4](https://github.com/raspudic/watchlist/commit/d4e36a43573a318886d04312e220a6a4d33ab224))
+* link out to IMDb, TMDB and Letterboxd ([#48](https://github.com/raspudic/watchlist/issues/48)) ([404a40b](https://github.com/raspudic/watchlist/commit/404a40b75cc15e7652b0116d16591e8729d3212b))
+* preserve watch history ([#52](https://github.com/raspudic/watchlist/issues/52)) ([4fdd9fb](https://github.com/raspudic/watchlist/commit/4fdd9fb1a518f58f861a4d88368bd7f6e2f43e0f))
+
 ## [0.7.0](https://github.com/raspudic/watchlist/compare/v0.6.0...v0.7.0) (2026-08-26)
 
 
