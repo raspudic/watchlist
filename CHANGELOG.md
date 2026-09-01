@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/raspudic/watchlist/compare/v0.9.0...v0.10.0) (2026-09-01)
+
+
+### Features
+
+* simplify streaming service filters ([#59](https://github.com/raspudic/watchlist/issues/59)) ([2779272](https://github.com/raspudic/watchlist/commit/2779272db908644bfba270ecef14b1a292e2ec23))
+
 ## [0.9.0](https://github.com/raspudic/watchlist/compare/v0.8.0...v0.9.0) (2026-09-01)
 
 
