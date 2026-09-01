@@ -398,7 +398,8 @@
 @media (max-width: 760px) {
   .library-page { padding: 31px 15px 42px; }
   .library-header-actions { width: 100%; }
-  .library-header-actions .btn { flex: 1; }
+  /* The add group takes the rest of the line; the pick keeps its own width. */
+  .library-header-actions .add-actions { width: auto; flex: 1; }
   /* Comfortable thumb targets once the pointer is a finger. */
   .pill { min-height: 40px; gap: 8px; }
   .tonight-refine { align-items: flex-start; flex-direction: column-reverse; gap: 12px; }
