@@ -248,7 +248,8 @@ function Summary({ recap, summary }: { recap: boolean; summary: InsightsSummary 
 function Stat({ hint, label, value }: { hint: string; label: string; value: number | string }) {
   return (
     <div className="insights-stat">
-      <p className="insights-stat-value">{value}</p>
+      {/* A word like "September" does not belong at the size a count reads at. */}
+      <p className={typeof value === "number" ? "insights-stat-value" : "insights-stat-value words"}>{value}</p>
       <p className="insights-stat-label">{label}</p>
       <p className="insights-stat-hint">{hint}</p>
     </div>
