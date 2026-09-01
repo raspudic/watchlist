@@ -61,7 +61,21 @@ jobs:
 
       - name: Promote release to production
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        run: git push origin HEAD:refs/heads/release
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if output=$(git push origin HEAD:refs/heads/release 2>&1); then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+            fi
+
+            printf '%s\n' "$output"
+            if [[ "$output" != *'Required status check "Released" is expected.'* ]] || (( attempt == 5 )); then
+              exit "$status"
+            fi
+            sleep 5
+          done
 
   recover:
     name: Recover published release
@@ -134,4 +148,18 @@ jobs:
             });
 
       - name: Promote release to production
-        run: git push origin HEAD:refs/heads/release
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if output=$(git push origin HEAD:refs/heads/release 2>&1); then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+            fi
+
+            printf '%s\n' "$output"
+            if [[ "$output" != *'Required status check "Released" is expected.'* ]] || (( attempt == 5 )); then
+              exit "$status"
+            fi
+            sleep 5
+          done
