@@ -328,6 +328,11 @@
 .pill-count { color: var(--text-faint); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Genres are the finer grain under the moods, so they read one step quieter. */
 .pill-genre { background: transparent; }
+/* The disclosure is not a filter, so it never takes the "on" ground; its number
+   counts folded-away pills rather than titles, and the chevron says which. */
+.pill-more { color: var(--text-soft); }
+.pill-chevron { color: var(--text-faint); transition: transform var(--duration); }
+.pill-chevron.open { transform: rotate(180deg); }
 .pill-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-text); }
 .pill-on .pill-count { color: var(--accent-text); }
 
@@ -368,6 +373,19 @@
 .pill-skeleton-row span:nth-child(2) { width: 68px; }
 .pill-skeleton-row span:nth-child(3) { width: 96px; }
 .pill-skeleton-row span:nth-child(4) { width: 74px; }
+
+/* Pinned titles lead the list in the same cards the rest use, so the layout
+   toggle still decides the shape. A firmer edge and a step of space do the
+   grouping; a divider would read as a second list rather than the top of one. */
+.media-pinned .swipe-row { border-color: var(--line-strong); }
+.media-pinned + .media-list,
+.media-pinned + .media-grid { margin-top: 22px; }
+
+/* The rating sits in the meta line, so it inherits its size and only the star
+   and the tabular figures set it apart. */
+.tonight-score { margin-left: 7px; display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.score-votes { margin-left: 2px; color: var(--text-faint); }
+.detail-score { margin-top: 4px; display: flex; align-items: center; gap: 8px; color: var(--text-soft); font-size: 12.5px; }
 
 .tonight-services { display: flex; flex-wrap: wrap; gap: 6px; }
 .tonight-service {
@@ -437,6 +455,8 @@
   .library-header h1 { font-size: 31px; }
   .library-subtitle { font-size: 13px; }
 
+  .media-pinned + .media-list,
+  .media-pinned + .media-grid { margin-top: 18px; }
   .media-section { margin-top: 25px; }
   .media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .media-grid .row-content { padding: 10px 10px 12px; }

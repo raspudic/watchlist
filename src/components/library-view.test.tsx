@@ -330,9 +330,14 @@ describe("LibraryView watchlist mode", () => {
     await waitForExtrasReady();
 
     expect(screen.queryByRole("button", { name: /^Suspenseful/ })).not.toBeInTheDocument();
+    /* Genres fold away behind the disclosure until it is opened. */
+    expect(screen.queryByRole("button", { name: /^Comedy/ })).not.toBeInTheDocument();
+    const genres = screen.getByRole("button", { name: /^Genres/ });
+    expect(genres).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(genres);
     expect(screen.getByRole("button", { name: /^Comedy/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Drama/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Genres" })).not.toBeInTheDocument();
 
     const funny = screen.getByRole("button", { name: /^Funny/ });
     expect(funny).not.toBeDisabled();
@@ -472,6 +477,55 @@ describe("LibraryView watchlist mode", () => {
       "/api/items/item-1",
       expect.objectContaining({ body: JSON.stringify({ pinned: true }) }),
     );
+  });
+
+  /* Pinning is a state, not a sort: it must survive a change of ordering. */
+  it("keeps pinned titles in their own group at the top under every sort", async () => {
+    const items = [
+      makeWatchlistItem({ id: "item-1", title: "Unpinned One", addedAt: "2026-08-01T00:00:00.000Z" }),
+      makeWatchlistItem({ id: "item-2", title: "Held", addedAt: "2026-08-02T00:00:00.000Z", pinnedAt: "2026-08-20T00:00:00.000Z" }),
+      makeWatchlistItem({ id: "item-3", title: "Unpinned Two", addedAt: "2026-08-03T00:00:00.000Z" }),
+    ];
+    stubWatchlistFetch({ items });
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: "View Held" });
+    await waitForExtrasReady();
+
+    const group = screen.getByRole("group", { name: "Pinned" });
+    expect(within(group).getByRole("button", { name: "View Held" })).toBeInTheDocument();
+    expect(within(group).queryByRole("button", { name: "View Unpinned One" })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "release" } });
+    expect(within(screen.getByRole("group", { name: "Pinned" })).getByRole("button", { name: "View Held" }))
+      .toBeInTheDocument();
+  });
+
+  /* A filter speaks for the whole list, so a pin is no exemption from it. */
+  it("filters pinned titles out like any other when they do not match", async () => {
+    const items = [
+      makeWatchlistItem({ id: "item-1", title: "Pinned Drama", pinnedAt: "2026-08-20T00:00:00.000Z" }),
+      makeWatchlistItem({ id: "item-2", title: "Plain Comedy" }),
+    ];
+    stubWatchlistFetch({
+      items,
+      extras: makeExtrasResponse({
+        titles: [
+          makeTitleExtras({ mediaItemId: "item-1", genres: [{ id: 18, name: "Drama" }] }),
+          makeTitleExtras({ mediaItemId: "item-2", genres: [{ id: 35, name: "Comedy" }] }),
+        ],
+      }),
+    });
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: "View Pinned Drama" });
+    await waitForExtrasReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Funny/ }));
+
+    expect(screen.queryByRole("group", { name: "Pinned" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Pinned Drama" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Plain Comedy" })).toBeInTheDocument();
   });
 
   it("pins a title from its sheet and says so plainly", async () => {

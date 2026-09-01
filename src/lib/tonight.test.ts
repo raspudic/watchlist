@@ -12,6 +12,7 @@ import {
   pickCandidate,
   readTonightFilters,
   rememberPick,
+  partitionPinned,
   sortCandidates,
   type TonightCandidate,
   type TonightFilters,
@@ -128,11 +129,21 @@ describe("facet options", () => {
     expect(byId["mood:funny"].count).toBe(0);
   });
 
-  it("offers only the genres that are actually saved, in alphabetical order", () => {
+  it("offers only the genres that are actually saved, biggest first", () => {
     const options = genreOptions(candidates, filters());
 
-    expect(options.map((option) => option.label)).toEqual(["Comedy", "Drama", "Horror"]);
-    expect(options.map((option) => option.count)).toEqual([1, 2, 1]);
+    expect(options.map((option) => option.label)).toEqual(["Drama", "Comedy", "Horror"]);
+    expect(options.map((option) => option.count)).toEqual([2, 1, 1]);
+  });
+
+  /* Ranking on the displayed count would move every pill on every click, since
+     each count is measured against whatever else is on. */
+  it("keeps genre order still while pills are toggled", () => {
+    const order = (active: string[]) =>
+      genreOptions(candidates, filters({ facets: active })).map((option) => option.label);
+
+    expect(order(["genre:27"])).toEqual(order([]));
+    expect(order(["mood:funny"])).toEqual(order([]));
   });
 
   it("counts each media type with the other filters still applied", () => {
@@ -146,23 +157,12 @@ describe("facet options", () => {
 describe("sortCandidates", () => {
   const older = candidate("older", { item: { title: "Older", addedAt: new Date(NOW - 40 * DAY).toISOString() } });
   const newer = candidate("newer", { item: { title: "Newer", addedAt: new Date(NOW - DAY).toISOString() } });
-  const pinned = candidate("pinned", {
-    item: {
-      title: "Pinned",
-      addedAt: new Date(NOW - 2 * DAY).toISOString(),
-      pinnedAt: new Date(NOW - 60 * 1000).toISOString(),
-    },
-  });
-
-  it("puts pinned titles first, then the longest-waiting", () => {
-    expect(sortCandidates([newer, older, pinned], "pinned").map((entry) => entry.item.id))
-      .toEqual(["pinned", "older", "newer"]);
-  });
 
   it("sorts by saved date, newest release and score", () => {
     const old = candidate("old", { releaseDate: "1999-03-31", voteAverage: 8.2, voteCount: 100 });
     const recent = candidate("recent", { releaseDate: "2025-11-02", voteAverage: 6.4, voteCount: 100 });
 
+    expect(sortCandidates([older, newer], "recent").map((entry) => entry.item.id)).toEqual(["newer", "older"]);
     expect(sortCandidates([newer, older], "oldest").map((entry) => entry.item.id)).toEqual(["older", "newer"]);
     expect(sortCandidates([old, recent], "release").map((entry) => entry.item.id)).toEqual(["recent", "old"]);
     expect(sortCandidates([recent, old], "score").map((entry) => entry.item.id)).toEqual(["old", "recent"]);
@@ -182,6 +182,43 @@ describe("sortCandidates", () => {
 
     expect(sortCandidates([undated, dated], "release").map((entry) => entry.item.id))
       .toEqual(["dated", "undated"]);
+  });
+});
+
+describe("partitionPinned", () => {
+  const older = candidate("older", { item: { title: "Older", addedAt: new Date(NOW - 40 * DAY).toISOString() } });
+  const newer = candidate("newer", { item: { title: "Newer", addedAt: new Date(NOW - DAY).toISOString() } });
+  const pinned = candidate("pinned", {
+    item: {
+      title: "Pinned",
+      addedAt: new Date(NOW - 2 * DAY).toISOString(),
+      pinnedAt: new Date(NOW - 60 * 1000).toISOString(),
+    },
+  });
+
+  /* Pinning is a state, not one ordering among several: the sort control must
+     not be able to scatter a pin back into the list. */
+  it("holds pinned titles at the top under every sort", () => {
+    for (const sort of ["recent", "oldest", "release", "score"] as const) {
+      expect(partitionPinned([newer, older, pinned], sort).pinned.map((entry) => entry.item.id))
+        .toEqual(["pinned"]);
+    }
+  });
+
+  it("orders pinned titles by when they were pinned, most recent first", () => {
+    const earlier = candidate("earlier", {
+      item: { title: "Earlier", pinnedAt: new Date(NOW - 5 * DAY).toISOString() },
+    });
+
+    expect(partitionPinned([earlier, pinned], "recent").pinned.map((entry) => entry.item.id))
+      .toEqual(["pinned", "earlier"]);
+  });
+
+  it("leaves the sort to govern what is left", () => {
+    expect(partitionPinned([newer, older, pinned], "oldest").rest.map((entry) => entry.item.id))
+      .toEqual(["older", "newer"]);
+    expect(partitionPinned([older, newer, pinned], "recent").rest.map((entry) => entry.item.id))
+      .toEqual(["newer", "older"]);
   });
 });
 
