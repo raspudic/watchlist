@@ -715,7 +715,7 @@ function MediaRow({
             {item.pinnedAt && item.status === "watchlist" ? (
               <span className="row-pin">
                 <Pin aria-hidden="true" fill="currentColor" size={13} />
-                <span className="sr-only">Pinned for tonight</span>
+                <span className="sr-only">Pinned</span>
               </span>
             ) : null}
             {item.rating !== null ? <Badge tone="accent"><Star size={13} fill="currentColor" /> {item.rating}</Badge> : null}
@@ -1030,7 +1030,7 @@ function DetailSheet({
               variant="quiet"
             >
               <Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} size={15} />
-              {pinned ? "Pinned for tonight" : "Pin for tonight"}
+              {pinned ? "Pinned" : "Pin"}
             </Button>
           )}
           {watched ? (
