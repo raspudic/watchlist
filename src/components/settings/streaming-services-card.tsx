@@ -3,7 +3,7 @@
 /* Provider logos are already sized at the TMDB CDN; a plain image avoids image-proxy overhead. */
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CheckboxField, TextField } from "@/components/ui/field";
@@ -44,6 +44,7 @@ export function StreamingServicesCard() {
   const [loadError, setLoadError] = useState<{ message: string; region: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!region) {
@@ -114,6 +115,14 @@ export function StreamingServicesCard() {
       else next.delete(id);
       return next;
     });
+
+    /* Acting on a search result means you are done with that search. Clearing
+       it hands back the whole list, with the choice you just made on top, and
+       the field keeps focus so the next service can be typed straight away. */
+    if (query) {
+      setQuery("");
+      searchRef.current?.focus();
+    }
   }
 
   const currentLoadError = region && loadError?.region === region ? loadError.message : "";
@@ -146,6 +155,7 @@ export function StreamingServicesCard() {
           <TextField
             label="Find a service"
             onChange={(event) => setQuery(event.target.value)}
+            ref={searchRef}
             placeholder="Netflix, Max, Disney+…"
             type="search"
             value={query}

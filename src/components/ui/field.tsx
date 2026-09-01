@@ -32,7 +32,7 @@ export function TextField({
   label,
   optional,
   ...control
-}: Shared & ComponentPropsWithoutRef<"input">) {
+}: Shared & ComponentPropsWithRef<"input">) {
   return (
     <Shell description={description} error={error} label={label} optional={optional}>
       <Field.Control className="field-control" {...control} />

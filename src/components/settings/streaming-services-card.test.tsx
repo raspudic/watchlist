@@ -71,6 +71,25 @@ describe("StreamingServicesCard", () => {
     expect(await screen.findByText("Streaming services updated.")).toBeInTheDocument();
   });
 
+  it("clears the search when a result is ticked, so the next one can be typed", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(
+      Response.json({ region: "SE", providers, selectedProviderIds: [] }),
+    )));
+
+    renderCard();
+
+    const search = await screen.findByLabelText("Find a service");
+    fireEvent.change(search, { target: { value: "Disney" } });
+    expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Disney Plus"));
+
+    expect(search).toHaveValue("");
+    expect(search).toHaveFocus();
+    expect(screen.getByText("Netflix")).toBeInTheDocument();
+    expect(screen.getByText("1 service selected")).toBeInTheDocument();
+  });
+
   it("keeps a useful error when provider loading fails", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json(
       { error: "Streaming services are unavailable right now." },
