@@ -6,7 +6,7 @@ import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api
 import { getRequestUserId } from "@/lib/api-auth";
 import { validateStateChangingApiRequest } from "@/lib/api-request-security";
 import { db } from "@/lib/db/client";
-import { mediaItems } from "@/lib/db/schema";
+import { mediaItems, watchEvents } from "@/lib/db/schema";
 import { createMediaItemSchema, itemStatusSchema } from "@/lib/media-validation";
 
 export const dynamic = "force-dynamic";
@@ -107,29 +107,43 @@ export async function POST(request: Request) {
     }
 
     /* Re-adding a removed title is a fresh save, not a restore — Undo is the
-       restore, and it goes through PATCH. So the row keeps its id and its
-       viewing history, and everything the reader had written about it goes:
-       the note reads as much like stale data as the rating beside it, and a
-       title saved years ago and re-added today is a save from today. */
-    const [item] = await db
-      .update(mediaItems)
-      .set({
-        status: "watchlist",
-        watchedAt: null,
-        pinnedAt: null,
-        rating: null,
-        reviewNote: null,
-        watchlistNote: input.watchlistNote ?? null,
-        addedAt: new Date(),
-        title: input.title,
-        originalTitle: input.originalTitle ?? null,
-        releaseYear: input.releaseYear ?? null,
-        posterPath: provider === "tmdb" ? input.posterPath ?? null : null,
-        overview: input.overview ?? null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(mediaItems.id, existing[0].id), eq(mediaItems.userId, userId)))
-      .returning();
+       restore, and it goes through PATCH. So everything the row had said about
+       having been watched goes with it: the rating, the review, the note, the
+       save date, and the viewing history behind them.
+       Leaving the history was the one inconsistency: the row forgot it had
+       ever been watched while `watch_events` still remembered, which put a
+       deleted title's viewings back into insights the moment it was re-added.
+       One transaction, so the row and its history never disagree. */
+    const item = await db.transaction(async (transaction) => {
+      await transaction
+        .delete(watchEvents)
+        .where(and(
+          eq(watchEvents.mediaItemId, existing[0].id),
+          eq(watchEvents.userId, userId),
+        ));
+
+      const [updated] = await transaction
+        .update(mediaItems)
+        .set({
+          status: "watchlist",
+          watchedAt: null,
+          pinnedAt: null,
+          rating: null,
+          reviewNote: null,
+          watchlistNote: input.watchlistNote ?? null,
+          addedAt: new Date(),
+          title: input.title,
+          originalTitle: input.originalTitle ?? null,
+          releaseYear: input.releaseYear ?? null,
+          posterPath: provider === "tmdb" ? input.posterPath ?? null : null,
+          overview: input.overview ?? null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(mediaItems.id, existing[0].id), eq(mediaItems.userId, userId)))
+        .returning();
+
+      return updated;
+    });
 
     return NextResponse.json({ item, readded: true });
   }
