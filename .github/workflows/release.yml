@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release tag to recover and promote
+        required: true
+        type: string
+
+concurrency:
+  group: release-production
+  cancel-in-progress: false
 
 permissions:
   checks: write
@@ -14,6 +24,7 @@ permissions:
 jobs:
   release:
     name: Release
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Prepare or publish release
@@ -50,4 +61,77 @@ jobs:
 
       - name: Promote release to production
         if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: git push origin HEAD:refs/heads/release
+
+  recover:
+    name: Recover published release
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve published release
+        id: release
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG.trim();
+            if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
+              core.setFailed("Use a stable semantic-version tag such as v0.10.0.");
+              return;
+            }
+
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              ...context.repo,
+              tag,
+            });
+            if (release.draft || release.prerelease) {
+              core.setFailed(`${tag} is not a published stable release.`);
+              return;
+            }
+
+            const { data: commit } = await github.rest.repos.getCommit({
+              ...context.repo,
+              ref: tag,
+            });
+            if (release.target_commitish !== commit.sha) {
+              core.setFailed(`${tag} does not target its tagged commit exactly.`);
+              return;
+            }
+
+            core.setOutput("sha", commit.sha);
+
+      - name: Check out released commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.release.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Verify release belongs on main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Authorize production promotion
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        with:
+          script: |
+            await github.rest.checks.create({
+              ...context.repo,
+              name: "Released",
+              head_sha: process.env.RELEASE_SHA,
+              status: "completed",
+              conclusion: "success",
+              output: {
+                title: "Published GitHub release recovered",
+                summary: "This exact released commit is authorized for production promotion.",
+              },
+            });
+
+      - name: Promote release to production
         run: git push origin HEAD:refs/heads/release
