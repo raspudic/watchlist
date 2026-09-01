@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LibraryCacheProvider } from "@/components/library-cache-provider";
@@ -11,6 +11,8 @@ import { ToastProvider } from "@/components/ui/toast";
 import { clearLibraryCache } from "@/lib/library-cache";
 import type { MediaItem } from "@/lib/library-cache";
 import { watchedChipLabel } from "@/lib/media-display";
+import type { TitleExtras, WatchlistExtrasResponse } from "@/lib/tonight";
+import { clearWatchlistExtras } from "@/lib/watchlist-extras-cache";
 import type { WatchEventRecord } from "@/lib/watch-history";
 
 const mocks = vi.hoisted(() => ({
@@ -206,5 +208,274 @@ describe("LibraryView DetailSheet watched-date edit", () => {
     const body = JSON.parse(String(patchCall?.[1]?.body)) as { watchedAt: string; watchedOn: string };
     expect(body.watchedOn).toBe("2026-08-15");
     expect(typeof body.watchedAt).toBe("string");
+  });
+});
+
+function makeWatchlistItem(overrides: Partial<MediaItem> = {}): MediaItem {
+  return makeItem({
+    status: "watchlist",
+    watchedAt: null,
+    ...overrides,
+  });
+}
+
+function makeTitleExtras(overrides: Partial<TitleExtras> = {}): TitleExtras {
+  return {
+    mediaItemId: "item-1",
+    genres: [],
+    runtimeMinutes: null,
+    voteAverage: null,
+    voteCount: null,
+    releaseDate: null,
+    streaming: [],
+    availabilityCheckedAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function makeExtrasResponse(overrides: Partial<WatchlistExtrasResponse> = {}): WatchlistExtrasResponse {
+  return {
+    regions: [],
+    selectedProviderIds: [],
+    titles: [],
+    ...overrides,
+  };
+}
+
+type WatchlistFetchHandlers = {
+  items?: MediaItem[];
+  extras?: WatchlistExtrasResponse | Promise<WatchlistExtrasResponse>;
+  onPatch?: (id: string, body: Record<string, unknown>) => { item: MediaItem };
+};
+
+function stubWatchlistFetch({ items = [], extras = makeExtrasResponse(), onPatch }: WatchlistFetchHandlers = {}) {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+
+    if (url === "/api/items?status=watchlist") return Promise.resolve(Response.json({ items }));
+    if (url === "/api/items?status=watched") return Promise.resolve(Response.json({ items: [] }));
+    if (url === "/api/watchlist-extras") return Promise.resolve(extras).then((body) => Response.json(body));
+
+    const patchMatch = url.match(/^\/api\/items\/(.+)$/);
+    if (patchMatch && method === "PATCH") {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      const item = items.find((entry) => entry.id === patchMatch[1]) ?? items[0];
+      const result = onPatch ? onPatch(patchMatch[1], body) : { item: { ...item, ...body } };
+      return Promise.resolve(Response.json(result));
+    }
+
+    return Promise.reject(new Error(`Unexpected request: ${method} ${url}`));
+  }));
+}
+
+function renderWatchlist() {
+  return render(
+    <LibraryCacheProvider scope="account-1">
+      <RegionProvider regions={[]} suggestedRegion={null}>
+        <ToastProvider>
+          <LibraryView mode="watchlist" />
+        </ToastProvider>
+      </RegionProvider>
+    </LibraryCacheProvider>,
+  );
+}
+
+async function waitForExtrasReady() {
+  await waitFor(() => expect(document.querySelector(".pill-skeleton-row")).not.toBeInTheDocument());
+}
+
+describe("LibraryView watchlist mode", () => {
+  beforeEach(() => {
+    clearLibraryCache();
+    clearWatchlistExtras();
+    mocks.usePathname.mockReturnValue("/watchlist");
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams());
+  });
+
+  it("paints the list from /api/items and shows pill skeletons until /api/watchlist-extras resolves", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Arrival" })];
+    let resolveExtras!: (value: WatchlistExtrasResponse) => void;
+    const extras = new Promise<WatchlistExtrasResponse>((resolve) => { resolveExtras = resolve; });
+    stubWatchlistFetch({ items, extras });
+
+    renderWatchlist();
+
+    expect(await screen.findByRole("button", { name: /Arrival/ })).toBeInTheDocument();
+    expect(document.querySelector(".pill-skeleton-row")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Funny/ })).not.toBeInTheDocument();
+
+    resolveExtras(makeExtrasResponse({
+      titles: [makeTitleExtras({ mediaItemId: "item-1", genres: [{ id: 35, name: "Comedy" }] })],
+    }));
+
+    await waitForExtrasReady();
+    expect(screen.getByRole("button", { name: /^Funny/ })).toBeInTheDocument();
+  });
+
+  it("narrows on a matching mood pill and flips its own aria-pressed, while a mood with no matches stays disabled", async () => {
+    const items = [
+      makeWatchlistItem({ id: "item-1", title: "Comedy Item" }),
+      makeWatchlistItem({ id: "item-2", title: "Drama Item" }),
+    ];
+    const extras = makeExtrasResponse({
+      titles: [
+        makeTitleExtras({ mediaItemId: "item-1", genres: [{ id: 35, name: "Comedy" }] }),
+        makeTitleExtras({ mediaItemId: "item-2", genres: [{ id: 18, name: "Drama" }] }),
+      ],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: /Comedy Item/ });
+    await waitForExtrasReady();
+
+    const suspenseful = screen.getByRole("button", { name: /^Suspenseful/ });
+    expect(suspenseful).toBeDisabled();
+    expect(suspenseful).toHaveAttribute("aria-pressed", "false");
+
+    const funny = screen.getByRole("button", { name: /^Funny/ });
+    expect(funny).not.toBeDisabled();
+    expect(funny).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(funny);
+
+    await waitFor(() => expect(funny).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByRole("button", { name: /Comedy Item/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Drama Item/ })).not.toBeInTheDocument();
+  });
+
+  it("hides country pills with a single saved country", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Solo Country" })];
+    const extras = makeExtrasResponse({
+      regions: ["US"],
+      titles: [makeTitleExtras({
+        mediaItemId: "item-1",
+        genres: [{ id: 35, name: "Comedy" }],
+        streaming: [{ id: 1, name: "Netflix", logoPath: null, regions: ["US"] }],
+      })],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    const { container } = renderWatchlist();
+    await screen.findByRole("button", { name: /Solo Country/ });
+    await waitForExtrasReady();
+
+    /* A country pill would say nothing a single-country reader doesn't already
+       know, so the row shows moods without it. */
+    expect(screen.getByRole("button", { name: /^Funny/ })).toBeInTheDocument();
+    expect(container.querySelectorAll(".pill-region")).toHaveLength(0);
+  });
+
+  it("shows country pills with two saved countries and filters out a title not streaming in the pressed one", async () => {
+    const items = [
+      makeWatchlistItem({ id: "item-1", title: "US Title" }),
+      makeWatchlistItem({ id: "item-2", title: "SE Title" }),
+    ];
+    const extras = makeExtrasResponse({
+      regions: ["US", "SE"],
+      titles: [
+        makeTitleExtras({
+          mediaItemId: "item-1",
+          streaming: [{ id: 1, name: "Netflix", logoPath: null, regions: ["US"] }],
+        }),
+        makeTitleExtras({
+          mediaItemId: "item-2",
+          streaming: [{ id: 2, name: "SVT Play", logoPath: null, regions: ["SE"] }],
+        }),
+      ],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    const { container } = renderWatchlist();
+    await screen.findByRole("button", { name: /US Title/ });
+    await waitForExtrasReady();
+    expect(screen.getByRole("button", { name: /SE Title/ })).toBeInTheDocument();
+
+    const regionPills = container.querySelectorAll(".pill-region");
+    expect(regionPills).toHaveLength(2);
+    expect(regionPills[0]).toHaveTextContent("US");
+
+    fireEvent.click(regionPills[0]);
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: /SE Title/ })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /US Title/ })).toBeInTheDocument();
+  });
+
+  it("hides a title on no selected service under My services, and Everything brings it back", async () => {
+    const items = [
+      makeWatchlistItem({ id: "item-1", title: "On Service" }),
+      makeWatchlistItem({ id: "item-2", title: "Off Service" }),
+    ];
+    const extras = makeExtrasResponse({
+      regions: ["US"],
+      selectedProviderIds: [8],
+      titles: [
+        makeTitleExtras({
+          mediaItemId: "item-1",
+          streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }],
+        }),
+        makeTitleExtras({
+          mediaItemId: "item-2",
+          streaming: [{ id: 337, name: "Disney Plus", logoPath: null, regions: ["US"] }],
+        }),
+      ],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    renderWatchlist();
+    await waitForExtrasReady();
+
+    expect(await screen.findByRole("button", { name: /On Service/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Off Service/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Everything" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Off Service/ })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /On Service/ })).toBeInTheDocument();
+  });
+
+  it("opens the pick card with Math.random stubbed, and View details opens the sheet in place", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Solo Pick" })];
+    const extras = makeExtrasResponse({
+      titles: [makeTitleExtras({ mediaItemId: "item-1" })],
+    });
+    stubWatchlistFetch({ items, extras });
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: /Solo Pick/ });
+    await waitForExtrasReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Pick for me/ }));
+
+    const pick = await screen.findByRole("region", { name: "Your pick" });
+    expect(within(pick).getByRole("heading", { name: "Solo Pick" })).toBeInTheDocument();
+
+    fireEvent.click(within(pick).getByRole("button", { name: "View details" }));
+
+    expect(await screen.findByRole("dialog", { name: "Solo Pick" })).toBeInTheDocument();
+    /* The sheet layers over the same page rather than replacing it: the pick
+       card and the list row are still mounted underneath it. */
+    expect(screen.getByRole("region", { name: "Your pick" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Solo Pick/ }).length).toBeGreaterThan(0);
+  });
+
+  it("shows a row's streaming service name in list view", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Stream Title" })];
+    const extras = makeExtrasResponse({
+      regions: ["US"],
+      titles: [makeTitleExtras({
+        mediaItemId: "item-1",
+        streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["US"] }],
+      })],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: /Stream Title/ });
+    await waitForExtrasReady();
+
+    expect(screen.getByText("Netflix")).toBeInTheDocument();
   });
 });
