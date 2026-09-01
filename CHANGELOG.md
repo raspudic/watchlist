@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0](https://github.com/raspudic/watchlist/compare/v0.11.0...v0.12.0) (2026-09-01)
+
+
+### Features
+
+* fold import into the add-title button ([#70](https://github.com/raspudic/watchlist/issues/70)) ([96ddc03](https://github.com/raspudic/watchlist/commit/96ddc03b909a94d08196235814442bde284f11e9))
+* put the pin on watchlist cards and drop streaming from the list ([#68](https://github.com/raspudic/watchlist/issues/68)) ([a1da7e5](https://github.com/raspudic/watchlist/commit/a1da7e510a86adf8391b167719e5f8e12e061939))
+* scope the insights stats to a week, month or year ([#73](https://github.com/raspudic/watchlist/issues/73)) ([cc91bb9](https://github.com/raspudic/watchlist/commit/cc91bb9776c29c655f30135595a7e85058ee753e))
+
+
+### Bug Fixes
+
+* clear a re-added title's old note and save date ([#72](https://github.com/raspudic/watchlist/issues/72)) ([c36c25f](https://github.com/raspudic/watchlist/commit/c36c25f8637a62f101ebd2694c3d0098790118d0))
+* run the catalog refresh with the react-server condition ([#67](https://github.com/raspudic/watchlist/issues/67)) ([4a789d3](https://github.com/raspudic/watchlist/commit/4a789d34dec6d54a40c6321a4911b37c9548fe5c))
+
 ## [0.11.0](https://github.com/raspudic/watchlist/compare/v0.10.1...v0.11.0) (2026-09-01)
 
 
