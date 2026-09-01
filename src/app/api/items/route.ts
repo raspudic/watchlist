@@ -106,6 +106,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "This title is already in your library." }, { status: 409 });
     }
 
+    /* Re-adding a removed title is a fresh save, not a restore — Undo is the
+       restore, and it goes through PATCH. So the row keeps its id and its
+       viewing history, and everything the reader had written about it goes:
+       the note reads as much like stale data as the rating beside it, and a
+       title saved years ago and re-added today is a save from today. */
     const [item] = await db
       .update(mediaItems)
       .set({
@@ -114,7 +119,8 @@ export async function POST(request: Request) {
         pinnedAt: null,
         rating: null,
         reviewNote: null,
-        watchlistNote: input.watchlistNote ?? existing[0].watchlistNote,
+        watchlistNote: input.watchlistNote ?? null,
+        addedAt: new Date(),
         title: input.title,
         originalTitle: input.originalTitle ?? null,
         releaseYear: input.releaseYear ?? null,
