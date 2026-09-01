@@ -86,6 +86,10 @@ export function WatchlistFilters({
   const moods = ready ? moodOptions(candidates, filters, selectedProviderIds) : [];
   const genres = ready ? genreOptions(candidates, filters, selectedProviderIds) : [];
   const visibleGenres = showGenres ? genres : genres.filter((genre) => genre.selected);
+  /* A watchlist the catalog has not reached yet has nothing to filter by, and
+     a row of dead pills would say less than no row at all. */
+  const hasFacets = countries.length > 0 || genres.length > 0 || moods.some((mood) => mood.count > 0);
+  const hasRuntimes = candidates.some((candidate) => candidate.runtimeMinutes !== null);
 
   function toggleFacet(key: string) {
     onChange({
@@ -98,34 +102,36 @@ export function WatchlistFilters({
 
   return (
     <>
-      <div className="tonight-pills">
-        {ready ? (
-          <>
-            {countries.map((option) => (
-              <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="region" />
-            ))}
-            {moods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
-            {visibleGenres.map((option) => (
-              <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
-            ))}
-            {genres.length > 0 ? (
-              <button
-                aria-expanded={showGenres}
-                className="pill pill-more"
-                onClick={() => onShowGenres(!showGenres)}
-                type="button"
-              >
-                Genres
-                <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <span aria-hidden="true" className="pill-skeleton-row">
-            <span /><span /><span /><span />
-          </span>
-        )}
-      </div>
+      {!ready || hasFacets ? (
+        <div className="tonight-pills">
+          {ready ? (
+            <>
+              {countries.map((option) => (
+                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="region" />
+              ))}
+              {moods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
+              {visibleGenres.map((option) => (
+                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
+              ))}
+              {genres.length > 0 ? (
+                <button
+                  aria-expanded={showGenres}
+                  className="pill pill-more"
+                  onClick={() => onShowGenres(!showGenres)}
+                  type="button"
+                >
+                  Genres
+                  <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <span aria-hidden="true" className="pill-skeleton-row">
+              <span /><span /><span /><span />
+            </span>
+          )}
+        </div>
+      ) : null}
 
       <div className="tonight-refine">
         <p aria-live="polite" className="tonight-summary">
@@ -150,18 +156,20 @@ export function WatchlistFilters({
                nothing to filter by, and the reader may not want to. */
             <Link className="tonight-setup-link" href="/settings">Add your countries and services</Link>
           ) : null}
-          <label className="compact-select-field">
-            <span>Length</span>
-            <select
-              className="field-control compact-select"
-              onChange={(event) => onChange({ ...filters, runtime: event.target.value as RuntimeFilter })}
-              value={filters.runtime}
-            >
-              {RUNTIME_LABELS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
+          {hasRuntimes ? (
+            <label className="compact-select-field">
+              <span>Length</span>
+              <select
+                className="field-control compact-select"
+                onChange={(event) => onChange({ ...filters, runtime: event.target.value as RuntimeFilter })}
+                value={filters.runtime}
+              >
+                {RUNTIME_LABELS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="compact-select-field">
             <span>Sort</span>
             <select
