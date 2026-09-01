@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/raspudic/watchlist/compare/v0.10.1...v0.11.0) (2026-09-01)
+
+
+### Features
+
+* improve watchlist card controls ([#65](https://github.com/raspudic/watchlist/issues/65)) ([6d2c94d](https://github.com/raspudic/watchlist/commit/6d2c94d39944b053ab2337138b5276042405c094))
+
 ## [0.10.1](https://github.com/raspudic/watchlist/compare/v0.10.0...v0.10.1) (2026-09-01)
 
 
