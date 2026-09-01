@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import { catalogTitleGenres, catalogTitles, mediaItems, watchEvents } from "@/lib/db/schema";
@@ -10,6 +10,10 @@ import type { InsightsEvent, InsightsMediaType } from "@/lib/insights";
  * Every viewing this account has recorded, with the title behind it. The
  * catalog is joined loosely on purpose: a custom title, or one the catalog has
  * never seen, still counts as something watched.
+ *
+ * A removed title is gone everywhere else — the library, the watchlist, the
+ * catalog refresh — so its viewings do not count here either. The rows survive
+ * the soft delete; the statistics should not.
  */
 export async function listInsightsEvents(userId: string): Promise<InsightsEvent[]> {
   const rows = await db
@@ -34,7 +38,10 @@ export async function listInsightsEvents(userId: string): Promise<InsightsEvent[
         eq(catalogTitles.externalId, mediaItems.externalId),
       ),
     )
-    .where(eq(watchEvents.userId, userId))
+    .where(and(
+      eq(watchEvents.userId, userId),
+      ne(mediaItems.status, "removed"),
+    ))
     .orderBy(asc(watchEvents.watchedOn), asc(watchEvents.id));
 
   const catalogIds = [...new Set(rows.map((row) => row.catalogTitleId).filter((id): id is string => Boolean(id)))];
