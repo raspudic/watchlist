@@ -68,21 +68,10 @@ const drama = { id: 18, name: "Drama" };
 
 describe("narrowCandidates", () => {
   const netflix = candidate("netflix", { streaming: [{ id: 8, name: "Netflix", logoPath: null, regions: ["SE"] }] });
-  const nowhere = candidate("nowhere");
-
-  it("keeps only titles on a selected service", () => {
-    const kept = narrowCandidates([netflix, nowhere], filters({ services: "mine" }), [8]);
-
-    expect(kept.map((entry) => entry.item.id)).toEqual(["netflix"]);
-  });
-
-  it("keeps everything when no service filter is asked for", () => {
-    expect(narrowCandidates([netflix, nowhere], filters({ services: "all" }), [8])).toHaveLength(2);
-  });
 
   it("filters by media type", () => {
     const series = candidate("series", { item: { mediaType: "tv" } });
-    const kept = narrowCandidates([netflix, series], filters({ services: "all", mediaType: "tv" }), []);
+    const kept = narrowCandidates([netflix, series], filters({ mediaType: "tv" }));
 
     expect(kept.map((entry) => entry.item.id)).toEqual(["series"]);
   });
@@ -94,8 +83,7 @@ describe("narrowCandidates", () => {
 
     const kept = narrowCandidates(
       [short, long, unknown],
-      filters({ services: "all", runtime: "under-90" }),
-      [],
+      filters({ runtime: "under-90" }),
     );
 
     expect(kept.map((entry) => entry.item.id)).toEqual(["short"]);
@@ -107,8 +95,7 @@ describe("narrowCandidates", () => {
 
     const kept = narrowCandidates(
       [funnyDrama, justComedy],
-      filters({ services: "all", facets: ["mood:funny", "genre:18"] }),
-      [],
+      filters({ facets: ["mood:funny", "genre:18"] }),
     );
 
     expect(kept.map((entry) => entry.item.id)).toEqual(["both"]);
@@ -117,9 +104,9 @@ describe("narrowCandidates", () => {
   it("does not call a horror comedy light", () => {
     const horrorComedy = candidate("horror-comedy", { genres: [comedy, horror] });
 
-    expect(narrowCandidates([horrorComedy], filters({ services: "all", facets: ["mood:light"] }), []))
+    expect(narrowCandidates([horrorComedy], filters({ facets: ["mood:light"] })))
       .toHaveLength(0);
-    expect(narrowCandidates([horrorComedy], filters({ services: "all", facets: ["mood:funny"] }), []))
+    expect(narrowCandidates([horrorComedy], filters({ facets: ["mood:funny"] })))
       .toHaveLength(1);
   });
 });
@@ -132,7 +119,7 @@ describe("facet options", () => {
   ];
 
   it("counts each pill against everything else already selected", () => {
-    const options = moodOptions(candidates, filters({ services: "all", facets: ["mood:emotional"] }), []);
+    const options = moodOptions(candidates, filters({ facets: ["mood:emotional"] }));
     const byId = Object.fromEntries(options.map((option) => [option.key, option]));
 
     expect(byId["mood:emotional"]).toMatchObject({ count: 2, selected: true });
@@ -142,7 +129,7 @@ describe("facet options", () => {
   });
 
   it("offers only the genres that are actually saved, in alphabetical order", () => {
-    const options = genreOptions(candidates, filters({ services: "all" }), []);
+    const options = genreOptions(candidates, filters());
 
     expect(options.map((option) => option.label)).toEqual(["Comedy", "Drama", "Horror"]);
     expect(options.map((option) => option.count)).toEqual([1, 2, 1]);
@@ -151,7 +138,7 @@ describe("facet options", () => {
   it("counts each media type with the other filters still applied", () => {
     const series = candidate("series", { genres: [comedy], item: { mediaType: "tv" } });
 
-    expect(mediaTypeCounts([...candidates, series], filters({ services: "all", facets: ["genre:35"] }), []))
+    expect(mediaTypeCounts([...candidates, series], filters({ facets: ["genre:35"] })))
       .toEqual({ all: 2, movie: 1, tv: 1 });
   });
 });
@@ -241,7 +228,6 @@ describe("pickCandidate", () => {
 describe("filter query", () => {
   it("round-trips everything that differs from the defaults", () => {
     const chosen = filters({
-      services: "mine",
       mediaType: "tv",
       runtime: "under-120",
       facets: ["mood:dark", "genre:80"],
@@ -255,17 +241,13 @@ describe("filter query", () => {
     expect(tonightFilterQuery(DEFAULT_TONIGHT_FILTERS)).toBe("");
   });
 
+  /* `services` was a filter once; a link that still carries it is just noise. */
   it("ignores values it did not write", () => {
     const parsed = readTonightFilters(new URLSearchParams(
-      "services=someone-elses&type=film&runtime=0&sort=random&pills=mood:dark,region:US,genre:abc,drop table,genre:80,mood:dark",
+      "services=mine&type=film&runtime=0&sort=random&pills=mood:dark,region:US,genre:abc,drop table,genre:80,mood:dark",
     ));
 
     expect(parsed).toEqual(filters({ facets: ["mood:dark", "genre:80"] }));
-  });
-
-  it("shows the complete watchlist by default", () => {
-    expect(DEFAULT_TONIGHT_FILTERS.services).toBe("all");
-    expect(readTonightFilters(new URLSearchParams()).services).toBe("all");
   });
 });
 

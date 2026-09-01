@@ -236,7 +236,6 @@ function makeTitleExtras(overrides: Partial<TitleExtras> = {}): TitleExtras {
 function makeExtrasResponse(overrides: Partial<WatchlistExtrasResponse> = {}): WatchlistExtrasResponse {
   return {
     regions: [],
-    selectedProviderIds: [],
     titles: [],
     ...overrides,
   };
@@ -374,14 +373,13 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.queryByRole("button", { name: /^SE \d/ })).not.toBeInTheDocument();
   });
 
-  it("shows the full watchlist by default and offers My services as an availability filter", async () => {
+  it("shows the full watchlist, with no availability filter to narrow it by", async () => {
     const items = [
       makeWatchlistItem({ id: "item-1", title: "On Service" }),
       makeWatchlistItem({ id: "item-2", title: "Off Service" }),
     ];
     const extras = makeExtrasResponse({
       regions: ["US"],
-      selectedProviderIds: [8],
       titles: [
         makeTitleExtras({
           mediaItemId: "item-1",
@@ -400,11 +398,7 @@ describe("LibraryView watchlist mode", () => {
 
     expect(await screen.findByRole("button", { name: "View On Service" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View Off Service" })).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Availability"), { target: { value: "mine" } });
-
-    await waitFor(() => expect(screen.queryByRole("button", { name: "View Off Service" })).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "View On Service" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Availability")).not.toBeInTheDocument();
   });
 
   it("opens the pick card with Math.random stubbed, and View details opens the sheet in place", async () => {
@@ -508,7 +502,7 @@ describe("LibraryView watchlist mode", () => {
     );
   });
 
-  it("shows a row's streaming service name in list view", async () => {
+  it("keeps streaming services off the list card", async () => {
     const items = [makeWatchlistItem({ id: "item-1", title: "Stream Title" })];
     const extras = makeExtrasResponse({
       regions: ["US"],
@@ -523,6 +517,7 @@ describe("LibraryView watchlist mode", () => {
     await screen.findByRole("button", { name: "View Stream Title" });
     await waitForExtrasReady();
 
-    expect(screen.getByText("Netflix")).toBeInTheDocument();
+    expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pin Stream Title" })).toBeInTheDocument();
   });
 });

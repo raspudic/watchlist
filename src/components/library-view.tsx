@@ -30,11 +30,7 @@ import {
   type BulkAddOutcome,
 } from "@/components/add-title";
 import { useLibraryCacheScope } from "@/components/library-cache-provider";
-import {
-  AvailabilityLine,
-  PickCard,
-  WatchlistFilters,
-} from "@/components/watchlist-filters";
+import { PickCard, WatchlistFilters } from "@/components/watchlist-filters";
 import { MediaDetailOverview } from "@/components/media/media-detail-overview";
 import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
@@ -91,7 +87,7 @@ const UNDO_WINDOW_MS = 6000;
 
 /* Filters that mean nothing until the catalog layer has arrived: a link
    carrying one waits for it rather than flashing an unfiltered list. */
-const ENRICHED_FILTERS = ["pills", "runtime", "services", "sort"];
+const ENRICHED_FILTERS = ["pills", "runtime", "sort"];
 
 export function LibraryView({ mode }: { mode: ViewMode }) {
   const cacheScope = useLibraryCacheScope();
@@ -178,7 +174,7 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   function updateFilters(next: TonightFilters) {
     setFilters(next);
     const params = new URLSearchParams(window.location.search);
-    for (const key of ["services", "type", "runtime", "pills", "sort"]) params.delete(key);
+    for (const key of ["type", "runtime", "pills", "sort"]) params.delete(key);
     for (const [key, value] of new URLSearchParams(tonightFilterQuery(next))) params.set(key, value);
     writeQuery(params);
   }
@@ -339,18 +335,11 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const watchlist = mode === "watchlist";
   const extrasReady = extras !== null;
   const regions = extras?.regions ?? [];
-  const selectedProviderIds = extras?.selectedProviderIds ?? [];
-  /* Without a country or any saved services, "my services" would filter on
-     nothing, so it is not offered and everything is shown instead. */
-  const canFilterByServices = regions.length > 0 && selectedProviderIds.length > 0;
-  const active: TonightFilters = {
-    ...filters,
-    services: canFilterByServices ? filters.services : "all",
-  };
+  const active: TonightFilters = filters;
 
   const candidates = watchlist ? buildCandidates(items, extras?.titles ?? []) : [];
   const narrowed = watchlist
-    ? sortCandidates(narrowCandidates(candidates, active, selectedProviderIds), active.sort)
+    ? sortCandidates(narrowCandidates(candidates, active), active.sort)
     : [];
   const visibleItems = watchlist
     ? narrowed.map((candidate) => candidate.item)
@@ -362,7 +351,6 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const detailItem = selected ?? linkedItem;
   const listClass = viewStyle === "grid" ? "media-grid" : "media-list";
   const picked = narrowed.find((candidate) => candidate.item.id === pickedId) ?? null;
-  const unchecked = candidates.filter((candidate) => candidate.availabilityCheckedAt === null).length;
   /* A link that filters on the catalog layer waits for it rather than showing
      an unfiltered list for a moment. */
   const waitingOnExtras = watchlist && !extrasReady
@@ -370,10 +358,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
   /* Which of the filters is doing the hiding decides what the empty list says. */
   const narrowing = active.facets.length > 0 || active.runtime !== "any";
-  const onlyServices = watchlist && active.services === "mine" && !narrowing;
 
   const counts = watchlist
-    ? mediaTypeCounts(candidates, active, selectedProviderIds)
+    ? mediaTypeCounts(candidates, active)
     : {
       all: items.length,
       movie: items.filter((item) => item.mediaType === "movie").length,
@@ -466,14 +453,11 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
         >
           {watchlist ? (
             <WatchlistFilters
-              canFilterByServices={canFilterByServices}
               candidates={candidates}
               filters={active}
               onChange={updateFilters}
               ready={extrasReady}
               resultCount={narrowed.length}
-              selectedProviderIds={selectedProviderIds}
-              uncheckedCount={unchecked}
             />
           ) : null}
 
@@ -496,20 +480,9 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
           {!waitingOnExtras && visibleItems.length === 0 ? (
             <EmptyInline>
-              {onlyServices
-                ? "Nothing here is on your services yet."
-                : narrowing
-                  ? "Nothing matches those filters."
-                  : `No ${active.mediaType === "movie" ? "movies" : "series"} here yet.`}
-              {onlyServices ? (
-                <Button
-                  onClick={() => updateFilters({ ...filters, services: "all" })}
-                  size="sm"
-                  variant="quiet"
-                >
-                  Show everything
-                </Button>
-              ) : null}
+              {narrowing
+                ? "Nothing matches those filters."
+                : `No ${active.mediaType === "movie" ? "movies" : "series"} here yet.`}
             </EmptyInline>
           ) : null}
 
@@ -524,10 +497,8 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
                     onMarkWatched={markWatched}
                     onOpen={setSelected}
                     onRemove={removeItem}
-                    onTogglePin={viewStyle === "list" ? togglePin : undefined}
+                    onTogglePin={togglePin}
                     pinning={pinningId === candidate.item.id}
-                    showAvailability={regions.length > 0 && viewStyle === "list"}
-                    showCountry={regions.length > 1}
                   />
                 ))}
               </div>
@@ -586,8 +557,6 @@ function MediaRow({
   onTogglePin,
   pinning = false,
   promptRating = false,
-  showAvailability = false,
-  showCountry = false,
 }: {
   /* The catalog layer for this title, once it has arrived. */
   candidate?: TonightCandidate;
@@ -600,8 +569,6 @@ function MediaRow({
   onTogglePin?: (candidate: TonightCandidate) => void;
   pinning?: boolean;
   promptRating?: boolean;
-  showAvailability?: boolean;
-  showCountry?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -611,6 +578,7 @@ function MediaRow({
   const didSwipe = useRef(false);
   const poster = posterUrl(item.posterPath);
   const canMarkWatched = Boolean(onMarkWatched);
+  const canPin = Boolean(candidate && onTogglePin);
 
   function settle(next: number) {
     offsetRef.current = next;
@@ -693,7 +661,7 @@ function MediaRow({
       </button>
       <button
         aria-label={`View ${item.title}`}
-        className={onTogglePin ? "media-row has-pin" : "media-row"}
+        className={canPin ? "media-row has-pin" : "media-row"}
         onClick={() => {
           if (didSwipe.current) {
             didSwipe.current = false;
@@ -721,14 +689,13 @@ function MediaRow({
           <span className="row-meta">
             {mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
           </span>
-          {/* Tiles have no room for it, so availability is a list-view line. */}
-          {showAvailability && candidate ? (
-            <AvailabilityLine candidate={candidate} showCountry={showCountry} />
-          ) : null}
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
         </span>
-        {promptRating ? <span className="rate-prompt"><Star size={15} /> Rate</span> : <ChevronRight className="row-chevron" size={18} />}
+        {/* On a row that carries a pin, the pin is the trailing affordance. */}
+        {promptRating
+          ? <span className="rate-prompt"><Star size={15} /> Rate</span>
+          : canPin ? null : <ChevronRight className="row-chevron" size={18} />}
       </button>
       {candidate && onTogglePin ? (
         <IconButton

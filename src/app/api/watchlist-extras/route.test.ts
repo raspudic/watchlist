@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   consumeRateLimits: vi.fn(),
   getRequestUserId: vi.fn(),
-  getUserStreamingServiceIds: vi.fn(),
   listWatchlistExtras: vi.fn(),
   listUserRegions: vi.fn(),
 }));
@@ -16,10 +15,6 @@ vi.mock("@/lib/api-rate-limit", async () => {
 });
 vi.mock("@/lib/db/client", () => ({ db: {} }));
 vi.mock("@/lib/account-regions", () => ({ listUserRegions: mocks.listUserRegions }));
-vi.mock("@/lib/streaming-services", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/streaming-services")>("@/lib/streaming-services");
-  return { ...actual, getUserStreamingServiceIds: mocks.getUserStreamingServiceIds };
-});
 vi.mock("@/lib/watchlist-extras", () => ({ listWatchlistExtras: mocks.listWatchlistExtras }));
 
 import { GET } from "./route";
@@ -47,7 +42,6 @@ describe("GET /api/watchlist-extras", () => {
     mocks.listUserRegions.mockResolvedValue(["SE"]);
     mocks.getRequestUserId.mockResolvedValue("account-1");
     mocks.consumeRateLimits.mockResolvedValue({ allowed: true });
-    mocks.getUserStreamingServiceIds.mockResolvedValue([8]);
     mocks.listWatchlistExtras.mockResolvedValue(titles);
   });
 
@@ -69,14 +63,13 @@ describe("GET /api/watchlist-extras", () => {
     expect(mocks.listWatchlistExtras).not.toHaveBeenCalled();
   });
 
-  it("returns the catalog layer and the current selections", async () => {
+  it("returns the catalog layer for the saved countries", async () => {
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
       regions: ["SE"],
-      selectedProviderIds: [8],
       titles,
     });
     expect(mocks.listWatchlistExtras).toHaveBeenCalledWith("account-1", ["SE"]);
@@ -84,14 +77,12 @@ describe("GET /api/watchlist-extras", () => {
 
   it("returns an empty setup state before a country is saved", async () => {
     mocks.listUserRegions.mockResolvedValue([]);
-    mocks.getUserStreamingServiceIds.mockResolvedValue([]);
 
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       regions: [],
-      selectedProviderIds: [],
       titles,
     });
   });

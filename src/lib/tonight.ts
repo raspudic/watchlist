@@ -40,7 +40,6 @@ export type TitleExtras = {
 export type WatchlistExtrasResponse = {
   /** The saved countries, home first; empty while Settings has not been visited. */
   regions: string[];
-  selectedProviderIds: number[];
   titles: TitleExtras[];
 };
 
@@ -105,13 +104,11 @@ export type MoodId = (typeof MOODS)[number]["id"];
 /** `mood:<id>` or `genre:<tmdb id>`: one flat namespace for one row of pills. */
 export type FacetKey = string;
 
-export type ServiceFilter = "mine" | "all";
 export type MediaTypeFilter = "all" | "movie" | "tv";
 export type RuntimeFilter = "any" | "under-90" | "under-120";
 export type TonightSort = "pinned" | "oldest" | "release" | "score";
 
 export type TonightFilters = {
-  services: ServiceFilter;
   mediaType: MediaTypeFilter;
   runtime: RuntimeFilter;
   /** Selected pills, combined with AND so narrowing never surprises. */
@@ -120,7 +117,6 @@ export type TonightFilters = {
 };
 
 export const DEFAULT_TONIGHT_FILTERS: TonightFilters = {
-  services: "all",
   mediaType: "all",
   runtime: "any",
   facets: [],
@@ -160,24 +156,14 @@ export function matchesFacet(candidate: TonightCandidate, facet: FacetKey) {
   return ids.some((id) => (mood.genreIds as readonly number[]).includes(id));
 }
 
-export function isOnSelectedService(candidate: TonightCandidate, selectedProviderIds: number[]) {
-  if (selectedProviderIds.length === 0) return false;
-  return candidate.streaming.some((provider) => selectedProviderIds.includes(provider.id));
-}
-
 /**
  * Applies every active filter. Runtime deliberately drops titles with no known
  * runtime rather than guessing they are short enough.
  */
-export function narrowCandidates(
-  candidates: TonightCandidate[],
-  filters: TonightFilters,
-  selectedProviderIds: number[],
-) {
+export function narrowCandidates(candidates: TonightCandidate[], filters: TonightFilters) {
   const runtimeLimit = RUNTIME_LIMITS[filters.runtime];
 
   return candidates.filter((candidate) => {
-    if (filters.services === "mine" && !isOnSelectedService(candidate, selectedProviderIds)) return false;
     if (filters.mediaType !== "all" && candidate.item.mediaType !== filters.mediaType) return false;
     if (runtimeLimit !== null) {
       if (candidate.runtimeMinutes === null) return false;
@@ -201,7 +187,6 @@ export type FacetOption = {
 function facetOption(
   candidates: TonightCandidate[],
   filters: TonightFilters,
-  selectedProviderIds: number[],
   key: FacetKey,
   label: string,
 ): FacetOption {
@@ -210,46 +195,33 @@ function facetOption(
   return {
     key,
     label,
-    count: narrowCandidates(candidates, { ...filters, facets }, selectedProviderIds).length,
+    count: narrowCandidates(candidates, { ...filters, facets }).length,
     selected,
   };
 }
 
-export function moodOptions(
-  candidates: TonightCandidate[],
-  filters: TonightFilters,
-  selectedProviderIds: number[],
-): FacetOption[] {
-  return MOODS.map((mood) =>
-    facetOption(candidates, filters, selectedProviderIds, moodFacetKey(mood.id), mood.label));
+export function moodOptions(candidates: TonightCandidate[], filters: TonightFilters): FacetOption[] {
+  return MOODS.map((mood) => facetOption(candidates, filters, moodFacetKey(mood.id), mood.label));
 }
 
 /**
  * Only genres someone actually has saved, so the row is a map of this library
  * rather than of TMDB. The list stays put as filters change; counts move.
  */
-export function genreOptions(
-  candidates: TonightCandidate[],
-  filters: TonightFilters,
-  selectedProviderIds: number[],
-): FacetOption[] {
+export function genreOptions(candidates: TonightCandidate[], filters: TonightFilters): FacetOption[] {
   const names = new Map<number, string>();
   for (const candidate of candidates) {
     for (const genre of candidate.genres) if (!names.has(genre.id)) names.set(genre.id, genre.name);
   }
 
   return [...names.entries()]
-    .map(([id, name]) => facetOption(candidates, filters, selectedProviderIds, genreFacetKey(id), name))
+    .map(([id, name]) => facetOption(candidates, filters, genreFacetKey(id), name))
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
-export function mediaTypeCounts(
-  candidates: TonightCandidate[],
-  filters: TonightFilters,
-  selectedProviderIds: number[],
-) {
+export function mediaTypeCounts(candidates: TonightCandidate[], filters: TonightFilters) {
   const count = (mediaType: MediaTypeFilter) =>
-    narrowCandidates(candidates, { ...filters, mediaType }, selectedProviderIds).length;
+    narrowCandidates(candidates, { ...filters, mediaType }).length;
   return { all: count("all"), movie: count("movie"), tv: count("tv") };
 }
 
@@ -331,7 +303,6 @@ export function rememberPick(recentIds: string[], id: string) {
   return [id, ...recentIds.filter((current) => current !== id)].slice(0, RECENT_PICK_MEMORY);
 }
 
-const SERVICE_FILTERS: ServiceFilter[] = ["mine", "all"];
 const MEDIA_TYPE_FILTERS: MediaTypeFilter[] = ["all", "movie", "tv"];
 const RUNTIME_FILTERS: RuntimeFilter[] = ["any", "under-90", "under-120"];
 const SORTS: TonightSort[] = ["pinned", "oldest", "release", "score"];
@@ -347,7 +318,6 @@ export function readTonightFilters(params: URLSearchParams): TonightFilters {
     .filter((facet) => /^mood:[a-z-]+$/.test(facet) || /^genre:\d+$/.test(facet));
 
   return {
-    services: readOption(params.get("services"), SERVICE_FILTERS, DEFAULT_TONIGHT_FILTERS.services),
     mediaType: readOption(params.get("type"), MEDIA_TYPE_FILTERS, DEFAULT_TONIGHT_FILTERS.mediaType),
     runtime: readOption(params.get("runtime"), RUNTIME_FILTERS, DEFAULT_TONIGHT_FILTERS.runtime),
     facets: [...new Set(facets)],
@@ -358,7 +328,6 @@ export function readTonightFilters(params: URLSearchParams): TonightFilters {
 /** Only what differs from the defaults, so a shared link stays readable. */
 export function tonightFilterQuery(filters: TonightFilters) {
   const params = new URLSearchParams();
-  if (filters.services !== DEFAULT_TONIGHT_FILTERS.services) params.set("services", filters.services);
   if (filters.mediaType !== DEFAULT_TONIGHT_FILTERS.mediaType) params.set("type", filters.mediaType);
   if (filters.runtime !== DEFAULT_TONIGHT_FILTERS.runtime) params.set("runtime", filters.runtime);
   if (filters.facets.length > 0) params.set("pills", filters.facets.join(","));
