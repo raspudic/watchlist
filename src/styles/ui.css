@@ -180,6 +180,9 @@ select.field-control { padding-right: 34px; appearance: none; background-image: 
 .empty-inline {
   margin-top: 56px;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-md);
   color: var(--text-faint);

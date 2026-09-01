@@ -402,7 +402,7 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.getByRole("button", { name: /US Title/ })).toBeInTheDocument();
   });
 
-  it("hides a title on no selected service under My services, and Everything brings it back", async () => {
+  it("shows the full watchlist by default and offers My services as an availability filter", async () => {
     const items = [
       makeWatchlistItem({ id: "item-1", title: "On Service" }),
       makeWatchlistItem({ id: "item-2", title: "Off Service" }),
@@ -427,11 +427,11 @@ describe("LibraryView watchlist mode", () => {
     await waitForExtrasReady();
 
     expect(await screen.findByRole("button", { name: /On Service/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Off Service/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Off Service/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Everything" }));
+    fireEvent.change(screen.getByLabelText("Availability"), { target: { value: "mine" } });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /Off Service/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Off Service/ })).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /On Service/ })).toBeInTheDocument();
   });
 

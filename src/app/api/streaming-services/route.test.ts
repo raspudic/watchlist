@@ -32,7 +32,7 @@ vi.mock("@/lib/streaming-services", async () => {
 import { GET, PUT } from "./route";
 
 const providers = [
-  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
+  { id: 8, providerIds: [8], name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
 ];
 
 function getRequest() {

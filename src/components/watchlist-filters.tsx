@@ -8,7 +8,6 @@ import Link from "next/link";
 
 import { RegionMark } from "@/components/region-select";
 import { Button, IconButton } from "@/components/ui/button";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { mediaLabel, posterUrl, providerLogoUrl } from "@/lib/media-display";
 import {
   type FacetOption,
@@ -142,15 +141,17 @@ export function WatchlistFilters({
         </p>
         <div className="tonight-selects">
           {canFilterByServices ? (
-            <SegmentedControl<ServiceFilter>
-              items={[
-                { label: "My services", value: "mine" },
-                { label: "Everything", value: "all" },
-              ]}
-              label="Limit to your streaming services"
-              onValueChange={(next) => { if (next) onChange({ ...filters, services: next }); }}
-              value={filters.services}
-            />
+            <label className="compact-select-field">
+              <span>Availability</span>
+              <select
+                className="field-control compact-select"
+                onChange={(event) => onChange({ ...filters, services: event.target.value as ServiceFilter })}
+                value={filters.services}
+              >
+                <option value="all">All titles</option>
+                <option value="mine">On my services</option>
+              </select>
+            </label>
           ) : ready ? (
             /* One quiet line rather than a banner: without a country there is
                nothing to filter by, and the reader may not want to. */
