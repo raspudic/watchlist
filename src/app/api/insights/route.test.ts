@@ -48,7 +48,7 @@ describe("GET /api/insights", () => {
   it("rejects an unauthenticated request before touching insights events", async () => {
     mocks.getRequestUserId.mockResolvedValue(null);
 
-    const response = await GET(getRequest("?year=2026&month=9"));
+    const response = await GET(getRequest("?year=2026&today=2026-09-14&period=year"));
 
     expect(response.status).toBe(401);
     expect(mocks.listInsightsEvents).not.toHaveBeenCalled();
@@ -57,34 +57,58 @@ describe("GET /api/insights", () => {
   it("returns 429 when the account is rate limited", async () => {
     mocks.consumeRateLimits.mockResolvedValue({ allowed: false, reason: "account_read", retryAfter: 5 });
 
-    const response = await GET(getRequest("?year=2026&month=9"));
+    const response = await GET(getRequest("?year=2026&today=2026-09-14&period=year"));
 
     expect(response.status).toBe(429);
     expect(mocks.listInsightsEvents).not.toHaveBeenCalled();
   });
 
-  it("returns a summary for a valid year and month", async () => {
-    const response = await GET(getRequest("?year=2026&month=9"));
+  it("returns a summary for a valid year and period", async () => {
+    const response = await GET(getRequest("?year=2026&today=2026-09-14&period=year"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
 
     const body = await response.json();
     expect(body.year).toBe(2026);
-    expect(body.month).toBe(9);
+    expect(body.period).toBe("year");
     expect(body.monthlyBuckets).toHaveLength(12);
   });
 
+  it("narrows the summary to the reader's own week", async () => {
+    const response = await GET(getRequest("?year=2026&today=2026-09-14&period=week"));
+
+    const body = await response.json();
+    expect(body.period).toBe("week");
+    expect({ start: body.periodStart, end: body.periodEnd })
+      .toEqual({ start: "2026-09-14", end: "2026-09-20" });
+    /* The one event is in September but not that week. */
+    expect(body.watches).toBe(0);
+    /* The year underneath it is unmoved. */
+    expect(body.yearWatches).toBe(1);
+  });
+
+  /* A week of a year that has already ended has no answer. */
+  it("reads a past year as a whole year whatever period is asked for", async () => {
+    const response = await GET(getRequest("?year=2025&today=2026-09-14&period=week"));
+
+    const body = await response.json();
+    expect(body.period).toBe("year");
+    expect({ start: body.periodStart, end: body.periodEnd })
+      .toEqual({ start: "2025-01-01", end: "2025-12-31" });
+  });
+
   it.each([
-    ["a non-numeric year", "?year=abc&month=9"],
-    ["an out-of-range month", "?year=2026&month=13"],
+    ["a non-numeric year", "?year=abc&today=2026-09-14&period=year"],
+    ["a malformed today", "?year=2026&today=14-09-2026&period=year"],
+    ["an unknown period", "?year=2026&today=2026-09-14&period=fortnight"],
   ])("returns 400 for %s", async (_label, query) => {
     const response = await GET(getRequest(query));
 
     expect(response.status).toBe(400);
   });
 
-  it("falls back to the server's current UTC year and month with no query parameters", async () => {
+  it("falls back to the server's current UTC date and the whole year", async () => {
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
@@ -92,6 +116,6 @@ describe("GET /api/insights", () => {
     const now = new Date();
     const body = await response.json();
     expect(body.year).toBe(now.getUTCFullYear());
-    expect(body.month).toBe(now.getUTCMonth() + 1);
+    expect(body.period).toBe("year");
   });
 });
