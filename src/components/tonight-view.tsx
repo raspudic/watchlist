@@ -261,10 +261,10 @@ export function TonightView() {
                   : ""}
               </p>
               <div className="tonight-selects">
-                <label>
+                <label className="compact-select-field">
                   <span>Length</span>
                   <select
-                    className="field-control tonight-select"
+                    className="field-control compact-select"
                     onChange={(event) => updateFilters({ ...filters, runtime: event.target.value as RuntimeFilter })}
                     value={active.runtime}
                   >
@@ -273,10 +273,10 @@ export function TonightView() {
                     ))}
                   </select>
                 </label>
-                <label>
+                <label className="compact-select-field">
                   <span>Sort</span>
                   <select
-                    className="field-control tonight-select"
+                    className="field-control compact-select"
                     onChange={(event) => updateFilters({ ...filters, sort: event.target.value as TonightSort })}
                     value={active.sort}
                   >
