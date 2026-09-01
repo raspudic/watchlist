@@ -369,6 +369,10 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
   const waitingOnExtras = watchlist && !extrasReady
     && ENRICHED_FILTERS.some((key) => searchParams.has(key));
 
+  /* Which of the filters is doing the hiding decides what the empty list says. */
+  const narrowing = active.facets.length > 0 || active.runtime !== "any";
+  const onlyServices = watchlist && active.services === "mine" && !narrowing;
+
   const counts = watchlist
     ? mediaTypeCounts(candidates, active, selectedProviderIds)
     : {
@@ -495,10 +499,12 @@ export function LibraryView({ mode }: { mode: ViewMode }) {
 
           {!waitingOnExtras && visibleItems.length === 0 ? (
             <EmptyInline>
-              {watchlist && active.services === "mine"
+              {onlyServices
                 ? "Nothing here is on your services yet."
-                : `No ${active.mediaType === "movie" ? "movies" : active.mediaType === "tv" ? "series" : "titles"} match those filters.`}
-              {watchlist && active.services === "mine" ? (
+                : narrowing
+                  ? "Nothing matches those filters."
+                  : `No ${active.mediaType === "movie" ? "movies" : "series"} here yet.`}
+              {onlyServices ? (
                 <Button
                   onClick={() => updateFilters({ ...filters, services: "all" })}
                   size="sm"
