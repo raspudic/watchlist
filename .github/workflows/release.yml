@@ -20,6 +20,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  statuses: write
 
 jobs:
   release:
@@ -50,6 +51,13 @@ jobs:
                 title: "GitHub release created",
                 summary: "This exact commit is authorized for production promotion.",
               },
+            });
+            await github.rest.repos.createCommitStatus({
+              ...context.repo,
+              sha: process.env.RELEASE_SHA,
+              state: "success",
+              context: "Released",
+              description: "GitHub release created and authorized for production.",
             });
 
       - name: Check out released commit
@@ -145,6 +153,13 @@ jobs:
                 title: "Published GitHub release recovered",
                 summary: "This exact released commit is authorized for production promotion.",
               },
+            });
+            await github.rest.repos.createCommitStatus({
+              ...context.repo,
+              sha: process.env.RELEASE_SHA,
+              state: "success",
+              context: "Released",
+              description: "Published GitHub release recovered for production.",
             });
 
       - name: Promote release to production
