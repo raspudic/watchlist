@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   getRequestUserId: vi.fn(),
   getUserStreamingServiceIds: vi.fn(),
   listTonightCandidates: vi.fn(),
-  rows: [{ region: "SE" }] as Array<{ region: string | null }>,
+  listUserRegions: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -14,15 +14,8 @@ vi.mock("@/lib/api-rate-limit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-rate-limit")>("@/lib/api-rate-limit");
   return { ...actual, consumeRateLimits: mocks.consumeRateLimits };
 });
-vi.mock("@/lib/db/client", () => ({
-  db: {
-    select: () => ({
-      from: () => ({
-        where: () => ({ limit: () => Promise.resolve(mocks.rows) }),
-      }),
-    }),
-  },
-}));
+vi.mock("@/lib/db/client", () => ({ db: {} }));
+vi.mock("@/lib/account-regions", () => ({ listUserRegions: mocks.listUserRegions }));
 vi.mock("@/lib/streaming-services", async () => {
   const actual = await vi.importActual<typeof import("@/lib/streaming-services")>("@/lib/streaming-services");
   return { ...actual, getUserStreamingServiceIds: mocks.getUserStreamingServiceIds };
@@ -51,7 +44,7 @@ function getRequest() {
 describe("GET /api/tonight", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.rows.splice(0, mocks.rows.length, { region: "SE" });
+    mocks.listUserRegions.mockResolvedValue(["SE"]);
     mocks.getRequestUserId.mockResolvedValue("account-1");
     mocks.consumeRateLimits.mockResolvedValue({ allowed: true });
     mocks.getUserStreamingServiceIds.mockResolvedValue([8]);
@@ -82,27 +75,24 @@ describe("GET /api/tonight", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
-      region: "SE",
+      regions: ["SE"],
       selectedProviderIds: [8],
       candidates,
     });
-    expect(mocks.listTonightCandidates).toHaveBeenCalledWith("account-1", "SE");
+    expect(mocks.listTonightCandidates).toHaveBeenCalledWith("account-1", ["SE"]);
   });
 
-  it.each([
-    ["no saved region", null],
-    ["an invalid region", "xx"],
-  ])("returns an empty setup state for %s", async (_label, region) => {
-    mocks.rows.splice(0, mocks.rows.length, { region });
+  it("returns an empty setup state before a country is saved", async () => {
+    mocks.listUserRegions.mockResolvedValue([]);
+    mocks.getUserStreamingServiceIds.mockResolvedValue([]);
 
     const response = await GET(getRequest());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      region: null,
+      regions: [],
       selectedProviderIds: [],
       candidates,
     });
-    expect(mocks.getUserStreamingServiceIds).not.toHaveBeenCalled();
   });
 });

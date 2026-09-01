@@ -31,20 +31,20 @@ const item: MediaItem = {
 
 const regions = [{ code: "AR", name: "Argentina" }, { code: "US", name: "United States of America" }];
 
-function stubFetch(providers?: unknown) {
+function stubFetch(providers?: Record<string, unknown>) {
   vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith("/api/watch-regions")) return Promise.resolve(Response.json({ regions }));
-    return Promise.resolve(Response.json({ providers }));
+    return Promise.resolve(Response.json({ providers: providers ?? {} }));
   }));
 }
 
 function renderWith(
-  { region, suggestedRegion }: { region: string | null; suggestedRegion: string | null },
+  { regions: saved, suggestedRegion }: { regions: string[]; suggestedRegion: string | null },
   media: MediaItem = item,
 ) {
   return render(
-    <RegionProvider region={region} suggestedRegion={suggestedRegion}>
+    <RegionProvider regions={saved} suggestedRegion={suggestedRegion}>
       <WatchProviders item={media} />
     </RegionProvider>,
   );
@@ -60,7 +60,7 @@ describe("WatchProviders", () => {
   it("asks for a country and preselects the browser's guess when none is saved", async () => {
     stubFetch();
 
-    renderWith({ region: null, suggestedRegion: "AR" });
+    renderWith({ regions: [], suggestedRegion: "AR" });
 
     expect(screen.getByText(/Set your country to see where this streams/)).toBeInTheDocument();
     await waitFor(() => {
@@ -70,13 +70,15 @@ describe("WatchProviders", () => {
 
   it("lists streaming services, rent-or-buy options and the JustWatch credit", async () => {
     stubFetch({
-      region: "AR",
-      link: "https://tmdb.test/603/watch",
-      streaming: [{ id: 8, name: "Netflix", logoPath: "/netflix.jpg" }],
-      rentOrBuy: [{ id: 2, name: "Apple TV", logoPath: "/apple.jpg" }],
+      AR: {
+        region: "AR",
+        link: "https://tmdb.test/603/watch",
+        streaming: [{ id: 8, name: "Netflix", logoPath: "/netflix.jpg" }],
+        rentOrBuy: [{ id: 2, name: "Apple TV", logoPath: "/apple.jpg" }],
+      },
     });
 
-    renderWith({ region: "AR", suggestedRegion: "AR" }, { ...item, externalId: 604 });
+    renderWith({ regions: ["AR"], suggestedRegion: "AR" }, { ...item, externalId: 604 });
 
     expect(await screen.findByText("Netflix")).toBeInTheDocument();
     expect(screen.getByText(/Also available to rent or buy: Apple TV/)).toBeInTheDocument();
@@ -86,9 +88,9 @@ describe("WatchProviders", () => {
   });
 
   it("says so plainly when nothing carries the title in that country", async () => {
-    stubFetch({ region: "AR", link: null, streaming: [], rentOrBuy: [] });
+    stubFetch({ AR: { region: "AR", link: null, streaming: [], rentOrBuy: [] } });
 
-    renderWith({ region: "AR", suggestedRegion: null }, { ...item, externalId: 605 });
+    renderWith({ regions: ["AR"], suggestedRegion: null }, { ...item, externalId: 605 });
 
     expect(await screen.findByText("Not available to stream in Argentina right now."))
       .toBeInTheDocument();
@@ -98,7 +100,7 @@ describe("WatchProviders", () => {
     stubFetch();
 
     const { container } = renderWith(
-      { region: "AR", suggestedRegion: null },
+      { regions: ["AR"], suggestedRegion: null },
       { ...item, provider: "custom", externalId: null, mediaType: "other" },
     );
 

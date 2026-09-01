@@ -11,13 +11,13 @@ import { ToastProvider } from "@/components/ui/toast";
 import { StreamingServicesCard } from "./streaming-services-card";
 
 const providers = [
-  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"] },
-  { id: 337, name: "Disney Plus", logoPath: null, mediaTypes: ["movie"] },
+  { id: 8, name: "Netflix", logoPath: "/netflix.jpg", mediaTypes: ["movie", "tv"], regions: ["SE"] },
+  { id: 337, name: "Disney Plus", logoPath: null, mediaTypes: ["movie"], regions: ["SE"] },
 ];
 
-function renderCard(region: string | null = "SE") {
+function renderCard(regions: string[] = ["SE"]) {
   return render(
-    <RegionProvider region={region} suggestedRegion={null}>
+    <RegionProvider regions={regions} suggestedRegion={null}>
       <ToastProvider><StreamingServicesCard /></ToastProvider>
     </RegionProvider>,
   );
@@ -32,9 +32,9 @@ describe("StreamingServicesCard", () => {
   it("waits for a saved country before loading providers", () => {
     vi.stubGlobal("fetch", vi.fn());
 
-    renderCard(null);
+    renderCard([]);
 
-    expect(screen.getByText(/Choose and save your country above first/)).toBeInTheDocument();
+    expect(screen.getByText(/Choose and save a country above first/)).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -42,12 +42,12 @@ describe("StreamingServicesCard", () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === "PUT") {
         return Promise.resolve(Response.json({
-          region: "SE",
+          regions: ["SE"],
           providers,
           selectedProviderIds: [8, 337],
         }));
       }
-      return Promise.resolve(Response.json({ region: "SE", providers, selectedProviderIds: [8] }));
+      return Promise.resolve(Response.json({ regions: ["SE"], providers, selectedProviderIds: [8] }));
     }));
 
     renderCard();
@@ -73,7 +73,7 @@ describe("StreamingServicesCard", () => {
 
   it("clears the search when a result is ticked, so the next one can be typed", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(
-      Response.json({ region: "SE", providers, selectedProviderIds: [] }),
+      Response.json({ regions: ["SE"], providers, selectedProviderIds: [] }),
     )));
 
     renderCard();
