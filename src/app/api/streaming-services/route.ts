@@ -1,17 +1,14 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
 import { validateStateChangingApiRequest } from "@/lib/api-request-security";
-import { db } from "@/lib/db/client";
-import { user } from "@/lib/db/schema";
-import { isRegionCode } from "@/lib/region";
+import { listUserRegions } from "@/lib/account-regions";
 import {
   UnknownStreamingServiceError,
   getUserStreamingServiceIds,
-  listStreamingServicesForRegion,
+  listStreamingServicesForRegions,
   refreshStreamingProviderDirectory,
   replaceUserStreamingServices,
 } from "@/lib/streaming-services";
@@ -25,17 +22,8 @@ const updateSchema = z.object({
   ),
 });
 
-async function getSavedRegion(userId: string) {
-  const [account] = await db
-    .select({ region: user.region })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-  return isRegionCode(account?.region) ? account.region : null;
-}
-
-async function responseBody(userId: string, region: string) {
-  let providers = await listStreamingServicesForRegion(region);
+async function responseBody(userId: string, regions: string[]) {
+  let providers = await listStreamingServicesForRegions(regions);
 
   if (providers.length === 0 && process.env.TMDB_ACCESS_TOKEN) {
     const accountLimit = await consumeRateLimits(userId, API_RATE_LIMITS.tmdbDetailSheet);
@@ -45,11 +33,11 @@ async function responseBody(userId: string, region: string) {
     if (!applicationLimit.allowed) return { limited: applicationLimit } as const;
 
     await refreshStreamingProviderDirectory();
-    providers = await listStreamingServicesForRegion(region);
+    providers = await listStreamingServicesForRegions(regions);
   }
 
-  const selectedProviderIds = await getUserStreamingServiceIds(userId, region);
-  return { body: { providers, region, selectedProviderIds } } as const;
+  const selectedProviderIds = await getUserStreamingServiceIds(userId, regions);
+  return { body: { providers, regions, selectedProviderIds } } as const;
 }
 
 export async function GET(request: Request) {
@@ -59,16 +47,16 @@ export async function GET(request: Request) {
   const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryRead);
   if (!limit.allowed) return rateLimitResponse(limit);
 
-  const region = await getSavedRegion(userId);
-  if (!region) {
+  const regions = await listUserRegions(userId);
+  if (regions.length === 0) {
     return NextResponse.json(
-      { providers: [], region: null, selectedProviderIds: [] },
+      { providers: [], regions: [], selectedProviderIds: [] },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   }
 
   try {
-    const result = await responseBody(userId, region);
+    const result = await responseBody(userId, regions);
     if ("limited" in result && result.limited) return rateLimitResponse(result.limited);
     return NextResponse.json(result.body, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
@@ -94,25 +82,25 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Choose valid streaming services." }, { status: 400 });
   }
 
-  const region = await getSavedRegion(userId);
-  if (!region) {
+  const regions = await listUserRegions(userId);
+  if (regions.length === 0) {
     return NextResponse.json({ error: "Choose a country before saving services." }, { status: 409 });
   }
 
   try {
     const selectedProviderIds = await replaceUserStreamingServices(
       userId,
-      region,
+      regions,
       parsed.data.providerIds,
     );
-    const providers = await listStreamingServicesForRegion(region);
+    const providers = await listStreamingServicesForRegions(regions);
     return NextResponse.json(
-      { providers, region, selectedProviderIds },
+      { providers, regions, selectedProviderIds },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (caught) {
     if (caught instanceof UnknownStreamingServiceError) {
-      return NextResponse.json({ error: "One or more services are unavailable in this country." }, { status: 400 });
+      return NextResponse.json({ error: "One or more services are unavailable in your countries." }, { status: 400 });
     }
     return NextResponse.json({ error: "Could not save streaming services." }, { status: 500 });
   }

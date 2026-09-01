@@ -1,11 +1,8 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { API_RATE_LIMITS, consumeRateLimits, rateLimitResponse } from "@/lib/api-rate-limit";
 import { getRequestUserId } from "@/lib/api-auth";
-import { db } from "@/lib/db/client";
-import { user } from "@/lib/db/schema";
-import { isRegionCode } from "@/lib/region";
+import { listUserRegions } from "@/lib/account-regions";
 import { getUserStreamingServiceIds } from "@/lib/streaming-services";
 import { listTonightCandidates } from "@/lib/tonight-candidates";
 
@@ -23,20 +20,15 @@ export async function GET(request: Request) {
   const limit = await consumeRateLimits(userId, API_RATE_LIMITS.libraryRead);
   if (!limit.allowed) return rateLimitResponse(limit);
 
-  const [account] = await db
-    .select({ region: user.region })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-  const region = isRegionCode(account?.region) ? account.region : null;
+  const regions = await listUserRegions(userId);
 
   const [candidates, selectedProviderIds] = await Promise.all([
-    listTonightCandidates(userId, region),
-    region ? getUserStreamingServiceIds(userId, region) : Promise.resolve([]),
+    listTonightCandidates(userId, regions),
+    getUserStreamingServiceIds(userId, regions),
   ]);
 
   return NextResponse.json(
-    { region, selectedProviderIds, candidates },
+    { regions, selectedProviderIds, candidates },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

@@ -20,7 +20,7 @@ import type { TonightCandidate, TonightGenre, TonightProvider } from "@/lib/toni
  */
 export async function listTonightCandidates(
   userId: string,
-  region: string | null,
+  regions: string[],
 ): Promise<TonightCandidate[]> {
   const rows = await db
     .select({
@@ -60,10 +60,11 @@ export async function listTonightCandidates(
         .where(inArray(catalogTitleGenres.catalogTitleId, catalogIds))
         .orderBy(asc(catalogTitleGenres.name))
       : Promise.resolve([]),
-    catalogIds.length > 0 && region
+    catalogIds.length > 0 && regions.length > 0
       ? db
         .select({
           catalogTitleId: catalogAvailabilityServices.catalogTitleId,
+          region: catalogAvailabilityServices.region,
           id: streamingProviders.id,
           name: streamingProviders.name,
           logoPath: streamingProviders.logoPath,
@@ -75,7 +76,7 @@ export async function listTonightCandidates(
         )
         .where(and(
           inArray(catalogAvailabilityServices.catalogTitleId, catalogIds),
-          eq(catalogAvailabilityServices.region, region),
+          inArray(catalogAvailabilityServices.region, regions),
           /* Rent and buy are not what "what can I watch tonight" means. */
           eq(catalogAvailabilityServices.accessType, "streaming"),
         ))
@@ -93,11 +94,24 @@ export async function listTonightCandidates(
     genres.set(row.catalogTitleId, list);
   }
 
+  /* One entry per service per title, carrying the countries it streams in, so
+     a chip can say "Max, in SE" without repeating the service. */
   const streaming = new Map<string, TonightProvider[]>();
   for (const row of serviceRows) {
     const list = streaming.get(row.catalogTitleId) ?? [];
-    list.push({ id: row.id, name: row.name, logoPath: row.logoPath });
+    const existing = list.find((provider) => provider.id === row.id);
+    if (existing) {
+      if (!existing.regions.includes(row.region)) existing.regions.push(row.region);
+      continue;
+    }
+    list.push({ id: row.id, name: row.name, logoPath: row.logoPath, regions: [row.region] });
     streaming.set(row.catalogTitleId, list);
+  }
+
+  for (const list of streaming.values()) {
+    for (const provider of list) {
+      provider.regions = regions.filter((region) => provider.regions.includes(region));
+    }
   }
 
   const candidates = rows.map((row): TonightCandidate => ({
