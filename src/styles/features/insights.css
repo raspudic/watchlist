@@ -1,7 +1,26 @@
 /* Insights: stat tiles, plain CSS bar charts and the year's lists. */
 
+/* Two blocks with different spans, so the reader can see at a glance which
+   numbers the period switch moves. The period block is inset behind a rule it
+   shares with its own heading; the year-wide block starts flush against a full
+   divider and says so in words. */
+.insights-scope,
+.insights-yearwide { margin-top: 34px; }
+.insights-yearwide { padding-top: 30px; border-top: 1px solid var(--line-strong); }
+.insights-scope-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.insights-scope-head h2 { font-size: 19px; font-weight: 640; letter-spacing: -0.02em; }
+.insights-scope-note { margin-top: 4px; color: var(--text-faint); font-size: 12.5px; }
+/* The switch belongs to its heading, not to the page. */
+.insights-scope-head .segmented { flex: 0 0 auto; }
+.insights-scope .empty-inline { margin-top: 18px; }
+
 .insights-stats {
-  margin-top: 30px;
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
   gap: 9px;
@@ -51,7 +70,14 @@
 .insights-skeleton div { height: 96px; border-radius: var(--radius-md); background: var(--surface-strong); opacity: 0.6; }
 
 @media (max-width: 760px) {
-  .insights-stats { margin-top: 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-stats { margin-top: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-scope,
+  .insights-yearwide { margin-top: 26px; }
+  .insights-yearwide { padding-top: 24px; }
+  /* The switch takes its own line rather than squeezing the heading. */
+  .insights-scope-head { flex-direction: column; gap: 12px; }
+  .insights-scope-head .segmented { width: 100%; }
+  .insights-scope-head h2 { font-size: 17px; }
   .insights-stat { padding: 14px 15px 13px; }
   .insights-stat-value { font-size: 23px; }
   .insights-stat-value.words { font-size: 18px; }
