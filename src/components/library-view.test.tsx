@@ -330,14 +330,11 @@ describe("LibraryView watchlist mode", () => {
     await waitForExtrasReady();
 
     expect(screen.queryByRole("button", { name: /^Suspenseful/ })).not.toBeInTheDocument();
-    /* Genres fold away behind the disclosure until it is opened. */
-    expect(screen.queryByRole("button", { name: /^Comedy/ })).not.toBeInTheDocument();
-    const genres = screen.getByRole("button", { name: /^Genres/ });
-    expect(genres).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.click(genres);
+    /* Both genres fit inside the preview, so nothing is left to fold and the
+       disclosure has nothing to say. */
     expect(screen.getByRole("button", { name: /^Comedy/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Drama/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more genres?$/ })).not.toBeInTheDocument();
 
     const funny = screen.getByRole("button", { name: /^Funny/ });
     expect(funny).not.toBeDisabled();
@@ -348,6 +345,60 @@ describe("LibraryView watchlist mode", () => {
     await waitFor(() => expect(funny).toHaveAttribute("aria-pressed", "true"));
     expect(screen.getByRole("button", { name: "View Comedy Item" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "View Drama Item" })).not.toBeInTheDocument();
+  });
+
+  it("folds genres past the preview behind the disclosure, keeping selected ones out", async () => {
+    /* Each title carries one genre fewer than the last, so every genre lands on
+       a different number of titles and the ranking has a single answer: the
+       first six are out, Western and Documentary fold. */
+    const genres = [
+      { id: 28, name: "Action" },
+      { id: 35, name: "Comedy" },
+      { id: 18, name: "Drama" },
+      { id: 27, name: "Horror" },
+      { id: 10749, name: "Romance" },
+      { id: 53, name: "Thriller" },
+      { id: 37, name: "Western" },
+      { id: 99, name: "Documentary" },
+    ];
+    const items = genres.map((_, index) => makeWatchlistItem({ id: `item-${index}`, title: `Title ${index}` }));
+    stubWatchlistFetch({
+      items,
+      extras: makeExtrasResponse({
+        titles: items.map((item, index) => makeTitleExtras({
+          mediaItemId: item.id,
+          genres: genres.slice(0, genres.length - index),
+        })),
+      }),
+    });
+
+    renderWatchlist();
+    await screen.findByRole("button", { name: "View Title 0" });
+    await waitForExtrasReady();
+
+    for (const name of ["Action", "Comedy", "Drama", "Horror", "Romance", "Thriller"]) {
+      expect(screen.getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("button", { name: /^Western/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Documentary/ })).not.toBeInTheDocument();
+
+    /* One disclosure, not two: the width probe beside it is hidden from the tree. */
+    expect(screen.getAllByRole("button", { name: /more genres?$/ })).toHaveLength(1);
+    const disclosure = screen.getByRole("button", { name: "2 more genres" });
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(disclosure);
+    expect(screen.getByRole("button", { name: /^Western/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Documentary/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide genres" })).toHaveAttribute("aria-expanded", "true");
+
+    /* A filter that is working is never folded away, however far down it ranks. */
+    fireEvent.click(screen.getByRole("button", { name: /^Western/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Western/ })).toHaveAttribute("aria-pressed", "true"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide genres" }));
+    expect(screen.getByRole("button", { name: /^Western/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1 more genre" })).toBeInTheDocument();
   });
 
   it("does not turn saved countries into filter pills", async () => {

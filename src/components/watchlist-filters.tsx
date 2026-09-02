@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { ChevronDown, Clapperboard, Pin, Shuffle, Star, X } from "lucide-react";
-import { useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { RegionMark } from "@/components/region-select";
 import { Button, IconButton } from "@/components/ui/button";
@@ -33,6 +33,82 @@ const SORT_LABELS: Array<{ label: string; value: TonightSort }> = [
   { label: "Newest release", value: "release" },
   { label: "Highest score", value: "score" },
 ];
+
+/* What the row falls back to before it has been measured: a server render, or a
+   test environment with no box model. Never seen in a browser, where layout
+   settles before the first paint. */
+const GENRE_PREVIEW_FALLBACK = 6;
+
+/* Measuring has to finish before the browser paints or the unfolded row flashes
+   past; on the server there is no layout to measure. */
+const useMeasureEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * How many genres fit on the line they start on, leaving room for the disclosure
+ * to close that same line. Flex wraps rather than truncates and the disclosure
+ * has to name how many are left, so neither can be had from CSS: the row renders
+ * every genre for one pass and measures them.
+ *
+ * The reservation is what keeps the disclosure out of a line of its own, and it
+ * is taken against the widest label it could ever carry — reserving against the
+ * live one would let the count it names change the room it is given, and the two
+ * would chase each other.
+ *
+ * `signature` carries everything that moves the wrap: the row's width, and every
+ * label and count, since a pill grows by a digit when its count reaches ten.
+ * Re-measuring means putting the folded genres back first, which is the one
+ * render this returns null for.
+ */
+function useFirstLineFit(rowRef: RefObject<HTMLDivElement | null>, signature: string) {
+  const [fit, setFit] = useState<number | null>(null);
+  const measured = useRef<string | null>(null);
+
+  useMeasureEffect(() => {
+    const row = rowRef.current;
+    if (!row || measured.current === signature) return;
+    if (fit !== null) {
+      setFit(null);
+      return;
+    }
+
+    const pills = row.querySelectorAll<HTMLElement>(".pill-genre");
+    if (pills.length === 0) return;
+
+    measured.current = signature;
+    /* A row with no width has no line to fill, so nothing measured here is true. */
+    if (row.clientWidth === 0) {
+      setFit(GENRE_PREVIEW_FALLBACK);
+      return;
+    }
+
+    /* Whether they all already fit is the one question the flow itself answers,
+       and if they do there is no disclosure to make room for. */
+    const line = pills[0].offsetTop;
+    let natural = 1;
+    while (natural < pills.length && pills[natural].offsetTop === line) natural += 1;
+    if (natural === pills.length) {
+      setFit(natural);
+      return;
+    }
+
+    const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
+    const probe = row.querySelector<HTMLElement>(".pill-more-probe");
+    const reserved = probe ? gap + probe.offsetWidth : 0;
+    let used = 0;
+    let count = 0;
+    while (count < pills.length) {
+      const next = used + (count > 0 ? gap : 0) + pills[count].offsetWidth;
+      if (next + reserved > row.clientWidth) break;
+      used = next;
+      count += 1;
+    }
+    /* A line too narrow for even one genre and the disclosure still shows one;
+       the disclosure wraps below it rather than the band coming up empty. */
+    setFit(Math.max(count, 1));
+  }, [fit, rowRef, signature]);
+
+  return fit;
+}
 
 export function runtimeLabel(minutes: number | null) {
   if (!minutes) return null;
@@ -83,10 +159,13 @@ export function candidateMeta(candidate: TonightCandidate) {
  * Moods and genres are one row of pills, not two filters. Every visible pill
  * carries the number of titles it would leave.
  *
- * The seven moods are always out; the genres under them fold behind a
- * disclosure, because a real watchlist surfaces twenty of them and four rows of
- * pills push the list itself off the first screen. A genre already switched on
- * stays out while collapsed, so the row never hides a filter that is working.
+ * The seven moods lead, then the biggest genres fill a line of their own. Only
+ * what runs past that line folds behind a disclosure, because a real watchlist
+ * surfaces twenty of them and four rows of pills push the list itself off the
+ * first screen. Filling the line exactly is what makes the genres a band rather
+ * than a ragged block, and it takes measurement — see `useFirstLineFit`. A genre
+ * already switched on stays out while collapsed, however far down it ranks, so
+ * the row never hides a filter that is working.
  */
 export function WatchlistFilters({
   candidates,
@@ -105,10 +184,31 @@ export function WatchlistFilters({
   resultCount: number;
 }) {
   const [showGenres, setShowGenres] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [rowWidth, setRowWidth] = useState(0);
   const moods = ready ? moodOptions(candidates, filters) : [];
   const visibleMoods = moods.filter((mood) => mood.count > 0 || mood.selected);
   const genres = ready ? genreOptions(candidates, filters) : [];
-  const visibleGenres = showGenres ? genres : genres.filter((genre) => genre.selected);
+
+  /* The row is block-level, so its width answers to the page rather than to the
+     pills inside it: watching it cannot feed back into itself. */
+  useMeasureEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    setRowWidth(row.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => setRowWidth(entry.contentRect.width));
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, []);
+
+  /* Genres start a fresh line, so only their own widths and the room they are
+     given decide the fit — how the moods wrapped above cannot reach them. */
+  const facetSignature = [rowWidth, ...genres.map((genre) => `${genre.label}${genre.count}`)].join("|");
+  const fit = useFirstLineFit(rowRef, facetSignature);
+  /* Null while the row is being measured, and every genre is out for that pass. */
+  const genreLimit = showGenres || fit === null ? genres.length : fit;
+  const visibleGenres = genres.filter((genre, index) => index < genreLimit || genre.selected);
   const hiddenGenres = genres.length - visibleGenres.length;
   /* A watchlist the catalog has not reached yet has nothing to filter by, and
      a row of dead pills would say less than no row at all. */
@@ -127,27 +227,47 @@ export function WatchlistFilters({
   return (
     <>
       {!ready || hasFacets ? (
-        <div className="tonight-pills">
+        <div className="tonight-pills" ref={rowRef}>
           {ready ? (
             <>
               {visibleMoods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
+              {/* Genres take a line of their own. Sharing one with the moods made
+                  how many of them you saw a side effect of where the moods
+                  happened to wrap — six at 1280px, two at 860px, five at 640px. */}
+              {visibleMoods.length > 0 && visibleGenres.length > 0
+                ? <span aria-hidden="true" className="pill-row-break" />
+                : null}
+              {visibleGenres.map((option) => (
+                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
+              ))}
+              {/* Never seen and never in the flow: it carries the widest label the
+                  disclosure could ever take, which is the width the genre line
+                  holds back for it. */}
               {genres.length > 0 ? (
+                <span aria-hidden="true" className="pill pill-more pill-more-probe">
+                  {genres.length} more genres
+                  <ChevronDown className="pill-chevron" size={14} />
+                </span>
+              ) : null}
+              {/* Last in the row and flush right, so it closes what it governs
+                  rather than sitting among the pills as one more facet. It drops
+                  to the next line whenever the genres leave it no room, which is
+                  most of the time — that is what filling the line costs. Nothing
+                  is left to fold once every remaining genre is switched on. */}
+              {showGenres || hiddenGenres > 0 ? (
                 <button
                   aria-expanded={showGenres}
                   className="pill pill-more"
                   onClick={() => setShowGenres(!showGenres)}
                   type="button"
                 >
-                  Genres
-                  {/* Not a count of titles like every other pill, but of what is
-                      still folded away; the chevron is what says so. */}
-                  {hiddenGenres > 0 ? <span className="pill-count">{hiddenGenres}</span> : null}
+                  {/* The number counts folded-away pills, not titles, so it is
+                      spoken in the label rather than worn as the count badge
+                      every facet pill carries. */}
+                  {showGenres ? "Hide genres" : `${hiddenGenres} more ${hiddenGenres === 1 ? "genre" : "genres"}`}
                   <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
                 </button>
               ) : null}
-              {visibleGenres.map((option) => (
-                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
-              ))}
             </>
           ) : (
             <span aria-hidden="true" className="pill-skeleton-row">
