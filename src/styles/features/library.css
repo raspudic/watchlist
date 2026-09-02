@@ -304,11 +304,13 @@
 /* Filters and the pick, on the page that holds the titles -------------- */
 .library-header-actions { display: flex; align-items: center; gap: 9px; }
 
-/* Moods and genres are one row of pills, not two filters, so nothing breaks the
-   line between them. Each pill carries the number of titles it would leave, and
-   a pill that would leave none is shown disabled rather than hidden: the count
-   is the explanation. */
+/* Moods, then genres: two bands of one control, separated by whitespace alone.
+   Each pill carries the number of titles it would leave, and a pill that would
+   leave none is shown disabled rather than hidden: the count is the explanation. */
 .tonight-pills { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 7px; }
+/* Nothing to see — it claims a full line so the genres start on one of their
+   own, and takes a second row gap with it, which is the whole separation. */
+.pill-row-break { flex-basis: 100%; height: 0; }
 .pill {
   min-height: 34px;
   padding: 0 12px;
@@ -341,6 +343,8 @@
   color: var(--text-faint);
 }
 .pill-more:hover:not(:disabled) { border-color: transparent; background: var(--surface-strong); color: var(--text-soft); }
+/* Out of the flow so it measures without taking part in it. */
+.pill-more-probe { position: absolute; visibility: hidden; pointer-events: none; }
 .pill-chevron { color: var(--text-faint); transition: transform var(--duration); }
 .pill-chevron.open { transform: rotate(180deg); }
 .pill-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-text); }

@@ -382,6 +382,8 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.queryByRole("button", { name: /^Western/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Documentary/ })).not.toBeInTheDocument();
 
+    /* One disclosure, not two: the width probe beside it is hidden from the tree. */
+    expect(screen.getAllByRole("button", { name: /more genres?$/ })).toHaveLength(1);
     const disclosure = screen.getByRole("button", { name: "2 more genres" });
     expect(disclosure).toHaveAttribute("aria-expanded", "false");
 
