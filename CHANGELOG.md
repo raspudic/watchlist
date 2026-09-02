@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/raspudic/watchlist/compare/v0.13.1...v0.14.0) (2026-09-02)
+
+
+### Features
+
+* settle the genres disclosure and fill the genre line ([#80](https://github.com/raspudic/watchlist/issues/80)) ([8d30da9](https://github.com/raspudic/watchlist/commit/8d30da950540c30ac4c78da06e3ad97e105c7dcf))
+
 ## [0.13.1](https://github.com/raspudic/watchlist/compare/v0.13.0...v0.13.1) (2026-09-02)
 
 
