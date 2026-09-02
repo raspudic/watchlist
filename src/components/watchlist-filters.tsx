@@ -34,6 +34,11 @@ const SORT_LABELS: Array<{ label: string; value: TonightSort }> = [
   { label: "Highest score", value: "score" },
 ];
 
+/* Enough genres for the row to be a map of the library rather than a lone
+   control, but few enough that the list itself stays on the first screen — which
+   is the whole reason the rest fold away. */
+const GENRE_PREVIEW_COUNT = 6;
+
 export function runtimeLabel(minutes: number | null) {
   if (!minutes) return null;
   if (minutes < 60) return `${minutes} min`;
@@ -83,10 +88,11 @@ export function candidateMeta(candidate: TonightCandidate) {
  * Moods and genres are one row of pills, not two filters. Every visible pill
  * carries the number of titles it would leave.
  *
- * The seven moods are always out; the genres under them fold behind a
- * disclosure, because a real watchlist surfaces twenty of them and four rows of
- * pills push the list itself off the first screen. A genre already switched on
- * stays out while collapsed, so the row never hides a filter that is working.
+ * The seven moods are always out, and so are the biggest few genres. Only the
+ * tail folds behind a disclosure, because a real watchlist surfaces twenty of
+ * them and four rows of pills push the list itself off the first screen. A genre
+ * already switched on stays out while collapsed, however far down it ranks, so
+ * the row never hides a filter that is working.
  */
 export function WatchlistFilters({
   candidates,
@@ -108,7 +114,9 @@ export function WatchlistFilters({
   const moods = ready ? moodOptions(candidates, filters) : [];
   const visibleMoods = moods.filter((mood) => mood.count > 0 || mood.selected);
   const genres = ready ? genreOptions(candidates, filters) : [];
-  const visibleGenres = showGenres ? genres : genres.filter((genre) => genre.selected);
+  const visibleGenres = showGenres
+    ? genres
+    : genres.filter((genre, index) => index < GENRE_PREVIEW_COUNT || genre.selected);
   const hiddenGenres = genres.length - visibleGenres.length;
   /* A watchlist the catalog has not reached yet has nothing to filter by, and
      a row of dead pills would say less than no row at all. */
@@ -131,23 +139,26 @@ export function WatchlistFilters({
           {ready ? (
             <>
               {visibleMoods.map((option) => <FacetPill key={option.key} onToggle={toggleFacet} option={option} />)}
-              {genres.length > 0 ? (
+              {visibleGenres.map((option) => (
+                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
+              ))}
+              {/* Last in the row and flush right, so it closes what it governs
+                  rather than sitting among the pills as one more facet. Nothing
+                  is left to fold once every remaining genre is switched on. */}
+              {showGenres || hiddenGenres > 0 ? (
                 <button
                   aria-expanded={showGenres}
                   className="pill pill-more"
                   onClick={() => setShowGenres(!showGenres)}
                   type="button"
                 >
-                  Genres
-                  {/* Not a count of titles like every other pill, but of what is
-                      still folded away; the chevron is what says so. */}
-                  {hiddenGenres > 0 ? <span className="pill-count">{hiddenGenres}</span> : null}
+                  {/* The number counts folded-away pills, not titles, so it is
+                      spoken in the label rather than worn as the count badge
+                      every facet pill carries. */}
+                  {showGenres ? "Hide genres" : `${hiddenGenres} more ${hiddenGenres === 1 ? "genre" : "genres"}`}
                   <ChevronDown aria-hidden="true" className={showGenres ? "pill-chevron open" : "pill-chevron"} size={14} />
                 </button>
               ) : null}
-              {visibleGenres.map((option) => (
-                <FacetPill key={option.key} onToggle={toggleFacet} option={option} tone="genre" />
-              ))}
             </>
           ) : (
             <span aria-hidden="true" className="pill-skeleton-row">

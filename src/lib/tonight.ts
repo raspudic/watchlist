@@ -206,8 +206,9 @@ export function moodOptions(candidates: TonightCandidate[], filters: TonightFilt
 
 /**
  * Only genres someone actually has saved, so the row is a map of this library
- * rather than of TMDB. The biggest genres lead, because behind a disclosure the
- * first thing revealed should be the one that does the most work.
+ * rather than of TMDB. The biggest genres lead, because only the leading few are
+ * shown without opening the disclosure and they should be the ones that do the
+ * most work.
  *
  * What orders the row is not what the pill displays. A pill's number is counted
  * against whatever else is already on, so ordering by it would reshuffle every
