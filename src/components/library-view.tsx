@@ -703,7 +703,7 @@ function MediaRow({
             {candidate
               ? candidateMeta(candidate)
               : mediaMeta(item.releaseYear, item.mediaType, item.status === "watched" ? item.watchedAt : null)}
-            {candidate ? <ScoreMark candidate={candidate} /> : null}
+            {candidate ? <ScoreMark candidate={candidate} separated /> : null}
           </span>
           {item.watchlistNote && item.status === "watchlist" ? <span className="row-note">{item.watchlistNote}</span> : null}
           {item.reviewNote && item.status === "watched" ? <span className="row-note">{item.reviewNote}</span> : null}
@@ -773,6 +773,7 @@ function DetailSheet({
   const noteField: NoteField = watched ? "reviewNote" : "watchlistNote";
   const noteValue = watched ? reviewNote : watchlistNote;
   const today = watchedDateValue(new Date().toISOString());
+  const candidateRuntime = candidate ? runtimeLabel(candidate.runtimeMinutes) : null;
 
   /* History is a detail of a watched title, so it loads quietly and stays
      silent when it cannot: nothing else in the sheet depends on it. */
@@ -927,8 +928,8 @@ function DetailSheet({
                no space to say whose rating it is. */
             /* The hero already carries the year and the type badge. */
             <p className="detail-score">
-              {runtimeLabel(candidate.runtimeMinutes)}
-              <ScoreMark candidate={candidate} votes />
+              {candidateRuntime}
+              <ScoreMark candidate={candidate} separated={Boolean(candidateRuntime)} votes />
             </p>
           ) : watched ? (
             <>

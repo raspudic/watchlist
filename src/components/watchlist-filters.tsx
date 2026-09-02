@@ -44,15 +44,26 @@ export function runtimeLabel(minutes: number | null) {
 
 /**
  * TMDB's user rating, wherever a title is shown. "Highest score" sorts on this,
- * so it has to be legible somewhere other than the sort menu. The outline star
- * keeps it apart from a viewer's own rating, which is a filled star on a badge.
+ * so it has to be legible somewhere other than the sort menu. The score stays
+ * distinct from a viewer's own rating by living in the metadata rather than a
+ * rating badge.
  */
-export function ScoreMark({ candidate, votes = false }: { candidate: TonightCandidate; votes?: boolean }) {
+export function ScoreMark({
+  candidate,
+  separated = false,
+  votes = false,
+}: {
+  candidate: TonightCandidate;
+  separated?: boolean;
+  votes?: boolean;
+}) {
   if (!candidate.voteAverage) return null;
 
   return (
     <span className="tonight-score" title="TMDB rating">
-      <Star aria-hidden="true" size={12} /> {candidate.voteAverage.toFixed(1)}
+      {separated ? <span aria-hidden="true" className="score-separator">·</span> : null}
+      <Star aria-hidden="true" fill="currentColor" size={13} strokeWidth={1.5} />
+      {candidate.voteAverage.toFixed(1)}
       {votes && candidate.voteCount
         ? <span className="score-votes">on TMDB · {candidate.voteCount.toLocaleString()} votes</span>
         : null}
@@ -285,7 +296,7 @@ export function PickCard({
         </div>
         <p className="row-meta">
           {candidateMeta(candidate)}
-          <ScoreMark candidate={candidate} />
+          <ScoreMark candidate={candidate} separated />
         </p>
         {candidate.streaming.length > 0 ? (
           <ProviderChips providers={candidate.streaming} showCountry={showCountry} />

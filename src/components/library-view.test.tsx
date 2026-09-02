@@ -406,6 +406,23 @@ describe("LibraryView watchlist mode", () => {
     expect(screen.queryByLabelText("Availability")).not.toBeInTheDocument();
   });
 
+  it("keeps the catalog score aligned as a separated, filled-star metadata item", async () => {
+    const items = [makeWatchlistItem({ id: "item-1", title: "Sinners", releaseYear: 2025 })];
+    const extras = makeExtrasResponse({
+      titles: [makeTitleExtras({ mediaItemId: "item-1", runtimeMinutes: 138, voteAverage: 7.5 })],
+    });
+    stubWatchlistFetch({ items, extras });
+
+    renderWatchlist();
+    const row = await screen.findByRole("button", { name: "View Sinners" });
+    await waitForExtrasReady();
+
+    expect(within(row).getByText("·", { selector: ".score-separator" })).toBeInTheDocument();
+    const score = within(row).getByTitle("TMDB rating");
+    expect(score).toHaveTextContent("7.5");
+    expect(score.querySelector("svg")).toHaveAttribute("fill", "currentColor");
+  });
+
   it("opens the pick card with Math.random stubbed, and View details opens the sheet in place", async () => {
     const items = [makeWatchlistItem({ id: "item-1", title: "Solo Pick" })];
     const extras = makeExtrasResponse({
