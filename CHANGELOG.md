@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/raspudic/watchlist/compare/v0.13.0...v0.13.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* align catalog scores with metadata ([#78](https://github.com/raspudic/watchlist/issues/78)) ([09faaa6](https://github.com/raspudic/watchlist/commit/09faaa652f5a818684fd0f2f7f21b24a8c1419f5))
+
 ## [0.13.0](https://github.com/raspudic/watchlist/compare/v0.12.0...v0.13.0) (2026-09-01)
 
 
