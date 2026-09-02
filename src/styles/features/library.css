@@ -114,7 +114,7 @@
 .media-list .media-row.has-pin .row-content { padding-right: 34px; }
 .row-title-line { display: flex; align-items: center; gap: 8px; }
 .row-title-line strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; font-weight: 620; }
-.row-meta { color: var(--text-faint); font-size: 12px; }
+.row-meta { display: flex; align-items: center; color: var(--text-faint); font-size: 12px; line-height: 1.4; }
 .row-note { max-width: 610px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-soft); font-size: 12.5px; }
 .row-chevron { flex: 0 0 auto; color: var(--text-faint); }
 .rate-prompt { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; color: var(--accent-text); font-size: 12px; font-weight: 650; }
@@ -382,11 +382,12 @@
 .media-pinned + .media-list,
 .media-pinned + .media-grid { margin-top: 22px; }
 
-/* The rating sits in the meta line, so it inherits its size and only the star
-   and the tabular figures set it apart. */
-.tonight-score { margin-left: 7px; display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+/* The score is one aligned metadata item. Its own separator keeps the rhythm
+   of the text metadata without relying on a visually uneven left margin. */
+.tonight-score { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; line-height: inherit; }
+.score-separator { margin-left: 5px; margin-right: 1px; }
 .score-votes { margin-left: 2px; color: var(--text-faint); }
-.detail-score { margin-top: 4px; display: flex; align-items: center; gap: 8px; color: var(--text-soft); font-size: 12.5px; }
+.detail-score { margin-top: 4px; display: flex; align-items: center; color: var(--text-soft); font-size: 12.5px; }
 
 .tonight-services { display: flex; flex-wrap: wrap; gap: 6px; }
 .tonight-service {
